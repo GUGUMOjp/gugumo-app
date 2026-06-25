@@ -196,6 +196,10 @@ GUGUMOのプロダクト思想。
 
 何を重視し、何を作らず、どのような価値を提供するかを定義する。
 
+### 10_[MasterImplementationRoadmap.md](http://MasterImplementationRoadmap.md)
+
+GUGUMOの実装順序、依存関係、GGMチケット計画を定義するマスターロードマップ。
+
 ---
 
 ## 5. GUGUMOの設計思想
