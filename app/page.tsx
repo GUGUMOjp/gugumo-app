@@ -855,14 +855,15 @@ function MiniBarChart({ data }: { data: Array<{ label: string; value: number }> 
 }
 
 function useHydratedSettings() {
-  const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
+  const [settings, setSettings] = useState<Settings>(() => {
+    if (typeof window === "undefined") return DEFAULT_SETTINGS;
 
-  useEffect(() => {
     try {
       const raw = localStorage.getItem("gugumo_s");
-      if (!raw) return;
+      if (!raw) return DEFAULT_SETTINGS;
       const parsed = JSON.parse(raw);
-      setSettings({
+
+      return {
         slots: Number(parsed.slots ?? parsed.s_slots ?? DEFAULT_SETTINGS.slots),
         smapicLimit: Number(parsed.smapicLimit ?? parsed.smapic_limit ?? DEFAULT_SETTINGS.smapicLimit),
         ward: parsed.ward ?? DEFAULT_SETTINGS.ward,
@@ -873,11 +874,11 @@ function useHydratedSettings() {
           area: Number(parsed.pr_area ?? parsed.prices?.area ?? DEFAULT_SETTINGS.prices.area),
           movie: Number(parsed.pr_movie ?? parsed.prices?.movie ?? DEFAULT_SETTINGS.prices.movie),
         },
-      });
+      };
     } catch {
-      // ignore broken localStorage
+      return DEFAULT_SETTINGS;
     }
-  }, []);
+  });
 
   return [settings, setSettings] as const;
 }
@@ -887,21 +888,21 @@ export default function Page() {
   const [snapshots, setSnapshots] = useState<CsvSnapshot[]>([]);
   const [isReadingCsv, setIsReadingCsv] = useState(false);
   const [settings, setSettings] = useHydratedSettings();
-  const [checkedState, setCheckedState] = useState<CheckState>({});
+  const [checkedState, setCheckedState] = useState<CheckState>(() => {
+    if (typeof window === "undefined") return {};
+
+    try {
+      const raw = localStorage.getItem("gugumo_checks");
+      return raw ? JSON.parse(raw) : {};
+    } catch {
+      return {};
+    }
+  });
   const [savedVisible, setSavedVisible] = useState(false);
   const [propertySearch, setPropertySearch] = useState("");
   const [openProperties, setOpenProperties] = useState<Record<string, boolean>>({});
   const [isDragOver, setIsDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem("gugumo_checks");
-      if (raw) setCheckedState(JSON.parse(raw));
-    } catch {
-      setCheckedState({});
-    }
-  }, []);
 
   useEffect(() => {
     try {
