@@ -1,21 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode } from "react";
+import { PAGE_TITLES } from "@/data/constants/pageTitles";
 import { supabase } from "@/lib/supabase";
-
-const PAGE_TITLES: Record<PageId, string> = {
-  home: "ホーム",
-  weekly: "週次レポート",
-  monthly: "月次レポート",
-  props: "物件別推移",
-  opt: "オプション管理",
-  smapic: "スマピク最適化",
-  lowpv: "入替対象",
-  optbal: "オプション収支",
-  area: "エリア配分",
-  upload: "CSVアップロード",
-  settings: "設定・契約枠",
-};
 
 const WARD_GRID = [
   ["西淀川区", "淀川区", "東淀川区", "", ""],
