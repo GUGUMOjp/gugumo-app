@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode } from "react";
 import { PAGE_TITLES } from "@/data/constants/pageTitles";
+import { NAVIGATION_GROUPS, SETTINGS_NAV_ITEM } from "@/data/navigation/navigation";
 import { supabase } from "@/lib/supabase";
 
 const WARD_GRID = [
@@ -910,6 +911,11 @@ export default function Page() {
   const areaAllocation = useMemo(() => computeAreaAllocation(settings.ward), [settings.ward]);
 
   const goto = (id: PageId) => setActivePage(id);
+  const navBadgeValue = (badge: "weeklyCount" | "optionReviewCount" | "lowPvCount") => {
+    if (badge === "weeklyCount") return weekly.length ? `${weekly.length}週` : "—";
+    if (badge === "optionReviewCount") return analysis.removeAllRows.length + analysis.lowerToSecondRows.length + analysis.raiseToSecondRows.length + analysis.raiseToThirdRows.length || "—";
+    return analysis.lowPvRows.length || "—";
+  };
 
   const toggleCheck = (tableId: string, key: string, checked: boolean) => {
     setCheckedState((current) => {
@@ -1041,20 +1047,18 @@ export default function Page() {
           </div>
         </div>
         <nav className="nav">
-          <div className="nav-group">分析</div>
-          <div className={navClass(activePage, "home")} onClick={() => goto("home")}><i className="ti ti-home" /><span>ホーム</span></div>
-          <div className={navClass(activePage, "weekly")} onClick={() => goto("weekly")}><i className="ti ti-calendar-week" /><span>週次レポート</span><span className="nav-badge">{weekly.length ? `${weekly.length}週` : "—"}</span></div>
-          <div className={navClass(activePage, "monthly")} onClick={() => goto("monthly")}><i className="ti ti-calendar-month" /><span>月次レポート</span></div>
-          <div className={navClass(activePage, "props")} onClick={() => goto("props")}><i className="ti ti-building" /><span>物件別推移</span></div>
-          <div className="nav-group">最適化</div>
-          <div className={navClass(activePage, "opt")} onClick={() => goto("opt")}><i className="ti ti-adjustments" /><span>オプション管理</span><span className="nav-badge">{analysis.removeAllRows.length + analysis.lowerToSecondRows.length + analysis.raiseToSecondRows.length + analysis.raiseToThirdRows.length || "—"}</span></div>
-          <div className={navClass(activePage, "smapic")} onClick={() => goto("smapic")}><i className="ti ti-star" /><span>スマピク最適化</span></div>
-          <div className={navClass(activePage, "lowpv", "alert")} onClick={() => goto("lowpv")}><i className="ti ti-alert-triangle" /><span>入替対象</span><span className="nav-badge hot">{analysis.lowPvRows.length || "—"}</span></div>
-          <div className="nav-group">収支・エリア</div>
-          <div className={navClass(activePage, "optbal")} onClick={() => goto("optbal")}><i className="ti ti-coin" /><span>オプション収支</span></div>
-          <div className={navClass(activePage, "area")} onClick={() => goto("area")}><i className="ti ti-map-2" /><span>エリア配分</span></div>
-          <div className="nav-group">データ</div>
-          <div className={navClass(activePage, "upload")} onClick={() => goto("upload")}><i className="ti ti-upload" /><span>CSVアップロード</span></div>
+          {NAVIGATION_GROUPS.map((group) => (
+            <Fragment key={group.label}>
+              <div className="nav-group">{group.label}</div>
+              {group.items.map((item) => (
+                <div key={item.id} className={navClass(activePage, item.id, item.extraClass)} onClick={() => goto(item.id)}>
+                  <i className={`ti ${item.icon}`} />
+                  <span>{item.label}</span>
+                  {item.badge ? <span className={`nav-badge${item.badgeClass ? ` ${item.badgeClass}` : ""}`}>{navBadgeValue(item.badge)}</span> : null}
+                </div>
+              ))}
+            </Fragment>
+          ))}
         </nav>
         <div className="mascot">
           <svg width="28" height="32" viewBox="0 0 28 32" fill="none">
@@ -1073,7 +1077,7 @@ export default function Page() {
           <div className="mascot-msg">今日も<br />最適化しよう</div>
         </div>
         <div className="sidebar-footer">
-          <div className="settings-link" onClick={() => goto("settings")}><i className="ti ti-settings" style={{ fontSize: 14 }} /><span>設定・契約枠</span></div>
+          <div className="settings-link" onClick={() => goto(SETTINGS_NAV_ITEM.id)}><i className={`ti ${SETTINGS_NAV_ITEM.icon}`} style={{ fontSize: 14 }} /><span>{SETTINGS_NAV_ITEM.label}</span></div>
         </div>
       </aside>
 
