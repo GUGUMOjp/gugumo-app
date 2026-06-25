@@ -4,6 +4,10 @@ import { Fragment, useEffect, useMemo, useRef, useState, type ChangeEvent, type 
 import { PAGE_TITLES } from "@/data/constants/pageTitles";
 import { NAVIGATION_GROUPS, SETTINGS_NAV_ITEM } from "@/data/navigation/navigation";
 import { supabase } from "@/lib/supabase";
+import {
+  extractDataDate,
+  parseCsv,
+} from "@/src/server/services/csv";
 import type {
   CsvRow,
   CsvSnapshot,
@@ -295,67 +299,6 @@ function deltaCell(current: number, previous?: number) {
 
 function rowKey(row: CsvRow) {
   return row["物件コード"] || `${normalizeId(row["物件名"])}-${normalizeId(row["部屋番号"])}`;
-}
-
-function splitCsvLine(line: string) {
-  const values: string[] = [];
-  let current = "";
-  let inQuotes = false;
-
-  for (let i = 0; i < line.length; i += 1) {
-    const char = line[i];
-    const next = line[i + 1];
-
-    if (char === '"' && inQuotes && next === '"') {
-      current += '"';
-      i += 1;
-      continue;
-    }
-
-    if (char === '"') {
-      inQuotes = !inQuotes;
-      continue;
-    }
-
-    if (char === "," && !inQuotes) {
-      values.push(current.trim());
-      current = "";
-      continue;
-    }
-
-    current += char;
-  }
-
-  values.push(current.trim());
-  return values;
-}
-
-function parseCsv(text: string): CsvRow[] {
-  const normalized = text.replace(/^\uFEFF/, "").replace(/\r\n/g, "\n").replace(/\r/g, "\n");
-  const lines = normalized.split("\n").filter((line) => line.trim().length > 0);
-  if (lines.length < 2) return [];
-
-  const headers = splitCsvLine(lines[0]);
-
-  return lines
-    .slice(1)
-    .map((line) => {
-      const values = splitCsvLine(line);
-      const row: CsvRow = {};
-      headers.forEach((header, index) => {
-        row[header] = values[index] ?? "";
-      });
-      return row;
-    })
-    .filter((row) => row["物件コード"] && row["物件コード"] !== "物件コード");
-}
-
-function extractDataDate(fileName: string) {
-  const match = fileName.match(/(20\d{2})(\d{2})(\d{2})_?(\d{2})?(\d{2})?(\d{2})?/);
-  if (!match) return null;
-  const date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
-  date.setDate(date.getDate() - 2);
-  return date;
 }
 
 async function readCsvFile(file: File): Promise<CsvSnapshot> {
