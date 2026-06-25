@@ -5,8 +5,7 @@ import { PAGE_TITLES } from "@/data/constants/pageTitles";
 import { NAVIGATION_GROUPS, SETTINGS_NAV_ITEM } from "@/data/navigation/navigation";
 import { supabase } from "@/lib/supabase";
 import {
-  extractDataDate,
-  parseCsv,
+  readCsvFile,
 } from "@/src/server/services/csv";
 import type {
   CsvRow,
@@ -299,32 +298,6 @@ function deltaCell(current: number, previous?: number) {
 
 function rowKey(row: CsvRow) {
   return row["物件コード"] || `${normalizeId(row["物件名"])}-${normalizeId(row["部屋番号"])}`;
-}
-
-async function readCsvFile(file: File): Promise<CsvSnapshot> {
-  const buffer = await file.arrayBuffer();
-  const bytes = new Uint8Array(buffer);
-  let text = "";
-
-  try {
-    text = new TextDecoder("shift-jis").decode(bytes);
-    if (!text.includes("物件名")) text = new TextDecoder("utf-8").decode(bytes);
-  } catch {
-    text = new TextDecoder("utf-8").decode(bytes);
-  }
-
-  const rows = parseCsv(text);
-  const date = extractDataDate(file.name) ?? new Date(file.lastModified);
-  const summary = buildSummary(rows);
-
-  return {
-    fileName: file.name,
-    date,
-    dateKey: dateKey(date),
-    dateLabel: formatDate(date),
-    rows,
-    summary,
-  };
 }
 
 const C = {
@@ -869,7 +842,11 @@ export default function Page() {
     setCheckedState({});
 
     try {
-      const parsed = await Promise.all(files.sort((a, b) => a.name.localeCompare(b.name)).map(readCsvFile));
+      const parsed = await Promise.all(files.sort((a, b) => a.name.localeCompare(b.name)).map((file) => readCsvFile(file, {
+        buildSummary,
+        dateKey,
+        formatDate,
+      })));
       parsed.sort((a, b) => a.date.getTime() - b.date.getTime());
 
       for (const snapshot of parsed) {
