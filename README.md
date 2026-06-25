@@ -1,5 +1,20 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## Business Logic Placement
+
+Business Logicは禁止。
+
+Frontendは表示のみを担当する。
+
+以下は必ず`src/server`配下へ配置する。
+
+- 判定ロジック
+- 計算処理
+- Advice生成
+- Health算出
+- Recommendation生成
+- Rule Engine
+
 ## Getting Started
 
 First, run the development server:
