@@ -1,0 +1,875 @@
+
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GUGUMO — SUUMO掲載最適化ツール</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.0.0/dist/tabler-icons.min.css" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+:root{
+  --bg:#f4f5f7;--panel:#ffffff;--ink:#1e1e2e;--ink2:#52525b;--ink3:#9499a3;
+  --line:#e6e8ec;--line2:#d4d7dd;--green:#1D9E75;--green-d:#0F6E56;--green-l:#E1F5EE;
+  --green-mint:#9FE1CB;--red:#A32D2D;--red-bg:#FCEBEB;--amber:#854F0B;--amber-bg:#FAEEDA;
+  --blue:#185FA5;--blue-bg:#E6F1FB;--radius:10px;--radius-sm:7px;
+  --grp-remove:#FBF3EC;--grp-remove-bd:#E8C9A8;--grp-add:#EAF3F0;--grp-add-bd:#A8D4C5;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{font-family:'Noto Sans JP',system-ui,sans-serif;background:var(--bg);color:var(--ink);font-size:14px;line-height:1.5}
+.shell{display:flex;min-height:100vh}
+.sidebar{width:200px;min-width:200px;background:#1e1e2e;display:flex;flex-direction:column;position:sticky;top:0;height:100vh}
+.sidebar-header{padding:16px 18px 14px;border-bottom:0.5px solid rgba(255,255,255,0.08)}
+.logo-row{display:flex;align-items:center;gap:9px}
+.logo-text{font-size:18px;font-weight:700;color:#fff;letter-spacing:1px}
+.logo-text .up{color:var(--green-mint)}
+.logo-sub{font-size:9px;color:rgba(255,255,255,0.35);margin-top:2px;letter-spacing:0.5px}
+.nav{flex:1;padding:8px 0;overflow-y:auto}
+.nav-group{padding:11px 16px 4px;font-size:9px;font-weight:700;color:rgba(255,255,255,0.3);letter-spacing:0.8px}
+.nav-item{display:flex;align-items:center;gap:9px;padding:8px 16px;font-size:12.5px;color:rgba(255,255,255,0.55);cursor:pointer;border-left:2px solid transparent;transition:all .12s;white-space:nowrap;user-select:none}
+.nav-item:hover{background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.88)}
+.nav-item.active{color:var(--green-mint);background:rgba(93,202,165,0.1);border-left-color:var(--green-mint)}
+.nav-item.active i{color:var(--green-mint)}
+.nav-item i{font-size:16px;color:rgba(255,255,255,0.3);flex-shrink:0}
+.nav-item.alert i{color:rgba(240,149,149,0.5)}
+.nav-item.alert{color:rgba(240,149,149,0.75)}
+.nav-item.alert.active{color:#F09595;background:rgba(240,149,149,0.1);border-left-color:#E24B4A}
+.nav-badge{margin-left:auto;font-size:9px;padding:1px 6px;border-radius:9px;background:rgba(255,255,255,0.1);color:rgba(255,255,255,0.45);flex-shrink:0}
+.nav-badge.hot{background:rgba(226,75,74,0.3);color:#F09595}
+.mascot{padding:13px 16px;display:flex;align-items:center;gap:9px;border-top:0.5px solid rgba(255,255,255,0.08)}
+.mascot-msg{font-size:10px;color:rgba(255,255,255,0.35);line-height:1.4}
+.sidebar-footer{padding:11px 16px;border-top:0.5px solid rgba(255,255,255,0.08)}
+.settings-link{display:flex;align-items:center;gap:8px;font-size:11.5px;color:rgba(255,255,255,0.4);cursor:pointer;padding:4px 0}
+.settings-link:hover{color:rgba(255,255,255,0.75)}
+.main{flex:1;display:flex;flex-direction:column;min-width:0}
+.topbar{padding:11px 20px;border-bottom:0.5px solid var(--line);display:flex;align-items:center;gap:11px;background:var(--panel);position:sticky;top:0;z-index:10}
+.page-title{font-size:15px;font-weight:700;flex:1}
+.status-pill{font-size:10px;padding:3px 9px;border-radius:10px;background:var(--bg);color:var(--ink3);border:0.5px solid var(--line)}
+.status-pill.loaded{background:var(--green-l);color:var(--green-d);border-color:var(--green-mint)}
+.topbar-btn{display:flex;align-items:center;gap:5px;font-size:11.5px;padding:6px 12px;border:0.5px solid var(--line2);border-radius:var(--radius-sm);cursor:pointer;color:var(--ink2);background:var(--panel);font-family:inherit}
+.topbar-btn:hover{background:var(--bg)}
+.topbar-btn.primary{background:var(--green);color:#fff;border-color:var(--green)}
+.topbar-btn.primary:hover{background:var(--green-d)}
+.content{flex:1;padding:18px;overflow-y:auto}
+.page{display:none}
+.page.active{display:block}
+
+/* Savings banner */
+.savings-banner{background:linear-gradient(135deg,#0F6E56,#1D9E75);border-radius:var(--radius);padding:16px 20px;margin-bottom:14px;color:#fff;display:flex;align-items:center;gap:20px;flex-wrap:wrap}
+.savings-main{flex:1;min-width:200px}
+.savings-label{font-size:11px;opacity:0.85;margin-bottom:3px}
+.savings-amount{font-size:32px;font-weight:700;line-height:1.1}
+.savings-amount small{font-size:14px;font-weight:500;opacity:0.9}
+.savings-sub{font-size:11px;opacity:0.8;margin-top:4px}
+.savings-detail{display:flex;gap:18px;flex-wrap:wrap}
+.savings-stat{text-align:right}
+.savings-stat-val{font-size:18px;font-weight:700}
+.savings-stat-lbl{font-size:10px;opacity:0.8}
+
+.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin-bottom:14px}
+.metric{background:var(--panel);border-radius:var(--radius-sm);padding:12px 14px;border:0.5px solid var(--line)}
+.metric-label{font-size:10.5px;color:var(--ink2);margin-bottom:4px}
+.metric-value{font-size:21px;font-weight:700}
+.metric-sub{font-size:10px;color:var(--ink3);margin-top:2px}
+.metric.danger .metric-label{color:var(--red)}
+.metric.danger .metric-value{color:var(--red)}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:11px;margin-bottom:11px}
+.row3{display:grid;grid-template-columns:3fr 2fr;gap:11px;margin-bottom:11px}
+.card{background:var(--panel);border:0.5px solid var(--line);border-radius:var(--radius);padding:13px 15px;margin-bottom:11px}
+.card-head{display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap}
+.card-title{font-size:12.5px;font-weight:700;display:flex;align-items:center;gap:7px}
+.card-title i{font-size:15px;color:var(--ink3)}
+.card-actions{margin-left:auto;display:flex;align-items:center;gap:8px}
+.progress-label{font-size:10.5px;color:var(--ink3)}
+.clear-btn{font-size:10px;padding:3px 9px;border:0.5px solid var(--line2);border-radius:6px;background:var(--panel);color:var(--ink2);cursor:pointer;font-family:inherit}
+.clear-btn:hover{background:var(--bg)}
+
+/* Option group wrapper */
+.opt-group{border-radius:var(--radius);padding:12px;margin-bottom:14px;border:1px solid}
+.opt-group.remove{background:var(--grp-remove);border-color:var(--grp-remove-bd)}
+.opt-group.add{background:var(--grp-add);border-color:var(--grp-add-bd)}
+.opt-group-label{font-size:11px;font-weight:700;margin-bottom:10px;display:flex;align-items:center;gap:6px;letter-spacing:0.3px}
+.opt-group.remove .opt-group-label{color:#9A5B22}
+.opt-group.add .opt-group-label{color:#0F6E56}
+.opt-group-label i{font-size:14px}
+.opt-group .card{margin-bottom:0}
+.opt-group .row2{margin-bottom:0}
+
+.chart-wrap{position:relative;height:155px}
+.chart-wrap.tall{height:185px}
+
+.tbl-wrap{overflow-x:auto}
+table.tbl{width:100%;border-collapse:collapse;font-size:11.5px}
+.tbl th{text-align:left;padding:6px 9px;font-size:10.5px;font-weight:700;color:var(--ink2);border-bottom:0.5px solid var(--line2);white-space:nowrap;background:var(--bg)}
+.tbl td{padding:6px 9px;border-bottom:0.5px solid var(--line);white-space:nowrap}
+.tbl tr:last-child td{border-bottom:none}
+/* 交互背景 */
+.tbl tbody tr:nth-child(even) td{background:#fafbfc}
+.tbl tbody tr:hover td{background:var(--green-l)}
+.tbl th.col-check,.tbl td.col-check{width:30px;text-align:center;padding-left:11px}
+.tbl td.nm{max-width:150px;overflow:hidden;text-overflow:ellipsis;font-weight:500}
+.tbl td.rm{color:var(--ink2);font-variant-numeric:tabular-nums}
+.tbl td.num{font-variant-numeric:tabular-nums;text-align:right}
+
+.chk{appearance:none;width:15px;height:15px;border:1.5px solid var(--line2);border-radius:4px;cursor:pointer;position:relative;vertical-align:middle;background:var(--panel);transition:all .12s;flex-shrink:0}
+.chk:hover{border-color:var(--green)}
+.chk:checked{background:var(--green);border-color:var(--green)}
+.chk:checked::after{content:'';position:absolute;left:4px;top:1px;width:4px;height:8px;border:solid #fff;border-width:0 2px 2px 0;transform:rotate(45deg)}
+tr.done td{color:var(--ink3) !important;background:var(--bg) !important}
+tr.done td:not(.col-check){text-decoration:line-through;text-decoration-color:var(--ink3);opacity:0.6}
+tr.done td .pv-low,tr.done td .bl-green{color:var(--ink3) !important;font-weight:400 !important}
+
+.tag{font-size:9px;padding:1px 7px;border-radius:9px;display:inline-block;white-space:nowrap}
+.tag-red{background:var(--red-bg);color:var(--red)}
+.tag-amber{background:var(--amber-bg);color:var(--amber)}
+.tag-blue{background:var(--blue-bg);color:var(--blue)}
+.d-up{color:#3B6D11;font-size:10px}
+.d-down{color:var(--red);font-size:10px}
+.pv-low{color:var(--red);font-weight:700}
+.bl-green{color:var(--green);font-weight:700}
+.bl-gray{color:var(--ink3)}
+.empty{padding:1.5rem;text-align:center;color:var(--ink3);font-size:12px}
+.upload-zone{border:1.5px dashed var(--line2);border-radius:var(--radius);padding:2rem;text-align:center;cursor:pointer;transition:background .15s}
+.upload-zone:hover,.upload-zone.drag{background:var(--bg)}
+.chip{font-size:10px;padding:3px 9px;border-radius:9px;background:var(--green-l);border:0.5px solid var(--green-mint);color:var(--green-d);display:inline-block;margin:2px}
+.chip.err{background:var(--red-bg);border-color:#E24B4A;color:var(--red)}
+.notice{font-size:11px;color:var(--ink3);display:flex;align-items:center;gap:6px;padding:8px 0}
+.setting-grid{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+.setting-card{background:var(--bg);border-radius:var(--radius-sm);padding:11px 13px}
+.setting-label{font-size:11px;color:var(--ink2);margin-bottom:6px}
+.setting-input{width:90px;font-size:14px;font-weight:700;padding:5px 8px;border:0.5px solid var(--line2);border-radius:6px;background:var(--panel);color:var(--ink);text-align:center;font-family:inherit}
+.setting-select{font-size:13px;padding:6px 8px;border:0.5px solid var(--line2);border-radius:6px;background:var(--panel);color:var(--ink);font-family:inherit;width:140px}
+.save-btn{font-size:11.5px;padding:7px 15px;background:var(--green);color:#fff;border:none;border-radius:6px;cursor:pointer;font-family:inherit}
+.save-btn:hover{background:var(--green-d)}
+.prop-row{border:0.5px solid var(--line);border-radius:var(--radius-sm);margin-bottom:6px;overflow:hidden}
+.prop-head{padding:8px 13px;cursor:pointer;display:flex;align-items:center;gap:9px;background:var(--panel);font-size:12px}
+.prop-head:hover{background:var(--bg)}
+.prop-body{display:none;padding:9px 13px;border-top:0.5px solid var(--line);background:var(--bg);overflow-x:auto}
+.prop-body.open{display:block}
+.alert-row{display:flex;align-items:center;gap:9px;padding:7px 0;border-bottom:0.5px solid var(--line);font-size:11.5px}
+.alert-row:last-child{border-bottom:none}
+
+/* Option balance */
+.optbal-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:12px}
+.optbal-card{border:0.5px solid var(--line);border-radius:var(--radius-sm);padding:12px 14px;background:var(--panel)}
+.optbal-name{font-size:12px;font-weight:700;margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.optbal-row{display:flex;justify-content:space-between;font-size:11px;padding:2px 0;color:var(--ink2)}
+.optbal-row b{color:var(--ink);font-variant-numeric:tabular-nums}
+.optbal-verdict{margin-top:8px;padding-top:8px;border-top:0.5px solid var(--line);font-size:12px;font-weight:700}
+.verdict-cut{color:var(--red)}
+.verdict-add{color:var(--green)}
+.verdict-ok{color:var(--ink3)}
+
+/* Area */
+.area-map{display:grid;grid-template-columns:repeat(5,1fr);gap:5px;max-width:560px;margin-bottom:14px}
+.area-cell{aspect-ratio:1.4;border-radius:6px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:11px;border:0.5px solid var(--line);background:var(--panel);position:relative;padding:2px}
+.area-cell.sel{background:#1e1e2e;color:#fff;border-color:#1e1e2e}
+.area-cell.adj{background:var(--green-l);border-color:var(--green-mint);color:var(--green-d)}
+.area-cell.empty-cell{background:transparent;border:none}
+.area-cell .ward{font-weight:700;font-size:10.5px}
+.area-cell .pct{font-size:9px;opacity:0.85;margin-top:1px}
+.area-bar{height:7px;border-radius:4px;background:var(--bg);overflow:hidden;margin-top:3px}
+.area-bar > div{height:100%;border-radius:4px}
+</style>
+</head>
+<body>
+<div class="shell">
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <div class="logo-row">
+        <svg width="30" height="30" viewBox="0 0 28 28" fill="none">
+          <ellipse cx="14" cy="17" rx="9" ry="8" fill="#3a3a4a"/><ellipse cx="14" cy="16.5" rx="7.5" ry="6.5" fill="#4a4a5e"/>
+          <circle cx="11.5" cy="14" r="1.5" fill="#fff"/><circle cx="16.5" cy="14" r="1.5" fill="#fff"/>
+          <circle cx="11.8" cy="13.7" r="0.5" fill="#1e1e2e"/><circle cx="16.8" cy="13.7" r="0.5" fill="#1e1e2e"/>
+          <path d="M12.5 16.5 Q14 17.5 15.5 16.5" stroke="#5DCAA5" stroke-width="0.8" fill="none" stroke-linecap="round"/>
+          <ellipse cx="9" cy="7.5" rx="2" ry="2.5" fill="#3a3a4a"/><ellipse cx="19" cy="7.5" rx="2" ry="2.5" fill="#3a3a4a"/>
+          <ellipse cx="9" cy="7.5" rx="1.2" ry="1.8" fill="#4a4a5e"/><ellipse cx="19" cy="7.5" rx="1.2" ry="1.8" fill="#4a4a5e"/>
+        </svg>
+        <div><div class="logo-text">GUGUMO<span class="up">↑</span></div><div class="logo-sub">SUUMO最適化</div></div>
+      </div>
+    </div>
+    <nav class="nav">
+      <div class="nav-group">分析</div>
+      <div class="nav-item active" data-page="home"><i class="ti ti-home"></i><span>ホーム</span></div>
+      <div class="nav-item" data-page="weekly"><i class="ti ti-calendar-week"></i><span>週次レポート</span><span class="nav-badge" id="nb-weekly">—</span></div>
+      <div class="nav-item" data-page="monthly"><i class="ti ti-calendar-month"></i><span>月次レポート</span></div>
+      <div class="nav-item" data-page="props"><i class="ti ti-building"></i><span>物件別推移</span></div>
+      <div class="nav-group">最適化</div>
+      <div class="nav-item" data-page="opt"><i class="ti ti-adjustments"></i><span>オプション管理</span><span class="nav-badge" id="nb-opt">—</span></div>
+      <div class="nav-item" data-page="smapic"><i class="ti ti-star"></i><span>スマピク最適化</span></div>
+      <div class="nav-item alert" data-page="lowpv"><i class="ti ti-alert-triangle"></i><span>入替対象</span><span class="nav-badge hot" id="nb-lowpv">—</span></div>
+      <div class="nav-group">収支・エリア</div>
+      <div class="nav-item" data-page="optbal"><i class="ti ti-coin"></i><span>オプション収支</span></div>
+      <div class="nav-item" data-page="area"><i class="ti ti-map-2"></i><span>エリア配分</span></div>
+      <div class="nav-group">データ</div>
+      <div class="nav-item" data-page="upload"><i class="ti ti-upload"></i><span>CSVアップロード</span></div>
+    </nav>
+    <div class="mascot">
+      <svg width="28" height="32" viewBox="0 0 28 32" fill="none">
+        <ellipse cx="14" cy="22" rx="8" ry="7" fill="#3a3a4a"/><ellipse cx="14" cy="21" rx="6.5" ry="5.5" fill="#4a4a5e"/>
+        <circle cx="11.5" cy="19.5" r="1.2" fill="#fff"/><circle cx="16.5" cy="19.5" r="1.2" fill="#fff"/>
+        <circle cx="11.8" cy="19.3" r="0.4" fill="#1e1e2e"/><circle cx="16.8" cy="19.3" r="0.4" fill="#1e1e2e"/>
+        <ellipse cx="8.5" cy="13" rx="1.8" ry="2.2" fill="#3a3a4a"/><ellipse cx="19.5" cy="13" rx="1.8" ry="2.2" fill="#3a3a4a"/>
+        <path d="M14 23.5 Q13 25 12 26" stroke="#3a3a4a" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+        <circle cx="20" cy="22" r="2" fill="#3a3a4a"/><circle cx="8" cy="23" r="1.5" fill="#3a3a4a"/>
+      </svg>
+      <div class="mascot-msg">今日も<br>最適化しよう</div>
+    </div>
+    <div class="sidebar-footer">
+      <div class="settings-link" data-page="settings"><i class="ti ti-settings" style="font-size:14px"></i><span>設定・契約枠</span></div>
+    </div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <span class="page-title" id="pageTitle">ホーム</span>
+      <span class="status-pill" id="dataStatus">データ未読み込み</span>
+      <button class="topbar-btn primary" data-page="upload"><i class="ti ti-upload" style="font-size:13px"></i>CSVを読み込む</button>
+    </div>
+    <div class="content">
+
+      <!-- HOME -->
+      <div class="page active" id="p-home">
+        <div class="savings-banner" id="savingsBanner" style="display:none">
+          <div class="savings-main">
+            <div class="savings-label"><i class="ti ti-sparkles"></i> GUGUMOで削減できた無駄オプション費用（月額）</div>
+            <div class="savings-amount" id="savingsAmount">¥0<small>/月</small></div>
+            <div class="savings-sub" id="savingsSub">最適化により不要なオプションを特定</div>
+          </div>
+          <div class="savings-detail" id="savingsDetail"></div>
+        </div>
+        <div class="metrics" id="homeMetrics">
+          <div class="metric"><div class="metric-label">掲載物件数</div><div class="metric-value">—</div><div class="metric-sub">件</div></div>
+          <div class="metric"><div class="metric-label">総問い合わせ</div><div class="metric-value">—</div><div class="metric-sub">件</div></div>
+          <div class="metric"><div class="metric-label">スマピク適用</div><div class="metric-value">—</div><div class="metric-sub">件</div></div>
+          <div class="metric danger"><div class="metric-label">入替対象</div><div class="metric-value">—</div><div class="metric-sub">件</div></div>
+        </div>
+        <div class="row3">
+          <div class="card"><div class="card-head"><div class="card-title"><i class="ti ti-chart-bar"></i>週次PV推移</div></div><div class="chart-wrap"><canvas id="homeChart"></canvas></div></div>
+          <div class="card"><div class="card-head"><div class="card-title"><i class="ti ti-alert-triangle"></i>要対応アラート</div></div><div id="homeAlerts" class="empty">データを読み込んでください</div></div>
+        </div>
+        <div class="card">
+          <div class="card-head"><div class="card-title"><i class="ti ti-clock"></i>日次ログ（直近7日）</div></div>
+          <div class="tbl-wrap"><table class="tbl" id="homeDayTable"><thead><tr><th>データ日付</th><th>一覧PV</th><th>詳細PV</th><th>問合せ</th><th>平均競合数</th><th>掲載件数</th></tr></thead><tbody><tr><td colspan="6" class="empty">—</td></tr></tbody></table></div>
+        </div>
+      </div>
+
+      <!-- WEEKLY -->
+      <div class="page" id="p-weekly">
+        <div class="card"><div class="card-head"><div class="card-title"><i class="ti ti-chart-bar"></i>週次PV推移（木〜水締め）</div></div><div class="chart-wrap tall"><canvas id="weekChart"></canvas></div></div>
+        <div class="card"><div class="tbl-wrap"><table class="tbl" id="weekTable"><thead><tr><th>週</th><th>期間</th><th>一覧PV</th><th>前週比</th><th>詳細PV</th><th>前週比</th><th>問合せ</th><th>前週比</th><th>平均競合数</th></tr></thead><tbody><tr><td colspan="9" class="empty">—</td></tr></tbody></table></div></div>
+      </div>
+
+      <!-- MONTHLY -->
+      <div class="page" id="p-monthly">
+        <div class="card"><div class="card-head"><div class="card-title"><i class="ti ti-chart-bar"></i>月次推移（月末締め）</div></div><div class="chart-wrap tall"><canvas id="monthChart"></canvas></div></div>
+        <div class="card"><div class="tbl-wrap"><table class="tbl" id="monthTable"><thead><tr><th>月</th><th>一覧PV</th><th>前月比</th><th>詳細PV</th><th>前月比</th><th>問合せ</th><th>前月比</th><th>平均競合数</th></tr></thead><tbody><tr><td colspan="8" class="empty">—</td></tr></tbody></table></div></div>
+      </div>
+
+      <!-- PROPS -->
+      <div class="page" id="p-props">
+        <div class="card">
+          <input id="propSearch" placeholder="物件名・駅で検索..." style="width:100%;padding:7px 11px;font-size:12px;border:0.5px solid var(--line2);border-radius:6px;background:var(--panel);color:var(--ink);margin-bottom:10px;font-family:inherit">
+          <div id="propList" class="empty">データを読み込んでください</div>
+        </div>
+      </div>
+
+      <!-- OPTIONS -->
+      <div class="page" id="p-opt">
+        <div class="opt-group remove">
+          <div class="opt-group-label"><i class="ti ti-circle-minus"></i>オプションを外す系</div>
+          <div class="card">
+            <div class="card-head">
+              <div class="card-title">①全オプションを外す（スマピク以外）</div>
+              <div class="card-actions"><span class="progress-label" id="pg-t1">0 / 0</span><button class="clear-btn" data-clear="t1">チェック解除</button></div>
+            </div>
+            <div class="tbl-wrap"><table class="tbl" id="t1"><thead><tr><th class="col-check"></th><th>物件名</th><th>部屋番号</th><th>住戸名寄せ点数</th><th>競合数</th></tr></thead><tbody><tr><td colspan="5" class="empty">—</td></tr></tbody></table></div>
+          </div>
+          <div style="height:11px"></div>
+          <div class="card">
+            <div class="card-head"><div class="card-title">②第2基準まで落とす</div><div class="card-actions"><span class="progress-label" id="pg-t2">0 / 0</span><button class="clear-btn" data-clear="t2">チェック解除</button></div></div>
+            <div class="tbl-wrap"><table class="tbl" id="t2"><thead><tr><th class="col-check"></th><th>物件名</th><th>部屋</th><th>第3</th><th>第2</th><th>第1</th><th>競合</th></tr></thead><tbody><tr><td colspan="7" class="empty">—</td></tr></tbody></table></div>
+          </div>
+        </div>
+
+        <div class="opt-group add">
+          <div class="opt-group-label"><i class="ti ti-circle-plus"></i>オプションを付ける系</div>
+          <div class="card">
+            <div class="card-head"><div class="card-title">③第2基準に上げる</div><div class="card-actions"><span class="progress-label" id="pg-t3">0 / 0</span><button class="clear-btn" data-clear="t3">チェック解除</button></div></div>
+            <div class="tbl-wrap"><table class="tbl" id="t3"><thead><tr><th class="col-check"></th><th>物件名</th><th>部屋</th><th>第3</th><th>第2</th><th>第1</th><th>競合</th></tr></thead><tbody><tr><td colspan="7" class="empty">—</td></tr></tbody></table></div>
+          </div>
+          <div style="height:11px"></div>
+          <div class="card">
+            <div class="card-head"><div class="card-title">④第3基準に上げる</div><div class="card-actions"><span class="progress-label" id="pg-t4">0 / 0</span><button class="clear-btn" data-clear="t4">チェック解除</button></div></div>
+            <div class="tbl-wrap"><table class="tbl" id="t4"><thead><tr><th class="col-check"></th><th>物件名</th><th>部屋</th><th>第3</th><th>第2</th><th>第1</th><th>競合</th></tr></thead><tbody><tr><td colspan="7" class="empty">—</td></tr></tbody></table></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SMAPIC -->
+      <div class="page" id="p-smapic">
+        <div class="row2">
+          <div class="card">
+            <div class="card-head"><div class="card-title"><i class="ti ti-circle-plus"></i>付与推奨 <span id="addCount" style="font-size:10px;font-weight:400;color:var(--ink3)"></span></div><div class="card-actions"><span class="progress-label" id="pg-t5add">0 / 0</span><button class="clear-btn" data-clear="t5add">解除</button></div></div>
+            <div class="tbl-wrap"><table class="tbl" id="t5add"><thead><tr><th class="col-check"></th><th>#</th><th>物件名</th><th>部屋番号</th><th>スコア</th><th>現在</th></tr></thead><tbody><tr><td colspan="6" class="empty">—</td></tr></tbody></table></div>
+          </div>
+          <div class="card">
+            <div class="card-head"><div class="card-title"><i class="ti ti-circle-minus"></i>削除推奨 <span id="removeCount" style="font-size:10px;font-weight:400;color:var(--ink3)"></span></div><div class="card-actions"><span class="progress-label" id="pg-t5rem">0 / 0</span><button class="clear-btn" data-clear="t5rem">解除</button></div></div>
+            <div class="tbl-wrap"><table class="tbl" id="t5rem"><thead><tr><th class="col-check"></th><th>#</th><th>物件名</th><th>部屋番号</th><th>スコア</th></tr></thead><tbody><tr><td colspan="5" class="empty">—</td></tr></tbody></table></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- LOWPV -->
+      <div class="page" id="p-lowpv">
+        <div class="card">
+          <div class="card-head"><div class="card-title" style="color:var(--red)"><i class="ti ti-alert-triangle"></i>入替対象物件</div><div class="card-actions"><span class="progress-label" id="pg-t6">0 / 0</span><button class="clear-btn" data-clear="t6">チェック解除</button></div></div>
+          <div class="tbl-wrap"><table class="tbl" id="t6"><thead><tr><th class="col-check"></th><th>物件名</th><th>部屋番号</th><th>駅</th><th>間取</th><th>賃料+管理費</th><th>掲載日数</th><th>問合せ</th><th>競合数</th></tr></thead><tbody><tr><td colspan="9" class="empty">—</td></tr></tbody></table></div>
+        </div>
+      </div>
+
+      <!-- OPTION BALANCE -->
+      <div class="page" id="p-optbal">
+        <div class="savings-banner" style="margin-bottom:14px">
+          <div class="savings-main">
+            <div class="savings-label"><i class="ti ti-coin"></i> 月額オプション節約効果</div>
+            <div class="savings-amount" id="optbalSavings">¥0<small>/月</small></div>
+            <div class="savings-sub">最適化による無駄オプションの削減額</div>
+          </div>
+          <div class="savings-detail" id="optbalHeadDetail"></div>
+        </div>
+        <div class="card">
+          <div class="card-head"><div class="card-title"><i class="ti ti-scale"></i>オプション収支分析（現状 vs 最適化後）</div></div>
+          <div class="optbal-grid" id="optbalGrid"></div>
+          <div style="font-size:11px;color:var(--ink3);margin-top:6px">※「最適化後の必要数」は現在の掲載・競合状況から、各基準を満たすのに必要なオプション件数を試算したものです。単価は設定画面で変更できます。</div>
+        </div>
+      </div>
+
+      <!-- AREA -->
+      <div class="page" id="p-area">
+        <div class="card">
+          <div class="card-head"><div class="card-title"><i class="ti ti-map-2"></i>掲載エリアマップ — <span id="areaWardName" style="color:var(--green)">中央区</span>基準</div></div>
+          <div style="font-size:11px;color:var(--ink2);margin-bottom:12px">所属区（濃紺）と、データ上反響が見込める推奨掲載区（緑）。設定画面で所属区を変更できます。</div>
+          <div class="area-map" id="areaMap"></div>
+        </div>
+        <div class="card">
+          <div class="card-head"><div class="card-title"><i class="ti ti-chart-pie"></i>推奨掲載配分 vs 現状の掲載件数</div></div>
+          <div style="font-size:11px;color:var(--ink2);margin-bottom:10px">推奨配分（緑）に対し、最新CSVの所在地から各区の現掲載件数を集計。<span style="color:var(--red)">不足</span>＝もっと載せるべき／<span style="color:var(--blue)">過剰</span>＝載せ過ぎ。</div>
+          <div class="tbl-wrap"><table class="tbl" id="areaTable"><thead><tr><th>区</th><th>推奨配分</th><th>推奨件数</th><th>現掲載</th><th>過不足</th><th class="num" style="width:180px">バランス</th><th>特性</th></tr></thead><tbody><tr><td colspan="7" class="empty">設定画面で所属区を選び、CSVを読み込んでください</td></tr></tbody></table></div>
+        </div>
+      </div>
+
+      <!-- UPLOAD -->
+      <div class="page" id="p-upload">
+        <div class="card">
+          <div class="card-head"><div class="card-title"><i class="ti ti-upload"></i>CSVアップロード</div></div>
+          <div class="upload-zone" id="dropZone">
+            <i class="ti ti-files" style="font-size:28px;color:var(--ink2);display:block;margin-bottom:9px"></i>
+            <div style="font-size:13.5px;color:var(--ink2)">複数ファイルをまとめてドロップ or クリック</div>
+            <div style="font-size:11px;color:var(--ink3);margin-top:5px">keisaibukken_report_YYYYMMDD_hhmmss.csv / Shift-JIS・UTF-8 対応</div>
+          </div>
+          <input type="file" id="fi" accept=".csv" multiple style="display:none">
+          <div id="fileChips" style="margin-top:9px"></div>
+          <div class="notice"><i class="ti ti-lock" style="font-size:13px"></i>データはブラウザ内のみで処理。サーバーには送信されません。</div>
+          <div class="notice"><i class="ti ti-refresh" style="font-size:13px"></i>新しいCSVを読み込むと、チェック（対応済み）はリセットされます。</div>
+        </div>
+      </div>
+
+      <!-- SETTINGS -->
+      <div class="page" id="p-settings">
+        <div class="card">
+          <div class="card-head"><div class="card-title"><i class="ti ti-settings"></i>SUUMO契約枠</div></div>
+          <div class="setting-grid">
+            <div class="setting-card"><div class="setting-label">掲載枠数（総数）</div><div style="display:flex;align-items:center;gap:6px"><input class="setting-input" id="s_slots" type="number" value="500" min="0"><span style="font-size:11px;color:var(--ink3)">件</span></div></div>
+            <div class="setting-card"><div class="setting-label">スマピク上限</div><div style="display:flex;align-items:center;gap:6px"><input class="setting-input" id="s_smapic_limit" type="number" value="300" min="0"><span style="font-size:11px;color:var(--ink3)">件</span></div></div>
+            <div class="setting-card"><div class="setting-label">所属区（エリア配分の基準）</div><div><select class="setting-select" id="s_ward"></select></div></div>
+            <div class="setting-card" style="display:flex;align-items:flex-end"><button class="save-btn" id="saveBtn">保存して再計算</button><span id="savedBadge" style="font-size:10px;color:#3B6D11;margin-left:8px;display:none">✓ 保存済み</span></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-head"><div class="card-title"><i class="ti ti-coin"></i>オプション単価（月額・1件あたり）</div></div>
+          <div class="setting-grid">
+            <div class="setting-card"><div class="setting-label">スマピク</div><div style="display:flex;align-items:center;gap:6px">¥<input class="setting-input" id="pr_smapic" type="number" value="600" min="0"></div></div>
+            <div class="setting-card"><div class="setting-label">店ピク</div><div style="display:flex;align-items:center;gap:6px">¥<input class="setting-input" id="pr_misepic" type="number" value="500" min="0"></div></div>
+            <div class="setting-card"><div class="setting-label">パノラマ</div><div style="display:flex;align-items:center;gap:6px">¥<input class="setting-input" id="pr_panorama" type="number" value="500" min="0"></div></div>
+            <div class="setting-card"><div class="setting-label">得意なエリア</div><div style="display:flex;align-items:center;gap:6px">¥<input class="setting-input" id="pr_area" type="number" value="400" min="0"></div></div>
+            <div class="setting-card"><div class="setting-label">動画</div><div style="display:flex;align-items:center;gap:6px">¥<input class="setting-input" id="pr_movie" type="number" value="600" min="0"></div></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+/* ===== 大阪市24区 エリア配分データ ===== */
+/* 各区: 所属区を選んだとき推奨される掲載区と配分%。所属区が最大配分。
+   配分は所属区の人気・隣接需要をもとに設計（中央区の実例をベースに各区へ展開）。 */
+const WARD_GRID = [
+  ["西淀川区","淀川区","東淀川区","",""],
+  ["此花区","福島区","北区","都島区","旭区"],
+  ["港区","西区","中央区","東成区","鶴見区"],
+  ["大正区","浪速区","天王寺区","生野区","城東区"],
+  ["住之江区","西成区","阿倍野区","東住吉区","平野区"],
+  ["","住吉区","","",""]
+];
+const WARD_INFO = {
+  "北区":"梅田中心。オフィス集積で転勤者・単身若年層の需要が非常に高い大阪随一の中心地。",
+  "都島区":"京橋エリア。交通利便性が高く単身〜ファミリーまで安定需要。",
+  "福島区":"梅田隣接で人気飲食店が多く、利便性と住みやすさで若年層・単身に支持される上昇エリア。",
+  "此花区":"USJ・湾岸エリア。再開発進行中でファミリー需要。",
+  "中央区":"難波・心斎橋・本町を擁するミナミの中心。単身からDINKsまで幅広い需要。",
+  "西区":"堀江・新町などおしゃれな街並み。20〜30代の単身・DINKsに人気の都心居住エリア。",
+  "港区":"弁天町中心。ベイエリアでファミリー・単身とも一定需要。",
+  "大正区":"下町情緒。家賃が手頃で単身・ファミリーに堅実な需要。",
+  "天王寺区":"天王寺・上本町の文教地区。教育環境とアクセスでファミリー・単身とも需要が厚い。",
+  "浪速区":"なんば南・新今宮。難波直結の利便性で単身需要が厚く再開発進行中。",
+  "西淀川区":"工業・住宅混在。家賃手頃で単身需要。",
+  "淀川区":"新大阪擁する交通要衝。出張・転勤の単身需要が高い。",
+  "東淀川区":"住宅地中心。学生・単身に手頃な家賃帯。",
+  "東成区":"中央区東隣の住宅地。職住近接でファミリー需要。",
+  "生野区":"下町・多文化エリア。家賃手頃で実需中心。",
+  "旭区":"住宅地。落ち着いた環境でファミリー需要。",
+  "城東区":"京橋至近の住宅地。利便性とコスパで単身〜ファミリー。",
+  "阿倍野区":"天王寺至近。あべのハルカス周辺の人気居住エリア。",
+  "住吉区":"閑静な住宅地。ファミリー需要が中心。",
+  "東住吉区":"住宅地。家賃手頃でファミリー・単身。",
+  "西成区":"再開発と家賃の手頃さ。単身需要が中心。",
+  "住之江区":"南港・住宅混在。コスパ重視の単身・ファミリー。",
+  "鶴見区":"住宅地。緑地多くファミリー需要。",
+  "平野区":"大阪市最大人口の住宅区。手頃な家賃でファミリー需要。"
+};
+// 隣接関係（グリッド上下左右＋斜め簡略）
+const WARD_ADJ = {};
+(function(){
+  const pos={};
+  WARD_GRID.forEach((row,r)=>row.forEach((w,c)=>{if(w)pos[w]={r,c};}));
+  Object.keys(pos).forEach(w=>{
+    const {r,c}=pos[w];const adj=[];
+    WARD_GRID.forEach((row,rr)=>row.forEach((ww,cc)=>{
+      if(ww&&ww!==w&&Math.abs(rr-r)<=1&&Math.abs(cc-c)<=1)adj.push(ww);
+    }));
+    WARD_ADJ[w]=adj;
+  });
+})();
+// 区の人気度（配分の重み付け用）
+const WARD_POP = {"北区":10,"中央区":10,"西区":8,"天王寺区":8,"福島区":8,"浪速区":7,"都島区":6,"阿倍野区":7,"淀川区":6,"城東区":5,"此花区":4,"港区":4,"東成区":5,"生野区":4,"旭区":4,"住吉区":5,"東住吉区":4,"西成区":4,"住之江区":4,"鶴見区":4,"平野区":5,"大正区":4,"西淀川区":3,"東淀川区":4};
+
+// 所属区→推奨掲載区と配分%を計算
+function computeAreaAllocation(ward){
+  if(!WARD_ADJ[ward])return null;
+  // 所属区 + 隣接の人気上位5区
+  const adj=[...WARD_ADJ[ward]].sort((a,b)=>(WARD_POP[b]||3)-(WARD_POP[a]||3)).slice(0,5);
+  const targets=[ward,...adj];
+  // 重み：所属区は人気×1.5、隣接は人気
+  const weights=targets.map((w,i)=>i===0?(WARD_POP[w]||5)*1.6:(WARD_POP[w]||3));
+  const sum=weights.reduce((a,b)=>a+b,0);
+  return targets.map((w,i)=>({ward:w,pct:weights[i]/sum*100,info:WARD_INFO[w]||""}));
+}
+
+/* ===== app ===== */
+const pgT={home:'ホーム',weekly:'週次レポート',monthly:'月次レポート',props:'物件別推移',opt:'オプション管理',smapic:'スマピク最適化',lowpv:'入替対象',optbal:'オプション収支',area:'エリア配分',upload:'CSVアップロード',settings:'設定・契約枠'};
+let hCI=null,wCI=null,mCI=null,gRows=[],gSnaps=[],aPD={};
+let checkedSet={};
+
+function goto(id){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  const pg=document.getElementById('p-'+id);if(pg)pg.classList.add('active');
+  const ni=document.querySelector('.nav-item[data-page="'+id+'"]');if(ni)ni.classList.add('active');
+  document.getElementById('pageTitle').textContent=pgT[id]||'';
+}
+document.querySelectorAll('[data-page]').forEach(el=>el.addEventListener('click',()=>goto(el.dataset.page)));
+
+function n(v){return parseFloat(String(v||0).replace(/,/g,'').replace(/%/g,'').replace(/[^\d.\-]/g,''))||0;}
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function fd(d){return d.getFullYear()+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+String(d.getDate()).padStart(2,'0');}
+function fym(d){return d.getFullYear()+'年'+(d.getMonth()+1)+'月';}
+function nid(s){return String(s||'').toLowerCase().replace(/[Ａ-Ｚａ-ｚ０-９]/g,c=>String.fromCharCode(c.charCodeAt(0)-0xFEE0)).replace(/[-‐ー−―]/g,'-').replace(/[（）()「」【】]/g,'').replace(/[\s　]+/g,'').trim();}
+function yen(v){return '¥'+Math.round(v).toLocaleString();}
+function dl(c,p){if(p===0)return '<span style="color:var(--ink3)">—</span>';const r=((c-p)/p*100).toFixed(1);return c>p?'<span class="d-up">▲'+r+'%</span>':c<p?'<span class="d-down">▼'+Math.abs(r)+'%</span>':'<span style="color:var(--ink3)">±0%</span>';}
+function gwk(d){const day=d.getDay();const diff=day>=4?day-4:day+3;const t=new Date(d);t.setDate(d.getDate()-diff);return t.toISOString().slice(0,10);}
+function gwe(ts){const d=new Date(ts);d.setDate(d.getDate()+6);return d;}
+function splitLine(l){const v=[];let c='',q=false;for(const ch of l){if(ch==='"'){q=!q;}else if(ch===','&&!q){v.push(c);c='';}else c+=ch;}v.push(c);return v.map(x=>x.trim().replace(/^"|"$/g,''));}
+function parseCSV(t){const ls=t.trim().split(/\r?\n/);const hd=splitLine(ls[0]);return ls.slice(1).map(l=>{const v=splitLine(l);const o={};hd.forEach((h,i)=>o[h]=(v[i]||'').trim());return o;}).filter(r=>r['物件コード']&&r['物件コード']!=='物件コード');}
+function pdfn(nm){const m=nm.match(/(\d{4})(\d{2})(\d{2})_?(\d{2})(\d{2})(\d{2})/);if(!m)return null;const d=new Date(+m[1],+m[2]-1,+m[3]);d.setDate(d.getDate()-2);return d;}
+function rfa(file){return new Promise(res=>{const r=new FileReader();r.onload=e=>{let t;try{t=new TextDecoder('shift-jis').decode(e.target.result);if(!t.includes('物件名'))t=new TextDecoder('utf-8').decode(e.target.result);}catch(ex){t=new TextDecoder('utf-8').decode(e.target.result);}res(t);};r.readAsArrayBuffer(file);});}
+
+/* checks */
+function loadChecks(){try{checkedSet=JSON.parse(localStorage.getItem('gugumo_checks')||'{}');}catch(e){checkedSet={};}for(const k in checkedSet){checkedSet[k]=new Set(checkedSet[k]);}}
+function saveChecks(){const o={};for(const k in checkedSet){o[k]=[...checkedSet[k]];}try{localStorage.setItem('gugumo_checks',JSON.stringify(o));}catch(e){}}
+function resetChecks(){checkedSet={};try{localStorage.removeItem('gugumo_checks');}catch(e){}}
+function isChecked(t,k){return checkedSet[t]&&checkedSet[t].has(k);}
+function toggleCheck(t,k,on){if(!checkedSet[t])checkedSet[t]=new Set();if(on)checkedSet[t].add(k);else checkedSet[t].delete(k);saveChecks();}
+function updateProgress(t,total){const done=checkedSet[t]?checkedSet[t].size:0;const el=document.getElementById('pg-'+t);if(el)el.textContent=done+' / '+total;}
+function buildRow(t,k,cells){const c=isChecked(t,k);return '<tr data-key="'+esc(k)+'" class="'+(c?'done':'')+'"><td class="col-check"><input type="checkbox" class="chk" '+(c?'checked':'')+'></td>'+cells+'</tr>';}
+function bindChecks(t){const tbl=document.getElementById(t);tbl.querySelectorAll('tbody tr[data-key]').forEach(tr=>{const chk=tr.querySelector('.chk');if(!chk)return;chk.addEventListener('change',()=>{toggleCheck(t,tr.dataset.key,chk.checked);tr.classList.toggle('done',chk.checked);updateProgress(t,tbl.querySelectorAll('tbody tr[data-key]').length);});});updateProgress(t,tbl.querySelectorAll('tbody tr[data-key]').length);}
+document.querySelectorAll('[data-clear]').forEach(btn=>{btn.addEventListener('click',()=>{const t=btn.dataset.clear;checkedSet[t]=new Set();saveChecks();const tbl=document.getElementById(t);tbl.querySelectorAll('tbody tr[data-key]').forEach(tr=>{tr.classList.remove('done');const chk=tr.querySelector('.chk');if(chk)chk.checked=false;});updateProgress(t,tbl.querySelectorAll('tbody tr[data-key]').length);});});
+
+/* diff */
+function bdd(snaps){const days=[];for(let i=1;i<snaps.length;i++){const pv=snaps[i-1],cv=snaps[i];const pm=new Map(pv.rows.map(r=>[r['物件コード'],r]));let lP=0,dP=0,iq=0,cs=0,cc=0,lc=0;const pd=[];cv.rows.forEach(cr=>{const pr=pm.get(cr['物件コード']);if(!pr)return;const dL=Math.max(0,n(cr['合計一覧PV(合計)'])-n(pr['合計一覧PV(合計)']));const dD=Math.max(0,n(cr['合計詳細PV(合計)'])-n(pr['合計詳細PV(合計)']));const dI=Math.max(0,n(cr['問い合わせ(合計)'])-n(pr['問い合わせ(合計)']));const comp=n(cr['競合物件数(合計)']);const il=String(cr['物件掲載']||'').trim()!=='';lP+=dL;dP+=dD;iq+=dI;if(il){cs+=comp;cc++;lc++;}pd.push({code:cr['物件コード'],name:cr['物件名'],room:cr['部屋番号'],station:cr['駅'],madori:cr['間取'],dListPV:dL,dDetPV:dD,dInq:dI,comp,sCurr:String(cr['スマピク掲載']||'').trim()!=='',sPrev:String(pr['スマピク掲載']||'').trim()!=='',compPrev:n(pr['競合物件数(合計)'])});});days.push({date:cv.date,listPV:lP,detPV:dP,inq:iq,avgComp:cc>0?cs/cc:0,listedCount:lc,propDiffs:pd});}return days;}
+function bwk(days){const w=new Map();days.forEach(d=>{const k=gwk(d.date);if(!w.has(k))w.set(k,{key:k,listPV:0,detPV:0,inq:0,cs:0,cd:0});const x=w.get(k);x.listPV+=d.listPV;x.detPV+=d.detPV;x.inq+=d.inq;x.cs+=d.avgComp;x.cd++;});return [...w.values()].sort((a,b)=>a.key.localeCompare(b.key));}
+function bmn(days){const m=new Map();days.forEach(d=>{const k=d.date.getFullYear()+'-'+String(d.date.getMonth()+1).padStart(2,'0');if(!m.has(k))m.set(k,{key:k,label:fym(d.date),listPV:0,detPV:0,inq:0,cs:0,cd:0});const x=m.get(k);x.listPV+=d.listPV;x.detPV+=d.detPV;x.inq+=d.inq;x.cs+=d.avgComp;x.cd++;});return [...m.values()].sort((a,b)=>a.key.localeCompare(b.key));}
+
+function getPrices(){
+  return {
+    smapic:n(document.getElementById('pr_smapic').value),
+    misepic:n(document.getElementById('pr_misepic').value),
+    panorama:n(document.getElementById('pr_panorama').value),
+    area:n(document.getElementById('pr_area').value),
+    movie:n(document.getElementById('pr_movie').value)
+  };
+}
+
+/* main analysis */
+function aLat(rows){
+  const sl=parseInt(document.getElementById('s_smapic_limit').value)||300;
+  const C={
+    listed:r=>String(r['物件掲載']||'').trim()!=='',
+    score:r=>n(r['住戸名寄せ点数']),
+    belong:r=>parseInt(r['所属基準値']||'0',10),
+    total:r=>n(r['競合物件数(合計)']),
+    c3:r=>n(r['【第3基準値】競合物件数']),
+    c2:r=>n(r['【第2基準値】競合物件数']),
+    c1:r=>n(r['【第1基準値】競合物件数']),
+    inq:r=>n(r['問い合わせ(合計)']),
+    lPV:r=>n(r['合計一覧PV(合計)']),
+    dPV:r=>n(r['合計詳細PV(合計)']),
+    dPVd:r=>n(r['物件詳細PV(一日当たり)']),
+    days:r=>n(r['掲載日数(日)(合計)']),
+    sm:r=>String(r['スマピク掲載']||'').trim()!=='',
+    pano:r=>String(r['パノラマ掲載']||'').trim()!=='',
+    movie:r=>String(r['動画掲載']||'').trim()!=='',
+    area:r=>String(r['得意なエリア枠掲載']||'').trim()!=='',
+    misepic:r=>String(r['店舗案内ピックアップ掲載']||'').trim()!=='',
+    addr:r=>r['物件所在地']||'',
+    nm:r=>r['物件名']||'',rm:r=>r['部屋番号']||'',
+    st:r=>r['駅']||'',md:r=>r['間取']||'',rn:r=>r['賃料＋管理費']||''
+  };
+  const key=r=>nid(C.nm(r))+'-'+nid(C.rm(r));
+
+  const listed=rows.filter(r=>C.listed(r));
+  const smC=rows.filter(r=>C.sm(r)).length;
+  const lowPV=listed.filter(r=>C.days(r)>=3&&C.dPVd(r)>0&&C.dPVd(r)<0.3);
+
+  document.getElementById('homeMetrics').innerHTML=
+    '<div class="metric"><div class="metric-label">掲載物件数</div><div class="metric-value">'+listed.length+'</div><div class="metric-sub">件</div></div>'+
+    '<div class="metric"><div class="metric-label">総問い合わせ</div><div class="metric-value">'+rows.reduce((s,r)=>s+C.inq(r),0)+'</div><div class="metric-sub">件</div></div>'+
+    '<div class="metric"><div class="metric-label">スマピク適用</div><div class="metric-value">'+smC+'</div><div class="metric-sub">件</div></div>'+
+    '<div class="metric danger"><div class="metric-label">入替対象</div><div class="metric-value">'+lowPV.length+'</div><div class="metric-sub">件</div></div>';
+  document.getElementById('nb-lowpv').textContent=lowPV.length||'—';
+
+  // ① 全オプション外す（スマピク以外）
+  const r1=rows.filter(r=>C.listed(r)&&C.belong(r)>=2&&C.total(r)<=3).sort((a,b)=>C.score(a)-C.score(b));
+  renderT1(r1,C,key);
+  document.getElementById('nb-opt').textContent=r1.length||'—';
+
+  // ② 条件Bのみ（所属=3）→ 緑は第3だけになる
+  const r2=rows.filter(r=>{if(!C.listed(r))return false;const s=C.c3(r)+C.c2(r)+C.c1(r);if(s<4||C.c2(r)>2)return false;return C.c3(r)<=2&&C.belong(r)===3;}).sort((a,b)=>C.total(b)-C.total(a));
+  renderBelong('t2',r2,C,key);
+  // ③
+  const r3=rows.filter(r=>C.listed(r)&&C.belong(r)<=1&&C.total(r)>=4&&C.c3(r)<=2&&C.c2(r)<=2).sort((a,b)=>C.total(b)-C.total(a));
+  renderBelong('t3',r3,C,key);
+  // ④
+  const r4=rows.filter(r=>C.listed(r)&&C.belong(r)<=2&&C.total(r)>=4&&C.c2(r)>=2&&C.c1(r)>=3).sort((a,b)=>C.inq(b)-C.inq(a));
+  renderBelong('t4',r4,C,key);
+
+  // スマピク
+  const sc=rows.map(r=>{const lP=C.lPV(r),dP=C.dPV(r),iq=C.inq(r),dy=C.days(r),cp=C.total(r);const dr=dP>0?iq/dP:0;const tr=lP>0?dP/lP:0;const ss=(dr*10000)+(tr*5000)+(iq*10)+(cp*10)+(lP/100);const ps=lP+(dP*2)+(cp*5);return{id:key(r),name:C.nm(r),room:C.rm(r),ss,ps,ilp:dy>=15&&iq<=0&&cp<=5,isS:C.sm(r),isL:C.listed(r)};});
+  const av=sc.filter(i=>i.isL&&!i.ilp);
+  const t2arr=[...av.filter(i=>!i.isS)].sort((a,b)=>b.ss-a.ss).slice(0,200);
+  const t1arr=[...av].sort((a,b)=>b.ps-a.ps).slice(0,100);
+  const fm=new Map();t2arr.forEach(i=>fm.set(i.id,i));t1arr.forEach(i=>{if(!fm.has(i.id))fm.set(i.id,i);});
+  let fl=[...fm.values()].sort((a,b)=>b.ss-a.ss).slice(0,sl);
+  if(fl.length<sl){const lp=sc.filter(i=>i.isL&&i.ilp&&!fm.has(i.id)).sort((a,b)=>b.ss-a.ss);for(const it of lp){if(fl.length>=sl)break;fl.push(it);fm.set(it.id,it);}}
+  fl=fl.slice(0,sl);
+  const fi=new Set(fl.map(i=>i.id));const nP=fl.filter(i=>!i.isS).length;
+  const rl=sc.filter(i=>i.isS&&!fi.has(i.id)).sort((a,b)=>a.ss-b.ss).slice(0,nP);
+  document.getElementById('addCount').textContent=fl.length+'件';
+  document.getElementById('removeCount').textContent=rl.length+'件';
+  renderSmapicAdd(fl);
+  renderSmapicRem(rl);
+
+  renderLowPV(lowPV,C,key);
+
+  document.getElementById('homeAlerts').innerHTML=lowPV.length
+    ? lowPV.slice(0,6).map(r=>'<div class="alert-row"><span class="tag tag-red">入替対象</span><span style="flex:1;margin-left:6px">'+esc(C.nm(r))+' '+esc(C.rm(r))+'</span></div>').join('')
+    : '<div class="empty">アラートなし</div>';
+
+  // オプション収支＋節約金額
+  computeOptionBalance(rows,C,r1,rl);
+  // エリア配分
+  renderArea(rows,C);
+}
+
+function renderT1(rows,C,key){
+  const tb=document.querySelector('#t1 tbody');
+  if(!rows.length){tb.innerHTML='<tr><td colspan="5" class="empty">該当物件なし</td></tr>';updateProgress('t1',0);return;}
+  tb.innerHTML=rows.map(r=>buildRow('t1',key(r),'<td class="nm">'+esc(C.nm(r))+'</td><td class="rm">'+esc(C.rm(r))+'</td><td class="num">'+C.score(r)+'</td><td class="num">'+C.total(r)+'</td>')).join('');
+  bindChecks('t1');
+}
+function renderBelong(t,rows,C,key){
+  const tb=document.querySelector('#'+t+' tbody');
+  if(!rows.length){tb.innerHTML='<tr><td colspan="7" class="empty">該当物件なし</td></tr>';updateProgress(t,0);return;}
+  tb.innerHTML=rows.map(r=>{
+    const bl=C.belong(r);
+    const s3=(bl===3)?'class="num bl-green"':'class="num bl-gray"';
+    const s2=(bl===2)?'class="num bl-green"':'class="num bl-gray"';
+    const s1=(bl===1)?'class="num bl-green"':'class="num bl-gray"';
+    return buildRow(t,key(r),'<td class="nm">'+esc(C.nm(r))+'</td><td class="rm">'+esc(C.rm(r))+'</td><td '+s3+'>'+C.c3(r)+'</td><td '+s2+'>'+C.c2(r)+'</td><td '+s1+'>'+C.c1(r)+'</td><td class="num">'+C.total(r)+'</td>');
+  }).join('');
+  bindChecks(t);
+}
+function renderSmapicAdd(fl){
+  const tb=document.querySelector('#t5add tbody');
+  if(!fl.length){tb.innerHTML='<tr><td colspan="6" class="empty">—</td></tr>';updateProgress('t5add',0);return;}
+  tb.innerHTML=fl.slice(0,150).map((i,x)=>buildRow('t5add',i.id,'<td class="rm">'+(x+1)+'</td><td class="nm">'+esc(i.name)+'</td><td class="rm">'+esc(i.room)+'</td><td class="num">'+i.ss.toFixed(1)+'</td><td class="num" style="color:'+(i.isS?'#3B6D11':'var(--ink3)')+'">'+(i.isS?'○':'−')+'</td>')).join('');
+  bindChecks('t5add');
+}
+function renderSmapicRem(rl){
+  const tb=document.querySelector('#t5rem tbody');
+  if(!rl.length){tb.innerHTML='<tr><td colspan="5" class="empty">—</td></tr>';updateProgress('t5rem',0);return;}
+  tb.innerHTML=rl.slice(0,150).map((i,x)=>buildRow('t5rem',i.id,'<td class="rm">'+(x+1)+'</td><td class="nm">'+esc(i.name)+'</td><td class="rm">'+esc(i.room)+'</td><td class="num">'+i.ss.toFixed(1)+'</td>')).join('');
+  bindChecks('t5rem');
+}
+function renderLowPV(lowPV,C,key){
+  const tb=document.querySelector('#t6 tbody');
+  if(!lowPV.length){tb.innerHTML='<tr><td colspan="9" class="empty">該当物件なし</td></tr>';updateProgress('t6',0);return;}
+  tb.innerHTML=lowPV.sort((a,b)=>C.dPVd(a)-C.dPVd(b)).map(r=>buildRow('t6',key(r),'<td class="nm">'+esc(C.nm(r))+'</td><td class="rm">'+esc(C.rm(r))+'</td><td>'+esc(C.st(r))+'</td><td>'+esc(C.md(r))+'</td><td class="num">'+esc(C.rn(r))+'万円</td><td class="num">'+C.days(r)+'日</td><td class="num">'+C.inq(r)+'件</td><td class="num">'+C.total(r)+'件</td>')).join('');
+  bindChecks('t6');
+}
+
+/* ===== オプション収支分析 ===== */
+function computeOptionBalance(rows,C,r1,smapicRemList){
+  const pr=getPrices();
+  const listed=rows.filter(r=>C.listed(r));
+
+  // 現状の各オプション付与件数
+  const cur={
+    smapic:rows.filter(r=>C.sm(r)).length,
+    misepic:rows.filter(r=>C.misepic(r)).length,
+    panorama:rows.filter(r=>C.pano(r)).length,
+    area:rows.filter(r=>C.area(r)).length,
+    movie:rows.filter(r=>C.movie(r)).length
+  };
+
+  // 無駄＝外すべきオプション件数
+  // ①全オプション外す対象の物件が現在持っている各オプションは「無駄」
+  const r1set=new Set(r1.map(r=>nid(C.nm(r))+'-'+nid(C.rm(r))));
+  let wastePanorama=0,wasteMisepic=0,wasteMovie=0,wasteArea=0;
+  rows.forEach(r=>{
+    const k=nid(C.nm(r))+'-'+nid(C.rm(r));
+    if(r1set.has(k)){
+      if(C.pano(r))wastePanorama++;
+      if(C.misepic(r))wasteMisepic++;
+      if(C.movie(r))wasteMovie++;
+      if(C.area(r))wasteArea++;
+    }
+  });
+  // スマピク無駄＝削除推奨件数 ＋ PV/日<0.5の物件に付いてるスマピク
+  const wasteSmapicLow=rows.filter(r=>C.sm(r)&&C.dPVd(r)>0&&C.dPVd(r)<0.5).length;
+  const wasteSmapic=Math.max(smapicRemList.length,wasteSmapicLow);
+
+  // 節約額（無駄を外した分）
+  const saving={
+    smapic:wasteSmapic*pr.smapic,
+    misepic:wasteMisepic*pr.misepic,
+    panorama:wastePanorama*pr.panorama,
+    area:wasteArea*pr.area,
+    movie:wasteMovie*pr.movie
+  };
+  const totalSaving=saving.smapic+saving.misepic+saving.panorama+saving.area+saving.movie;
+  const totalWaste=wasteSmapic+wasteMisepic+wastePanorama+wasteArea+wasteMovie;
+
+  // バナー
+  const banner=document.getElementById('savingsBanner');
+  banner.style.display='flex';
+  document.getElementById('savingsAmount').innerHTML=yen(totalSaving)+'<small>/月</small>';
+  document.getElementById('savingsSub').textContent='無駄オプション '+totalWaste+'件を特定（年間 '+yen(totalSaving*12)+' の削減効果）';
+  document.getElementById('savingsDetail').innerHTML=
+    '<div class="savings-stat"><div class="savings-stat-val">'+wasteSmapic+'</div><div class="savings-stat-lbl">スマピク無駄</div></div>'+
+    '<div class="savings-stat"><div class="savings-stat-val">'+wastePanorama+'</div><div class="savings-stat-lbl">パノラマ無駄</div></div>'+
+    '<div class="savings-stat"><div class="savings-stat-val">'+wasteMisepic+'</div><div class="savings-stat-lbl">店ピク無駄</div></div>';
+
+  document.getElementById('optbalSavings').innerHTML=yen(totalSaving)+'<small>/月</small>';
+  document.getElementById('optbalHeadDetail').innerHTML=
+    '<div class="savings-stat"><div class="savings-stat-val">'+totalWaste+'</div><div class="savings-stat-lbl">無駄オプション計</div></div>'+
+    '<div class="savings-stat"><div class="savings-stat-val">'+yen(totalSaving*12)+'</div><div class="savings-stat-lbl">年間削減</div></div>';
+
+  // 収支カード（現状→最適化後の必要数→差分）
+  const defs=[
+    {key:'smapic',name:'スマピク',icon:'ti-star',price:pr.smapic,cur:cur.smapic,waste:wasteSmapic},
+    {key:'misepic',name:'店ピク',icon:'ti-building-store',price:pr.misepic,cur:cur.misepic,waste:wasteMisepic},
+    {key:'panorama',name:'パノラマ',icon:'ti-360',price:pr.panorama,cur:cur.panorama,waste:wastePanorama},
+    {key:'area',name:'得意なエリア',icon:'ti-map-pin',price:pr.area,cur:cur.area,waste:wasteArea},
+    {key:'movie',name:'動画',icon:'ti-video',price:pr.movie,cur:cur.movie,waste:wasteMovie}
+  ];
+  document.getElementById('optbalGrid').innerHTML=defs.map(d=>{
+    const need=d.cur-d.waste; // 最適化後の推奨保持件数
+    let verdict,vClass;
+    if(d.waste>0){verdict='▼ '+d.waste+'件 削減推奨';vClass='verdict-cut';}
+    else{verdict='適正';vClass='verdict-ok';}
+    return '<div class="optbal-card">'+
+      '<div class="optbal-name"><i class="ti '+d.icon+'" style="color:var(--green)"></i>'+d.name+'</div>'+
+      '<div class="optbal-row"><span>現在の付与</span><b>'+d.cur+'件</b></div>'+
+      '<div class="optbal-row"><span>無駄（外せる）</span><b style="color:var(--red)">'+d.waste+'件</b></div>'+
+      '<div class="optbal-row"><span>最適化後</span><b>'+need+'件</b></div>'+
+      '<div class="optbal-row"><span>単価</span><b>'+yen(d.price)+'</b></div>'+
+      '<div class="optbal-verdict '+vClass+'">'+verdict+(d.waste>0?'<br><span style="font-size:10px;font-weight:400;color:var(--ink3)">月 '+yen(d.waste*d.price)+' 節約</span>':'')+'</div>'+
+      '</div>';
+  }).join('');
+}
+
+/* ===== エリア配分 ===== */
+function renderArea(rows,C){
+  const ward=document.getElementById('s_ward').value||'中央区';
+  document.getElementById('areaWardName').textContent=ward;
+  const alloc=computeAreaAllocation(ward);
+  if(!alloc)return;
+  const allocMap={};alloc.forEach(a=>allocMap[a.ward]=a.pct);
+
+  // マップ描画
+  const mapEl=document.getElementById('areaMap');
+  mapEl.innerHTML='';
+  WARD_GRID.forEach(row=>row.forEach(w=>{
+    if(!w){mapEl.innerHTML+='<div class="area-cell empty-cell"></div>';return;}
+    let cls='area-cell',pct='';
+    if(w===ward){cls+=' sel';pct=allocMap[w]?allocMap[w].toFixed(1)+'%':'';}
+    else if(allocMap[w]){cls+=' adj';pct=allocMap[w].toFixed(1)+'%';}
+    mapEl.innerHTML+='<div class="'+cls+'"><span class="ward">'+w+'</span>'+(pct?'<span class="pct">'+pct+'</span>':'')+'</div>';
+  }));
+
+  // 現状の区別掲載件数（物件所在地から区を抽出）
+  const listed=rows.filter(r=>C.listed(r));
+  const wardCount={};
+  listed.forEach(r=>{
+    const addr=C.addr(r);
+    for(const a of alloc){
+      if(addr.includes(a.ward)){wardCount[a.ward]=(wardCount[a.ward]||0)+1;break;}
+    }
+  });
+  const totalListed=listed.length;
+
+  // テーブル
+  const tb=document.querySelector('#areaTable tbody');
+  tb.innerHTML=alloc.map(a=>{
+    const recommend=Math.round(totalListed*a.pct/100);
+    const actual=wardCount[a.ward]||0;
+    const diff=actual-recommend;
+    let diffHtml,barColor,barPct;
+    if(diff<-2){diffHtml='<span style="color:var(--red);font-weight:700">不足 '+Math.abs(diff)+'</span>';barColor='var(--red)';}
+    else if(diff>2){diffHtml='<span style="color:var(--blue);font-weight:700">過剰 +'+diff+'</span>';barColor='var(--blue)';}
+    else{diffHtml='<span style="color:var(--green)">適正</span>';barColor='var(--green)';}
+    const maxv=Math.max(recommend,actual,1);
+    return '<tr>'+
+      '<td class="nm" style="font-weight:700">'+esc(a.ward)+(a.ward===ward?' <span class="tag" style="background:#1e1e2e;color:#fff">所属</span>':'')+'</td>'+
+      '<td class="num">'+a.pct.toFixed(1)+'%</td>'+
+      '<td class="num">'+recommend+'件</td>'+
+      '<td class="num">'+actual+'件</td>'+
+      '<td>'+diffHtml+'</td>'+
+      '<td><div class="area-bar"><div style="width:'+(actual/maxv*100)+'%;background:'+barColor+'"></div></div></td>'+
+      '<td style="white-space:normal;max-width:260px;font-size:10.5px;color:var(--ink2)">'+esc(a.info)+'</td>'+
+      '</tr>';
+  }).join('');
+}
+
+/* time series */
+function rTS(days){
+  const wks=bwk(days),mns=bmn(days);
+  if(hCI)hCI.destroy();
+  hCI=new Chart(document.getElementById('homeChart'),{type:'bar',data:{labels:wks.map((_,i)=>'W'+(i+1)),datasets:[{label:'一覧PV',data:wks.map(w=>w.listPV),backgroundColor:'#1D9E75',borderRadius:2},{label:'詳細PV',data:wks.map(w=>w.detPV),backgroundColor:'#9FE1CB',borderRadius:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{font:{size:9}}},y:{ticks:{font:{size:9}}}}}});
+  if(wCI)wCI.destroy();
+  wCI=new Chart(document.getElementById('weekChart'),{type:'bar',data:{labels:wks.map(w=>fd(new Date(w.key))+'〜'+fd(gwe(w.key))),datasets:[{label:'一覧PV',data:wks.map(w=>w.listPV),backgroundColor:'#1D9E75',borderRadius:2},{label:'詳細PV',data:wks.map(w=>w.detPV),backgroundColor:'#9FE1CB',borderRadius:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{font:{size:9},maxRotation:45}},y:{ticks:{font:{size:9}}}}}});
+  document.querySelector('#weekTable tbody').innerHTML=wks.map((w,i)=>{const p=wks[i-1];return '<tr><td>W'+(i+1)+'</td><td style="color:var(--ink3);font-size:10px">'+fd(new Date(w.key))+'〜'+fd(gwe(w.key))+'</td><td class="num">'+w.listPV.toLocaleString()+'</td><td>'+(p?dl(w.listPV,p.listPV):'—')+'</td><td class="num">'+w.detPV.toLocaleString()+'</td><td>'+(p?dl(w.detPV,p.detPV):'—')+'</td><td class="num">'+w.inq+'</td><td>'+(p?dl(w.inq,p.inq):'—')+'</td><td class="num">'+(w.cd>0?(w.cs/w.cd).toFixed(1):'—')+'</td></tr>';}).join('');
+  document.getElementById('nb-weekly').textContent=wks.length+'週';
+  if(mCI)mCI.destroy();
+  mCI=new Chart(document.getElementById('monthChart'),{type:'bar',data:{labels:mns.map(m=>m.label),datasets:[{label:'一覧PV',data:mns.map(m=>m.listPV),backgroundColor:'#1D9E75',borderRadius:2},{label:'詳細PV',data:mns.map(m=>m.detPV),backgroundColor:'#9FE1CB',borderRadius:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{font:{size:10}}},y:{ticks:{font:{size:9}}}}}});
+  document.querySelector('#monthTable tbody').innerHTML=mns.map((m,i)=>{const p=mns[i-1];return '<tr><td>'+m.label+'</td><td class="num">'+m.listPV.toLocaleString()+'</td><td>'+(p?dl(m.listPV,p.listPV):'—')+'</td><td class="num">'+m.detPV.toLocaleString()+'</td><td>'+(p?dl(m.detPV,p.detPV):'—')+'</td><td class="num">'+m.inq+'</td><td>'+(p?dl(m.inq,p.inq):'—')+'</td><td class="num">'+(m.cd>0?(m.cs/m.cd).toFixed(1):'—')+'</td></tr>';}).join('');
+  aPD={};days.forEach(d=>{d.propDiffs.forEach(p=>{if(!aPD[p.code])aPD[p.code]={name:p.name,room:p.room,station:p.station,madori:p.madori,entries:[]};aPD[p.code].entries.push({date:fd(d.date),dL:p.dListPV,dD:p.dDetPV,dI:p.dInq,comp:p.comp,sc:p.sCurr!==p.sPrev,sv:p.sCurr,cd:p.comp-p.compPrev});});});
+  filterProps();
+  document.querySelector('#homeDayTable tbody').innerHTML=[...days].reverse().slice(0,7).map(d=>'<tr><td>'+fd(d.date)+'</td><td class="num">'+d.listPV.toLocaleString()+'</td><td class="num">'+d.detPV.toLocaleString()+'</td><td class="num">'+d.inq+'</td><td class="num">'+d.avgComp.toFixed(1)+'</td><td class="num">'+d.listedCount+'</td></tr>').join('');
+}
+
+function filterProps(){
+  const q=(document.getElementById('propSearch').value||'').trim().toLowerCase();
+  const fl=Object.values(aPD).filter(p=>!q||p.name.toLowerCase().includes(q)||p.room.toLowerCase().includes(q)||p.station.toLowerCase().includes(q)).slice(0,50);
+  if(!fl.length){document.getElementById('propList').innerHTML='<div class="empty">該当物件なし</div>';return;}
+  document.getElementById('propList').innerHTML=fl.map((p,i)=>{
+    const tL=p.entries.reduce((s,e)=>s+e.dL,0),tI=p.entries.reduce((s,e)=>s+e.dI,0),ch=p.entries.filter(e=>e.sc||Math.abs(e.cd)>=3).length;
+    return '<div class="prop-row"><div class="prop-head" data-pp="pp'+i+'"><span style="font-size:12px;font-weight:500;flex:1">'+esc(p.name)+' '+esc(p.room)+'</span><span style="font-size:10px;color:var(--ink3)">'+esc(p.station)+' / '+esc(p.madori)+'</span><span style="font-size:10px;color:var(--ink3);margin-left:6px">PV '+tL+' / 問合せ '+tI+'</span>'+(ch?'<span class="tag tag-amber" style="margin-left:5px">変化'+ch+'件</span>':'')+'<i class="ti ti-chevron-down" style="font-size:12px;color:var(--ink3);margin-left:4px"></i></div><div id="pp'+i+'" class="prop-body"><table class="tbl"><thead><tr><th>日付</th><th>一覧PV</th><th>詳細PV</th><th>問合せ</th><th>競合数</th><th>変化</th></tr></thead><tbody>'+p.entries.map(e=>'<tr><td>'+e.date+'</td><td class="num">'+e.dL+'</td><td class="num">'+e.dD+'</td><td class="num">'+e.dI+'</td><td class="num">'+e.comp+(e.cd!==0?'<span style="font-size:9px;margin-left:3px;color:'+(e.cd>0?'#A32D2D':'#3B6D11')+'">'+(e.cd>0?'▲':'▼')+Math.abs(e.cd)+'</span>':'')+'</td><td>'+(e.sc?'<span class="tag tag-amber">スマピク'+(e.sv?'付与':'削除')+'</span>':'')+'</td></tr>').join('')+'</tbody></table></div></div>';
+  }).join('');
+  document.querySelectorAll('[data-pp]').forEach(el=>el.addEventListener('click',()=>{document.getElementById(el.dataset.pp).classList.toggle('open');}));
+}
+document.getElementById('propSearch').addEventListener('input',filterProps);
+
+/* settings */
+function saveSettings(){
+  try{localStorage.setItem('gugumo_s',JSON.stringify({
+    slots:document.getElementById('s_slots').value,
+    smapic_limit:document.getElementById('s_smapic_limit').value,
+    ward:document.getElementById('s_ward').value,
+    pr_smapic:document.getElementById('pr_smapic').value,
+    pr_misepic:document.getElementById('pr_misepic').value,
+    pr_panorama:document.getElementById('pr_panorama').value,
+    pr_area:document.getElementById('pr_area').value,
+    pr_movie:document.getElementById('pr_movie').value
+  }));const b=document.getElementById('savedBadge');b.style.display='inline';setTimeout(()=>b.style.display='none',2000);}catch(e){}
+  if(gRows.length)aLat(gRows);
+}
+function loadSettings(){try{const s=JSON.parse(localStorage.getItem('gugumo_s')||'{}');
+  if(s.slots)document.getElementById('s_slots').value=s.slots;
+  if(s.smapic_limit)document.getElementById('s_smapic_limit').value=s.smapic_limit;
+  if(s.ward)document.getElementById('s_ward').value=s.ward;
+  if(s.pr_smapic)document.getElementById('pr_smapic').value=s.pr_smapic;
+  if(s.pr_misepic)document.getElementById('pr_misepic').value=s.pr_misepic;
+  if(s.pr_panorama)document.getElementById('pr_panorama').value=s.pr_panorama;
+  if(s.pr_area)document.getElementById('pr_area').value=s.pr_area;
+  if(s.pr_movie)document.getElementById('pr_movie').value=s.pr_movie;
+}catch(e){}}
+document.getElementById('saveBtn').addEventListener('click',saveSettings);
+
+// ward select 初期化
+(function(){
+  const sel=document.getElementById('s_ward');
+  const all=[];WARD_GRID.forEach(row=>row.forEach(w=>{if(w&&!all.includes(w))all.push(w);}));
+  all.sort();
+  sel.innerHTML=all.map(w=>'<option value="'+w+'"'+(w==='中央区'?' selected':'')+'>'+w+'</option>').join('');
+})();
+
+/* file handling */
+async function handleFiles(files){
+  resetChecks();
+  const chips=document.getElementById('fileChips');chips.innerHTML='';
+  const snaps=[];
+  for(const f of [...files].sort((a,b)=>a.name.localeCompare(b.name))){
+    const date=pdfn(f.name);
+    if(!date){chips.innerHTML+='<span class="chip err">'+esc(f.name)+'</span>';continue;}
+    const text=await rfa(f);const rows=parseCSV(text);
+    snaps.push({date,rows});
+    chips.innerHTML+='<span class="chip">'+fd(date)+' ('+rows.length+'件)</span>';
+  }
+  if(!snaps.length)return;
+  snaps.sort((a,b)=>a.date-b.date);
+  gSnaps=snaps;gRows=snaps[snaps.length-1].rows;
+  const days=bdd(snaps);
+  loadSettings();
+  aLat(gRows);
+  if(days.length>0)rTS(days);
+  const sp=document.getElementById('dataStatus');sp.textContent=snaps.length+'ファイル読み込み済み';sp.className='status-pill loaded';
+  goto('home');
+}
+document.getElementById('fi').addEventListener('change',e=>{if(e.target.files.length)handleFiles(e.target.files);});
+const dz=document.getElementById('dropZone');
+dz.addEventListener('click',()=>document.getElementById('fi').click());
+dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('drag');});
+dz.addEventListener('dragleave',()=>dz.classList.remove('drag'));
+dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('drag');if(e.dataTransfer.files.length)handleFiles(e.dataTransfer.files);});
+
+loadChecks();
+loadSettings();
+</script>
+</body>
+</html>

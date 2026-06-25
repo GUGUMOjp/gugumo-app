@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode } from "react";
+import { supabase } from "@/lib/supabase";
 
 const PAGE_TITLES: Record<PageId, string> = {
   home: "ホーム",
@@ -951,8 +952,23 @@ export default function Page() {
     try {
       const parsed = await Promise.all(files.sort((a, b) => a.name.localeCompare(b.name)).map(readCsvFile));
       parsed.sort((a, b) => a.date.getTime() - b.date.getTime());
+
+      for (const snapshot of parsed) {
+        const { error } = await supabase.from("csv_uploads").insert({
+          file_name: snapshot.fileName,
+          file_data: snapshot.rows,
+        });
+
+        if (error) {
+          console.error(error);
+          alert(`Supabase保存に失敗しました: ${snapshot.fileName}`);
+          return;
+        }
+      }
+
       setSnapshots(parsed);
       goto("home");
+      alert("CSVを読み込み、Supabaseに保存しました。");
     } catch (error) {
       console.error(error);
       alert("CSVの読み込みに失敗しました。ファイル形式を確認してください。");
