@@ -4,6 +4,11 @@ import { Fragment, useEffect, useMemo, useRef, useState, type ChangeEvent, type 
 import { PAGE_TITLES } from "@/data/constants/pageTitles";
 import { NAVIGATION_GROUPS, SETTINGS_NAV_ITEM } from "@/data/navigation/navigation";
 import { supabase } from "@/lib/supabase";
+import type {
+  CsvRow,
+  CsvSnapshot,
+  CsvSummary,
+} from "@/src/server/types/csv";
 
 const WARD_GRID = [
   ["西淀川区", "淀川区", "東淀川区", "", ""],
@@ -99,8 +104,6 @@ type PageId =
   | "upload"
   | "settings";
 
-type CsvRow = Record<string, string>;
-
 type Settings = {
   slots: number;
   smapicLimit: number;
@@ -112,27 +115,6 @@ type Settings = {
     area: number;
     movie: number;
   };
-};
-
-type CsvSnapshot = {
-  fileName: string;
-  date: Date;
-  dateKey: string;
-  dateLabel: string;
-  rows: CsvRow[];
-  summary: CsvSummary;
-};
-
-type CsvSummary = {
-  totalRows: number;
-  listedRows: number;
-  vacantRows: number;
-  totalInquiry: number;
-  totalListPv: number;
-  totalDetailPv: number;
-  smapicRows: number;
-  lowPvRows: number;
-  averageCompetition: number;
 };
 
 type DayDiff = {
