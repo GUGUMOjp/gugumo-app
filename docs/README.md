@@ -200,6 +200,10 @@ GUGUMOのプロダクト思想。
 
 GUGUMOの実装順序、依存関係、GGMチケット計画を定義するマスターロードマップ。
 
+### 11_[BusinessLogicMigrationPlan.md](http://BusinessLogicMigrationPlan.md)
+
+app/page.tsxからServer側へ移行すべきBusiness Logicの棚卸しと移行計画。
+
 ---
 
 ## 5. GUGUMOの設計思想
