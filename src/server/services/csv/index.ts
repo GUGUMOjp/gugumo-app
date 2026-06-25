@@ -1,4 +1,10 @@
 export {
+  C,
+  isOn,
+  normalizeId,
+  toNumber,
+} from "./accessor";
+export {
   extractDataDate,
   parseCsv,
   splitCsvLine,
