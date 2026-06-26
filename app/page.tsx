@@ -13,6 +13,7 @@ import {
   buildWeekly,
 } from "@/src/server/services/analysis";
 import {
+  buildCurrentWardCounts,
   computeAreaAllocation,
   WARD_GRID,
 } from "@/src/server/services/area";
@@ -350,15 +351,7 @@ export default function Page() {
     })
     .slice(0, 80);
 
-  const currentWardCounts = useMemo(() => {
-    const counts: Record<string, number> = {};
-    analysis.listedRows.forEach((row) => {
-      const address = C.address(row);
-      const ward = areaAllocation.find((item) => address.includes(item.ward));
-      if (ward) counts[ward.ward] = (counts[ward.ward] ?? 0) + 1;
-    });
-    return counts;
-  }, [analysis.listedRows, areaAllocation]);
+  const currentWardCounts = useMemo(() => buildCurrentWardCounts(analysis.listedRows, areaAllocation), [analysis.listedRows, areaAllocation]);
 
   const topbarStatus = latestSnapshot ? `${snapshots.length}ファイル読み込み済み / 最新 ${latestSnapshot.dateLabel}` : "データ未読み込み";
 
