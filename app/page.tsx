@@ -4,16 +4,8 @@ import { Fragment, useEffect, useMemo, useRef, useState, type ChangeEvent, type 
 import { PAGE_TITLES } from "@/data/constants/pageTitles";
 import { NAVIGATION_GROUPS, SETTINGS_NAV_ITEM } from "@/data/navigation/navigation";
 import { supabase } from "@/lib/supabase";
-import { buildOptionBalance } from "@/src/server/engines/health";
-import { buildRecommendations } from "@/src/server/engines/recommendation";
 import {
-  isLowPvCandidate,
-  isLowerToSecondOptionCandidate,
-  isRaiseToSecondOptionCandidate,
-  isRaiseToThirdOptionCandidate,
-  isRemoveAllOptionCandidate,
-} from "@/src/server/rules";
-import {
+  analyzeRows,
   buildDayDiffs,
   buildMonthly,
   buildPropertyHistories,
@@ -29,9 +21,6 @@ import type {
   CsvRow,
   CsvSnapshot,
 } from "@/src/server/types/csv";
-import type {
-  AnalysisResult,
-} from "@/src/server/types";
 
 const WARD_GRID = [
   ["西淀川区", "淀川区", "東淀川区", "", ""],
@@ -178,49 +167,6 @@ function deltaCell(current: number, previous?: number) {
 
 function rowKey(row: CsvRow) {
   return row["物件コード"] || `${normalizeId(row["物件名"])}-${normalizeId(row["部屋番号"])}`;
-}
-
-function analyzeRows(rows: CsvRow[], settings: Settings): AnalysisResult {
-  const listedRows = rows.filter(C.listed);
-  const totalInquiry = rows.reduce((sum, row) => sum + C.inquiry(row), 0);
-  const smapicRows = rows.filter(C.smapic).length;
-  const lowPvRows = listedRows
-    .filter(isLowPvCandidate)
-    .sort((a, b) => C.detailPvPerDay(a) - C.detailPvPerDay(b));
-
-  const removeAllRows = rows
-    .filter(isRemoveAllOptionCandidate)
-    .sort((a, b) => C.score(a) - C.score(b));
-
-  const lowerToSecondRows = rows
-    .filter(isLowerToSecondOptionCandidate)
-    .sort((a, b) => C.total(b) - C.total(a));
-
-  const raiseToSecondRows = rows
-    .filter(isRaiseToSecondOptionCandidate)
-    .sort((a, b) => C.total(b) - C.total(a));
-
-  const raiseToThirdRows = rows
-    .filter(isRaiseToThirdOptionCandidate)
-    .sort((a, b) => C.inquiry(b) - C.inquiry(a));
-
-  const { smapicAdd, smapicRemove } = buildRecommendations(rows, settings.smapicLimit);
-
-  const optionBalance = buildOptionBalance(rows, settings, removeAllRows, smapicRemove);
-
-  return {
-    listedRows,
-    lowPvRows,
-    removeAllRows,
-    lowerToSecondRows,
-    raiseToSecondRows,
-    raiseToThirdRows,
-    smapicAdd,
-    smapicRemove,
-    optionBalance,
-    totalInquiry,
-    smapicRows,
-  };
 }
 
 function computeAreaAllocation(ward: string) {

@@ -1,4 +1,7 @@
 export {
+  analyzeRows,
+} from "./analyzer";
+export {
   buildDayDiffs,
   buildMonthly,
   buildPropertyHistories,
