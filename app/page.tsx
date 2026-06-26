@@ -13,6 +13,7 @@ import {
   buildWeekly,
 } from "@/src/server/services/analysis";
 import {
+  buildAreaBalanceViewModel,
   buildCurrentWardCounts,
   computeAreaAllocation,
   WARD_GRID,
@@ -352,6 +353,10 @@ export default function Page() {
     .slice(0, 80);
 
   const currentWardCounts = useMemo(() => buildCurrentWardCounts(analysis.listedRows, areaAllocation), [analysis.listedRows, areaAllocation]);
+  const areaBalance = useMemo(
+    () => buildAreaBalanceViewModel(areaAllocation, currentWardCounts, analysis.listedRows.length),
+    [areaAllocation, currentWardCounts, analysis.listedRows.length],
+  );
 
   const topbarStatus = latestSnapshot ? `${snapshots.length}ファイル読み込み済み / 最新 ${latestSnapshot.dateLabel}` : "データ未読み込み";
 
@@ -657,7 +662,7 @@ export default function Page() {
                   })
                 )}
               </div></div>
-            <div className="card"><div className="card-head"><div className="card-title"><i className="ti ti-chart-pie" />推奨掲載配分 vs 現状の掲載件数</div></div><div style={{ fontSize: 11, color: "var(--ink2)", marginBottom: 10 }}>推奨配分（緑）に対し、最新CSVの所在地から各区の現掲載件数を集計。<span style={{ color: "var(--red)" }}>不足</span>＝もっと載せるべき／<span style={{ color: "var(--blue)" }}>過剰</span>＝載せ過ぎ。</div><div className="tbl-wrap"><table className="tbl"><thead><tr><th>区</th><th>推奨配分</th><th>推奨件数</th><th>現掲載</th><th>過不足</th><th className="num" style={{ width: 180 }}>バランス</th><th>特性</th></tr></thead><tbody>{areaAllocation.length && latestSnapshot ? areaAllocation.map((item) => { const recommended = Math.round(analysis.listedRows.length * item.pct / 100); const actual = currentWardCounts[item.ward] ?? 0; const diff = actual - recommended; const max = Math.max(recommended, actual, 1); const status = diff < -2 ? <span style={{ color: "var(--red)", fontWeight: 700 }}>不足 {Math.abs(diff)}</span> : diff > 2 ? <span style={{ color: "var(--blue)", fontWeight: 700 }}>過剰 +{diff}</span> : <span style={{ color: "var(--green)" }}>適正</span>; return <tr key={item.ward}><td className="nm" style={{ fontWeight: 700 }}>{item.ward}{item.ward === settings.ward ? <span className="tag" style={{ background: "#1e1e2e", color: "#fff", marginLeft: 4 }}>所属</span> : null}</td><td className="num">{item.pct.toFixed(1)}%</td><td className="num">{recommended}件</td><td className="num">{actual}件</td><td>{status}</td><td><div className="area-bar"><div style={{ width: `${(actual / max) * 100}%`, background: diff < -2 ? "var(--red)" : diff > 2 ? "var(--blue)" : "var(--green)" }} /></div></td><td style={{ whiteSpace: "normal", maxWidth: 260, fontSize: 10.5, color: "var(--ink2)" }}>{item.info}</td></tr>; }) : <EmptyRow colSpan={7} text="設定画面で所属区を選び、CSVを読み込んでください" />}</tbody></table></div></div>
+            <div className="card"><div className="card-head"><div className="card-title"><i className="ti ti-chart-pie" />推奨掲載配分 vs 現状の掲載件数</div></div><div style={{ fontSize: 11, color: "var(--ink2)", marginBottom: 10 }}>推奨配分（緑）に対し、最新CSVの所在地から各区の現掲載件数を集計。<span style={{ color: "var(--red)" }}>不足</span>＝もっと載せるべき／<span style={{ color: "var(--blue)" }}>過剰</span>＝載せ過ぎ。</div><div className="tbl-wrap"><table className="tbl"><thead><tr><th>区</th><th>推奨配分</th><th>推奨件数</th><th>現掲載</th><th>過不足</th><th className="num" style={{ width: 180 }}>バランス</th><th>特性</th></tr></thead><tbody>{areaBalance.length && latestSnapshot ? areaBalance.map((item) => { const status = item.statusType === "shortage" ? <span style={{ color: "var(--red)", fontWeight: 700 }}>不足 {Math.abs(item.diff)}</span> : item.statusType === "excess" ? <span style={{ color: "var(--blue)", fontWeight: 700 }}>過剰 +{item.diff}</span> : <span style={{ color: "var(--green)" }}>適正</span>; return <tr key={item.ward}><td className="nm" style={{ fontWeight: 700 }}>{item.ward}{item.ward === settings.ward ? <span className="tag" style={{ background: "#1e1e2e", color: "#fff", marginLeft: 4 }}>所属</span> : null}</td><td className="num">{item.pct.toFixed(1)}%</td><td className="num">{item.recommended}件</td><td className="num">{item.actual}件</td><td>{status}</td><td><div className="area-bar"><div style={{ width: `${(item.actual / item.max) * 100}%`, background: item.statusType === "shortage" ? "var(--red)" : item.statusType === "excess" ? "var(--blue)" : "var(--green)" }} /></div></td><td style={{ whiteSpace: "normal", maxWidth: 260, fontSize: 10.5, color: "var(--ink2)" }}>{item.info}</td></tr>; }) : <EmptyRow colSpan={7} text="設定画面で所属区を選び、CSVを読み込んでください" />}</tbody></table></div></div>
           </div>
 
           <div className={pageClass(activePage, "upload")}>
