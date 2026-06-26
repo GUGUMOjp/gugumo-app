@@ -285,11 +285,11 @@ export default function Page() {
 
     try {
       const parsed = await buildUploadSnapshots(fileList);
-      const { error, failedRecord } = await saveCsvUploadRecords(buildCsvUploadRecords(parsed));
+      const saveResult = await saveCsvUploadRecords(buildCsvUploadRecords(parsed));
 
-      if (error && failedRecord) {
-        console.error(error);
-        alert(`Supabase保存に失敗しました: ${failedRecord.file_name}`);
+      if (!saveResult.ok) {
+        console.error(saveResult.error);
+        alert(`Supabase保存に失敗しました: ${saveResult.failedRecord.file_name}`);
         return;
       }
 
