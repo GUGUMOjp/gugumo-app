@@ -13,6 +13,10 @@ import {
   buildWeekly,
 } from "@/src/server/services/analysis";
 import {
+  computeAreaAllocation,
+  WARD_GRID,
+} from "@/src/server/services/area";
+import {
   C,
   normalizeId,
   readCsvFile,
@@ -21,69 +25,6 @@ import type {
   CsvRow,
   CsvSnapshot,
 } from "@/src/server/types/csv";
-
-const WARD_GRID = [
-  ["西淀川区", "淀川区", "東淀川区", "", ""],
-  ["此花区", "福島区", "北区", "都島区", "旭区"],
-  ["港区", "西区", "中央区", "東成区", "鶴見区"],
-  ["大正区", "浪速区", "天王寺区", "生野区", "城東区"],
-  ["住之江区", "西成区", "阿倍野区", "東住吉区", "平野区"],
-  ["", "住吉区", "", "", ""],
-];
-
-const WARD_INFO: Record<string, string> = {
-  北区: "梅田中心。オフィス集積で転勤者・単身若年層の需要が非常に高い大阪随一の中心地。",
-  都島区: "京橋エリア。交通利便性が高く単身〜ファミリーまで安定需要。",
-  福島区: "梅田隣接で人気飲食店が多く、利便性と住みやすさで若年層・単身に支持される上昇エリア。",
-  此花区: "USJ・湾岸エリア。再開発進行中でファミリー需要。",
-  中央区: "難波・心斎橋・本町を擁するミナミの中心。単身からDINKsまで幅広い需要。",
-  西区: "堀江・新町などおしゃれな街並み。20〜30代の単身・DINKsに人気の都心居住エリア。",
-  港区: "弁天町中心。ベイエリアでファミリー・単身とも一定需要。",
-  大正区: "下町情緒。家賃が手頃で単身・ファミリーに堅実な需要。",
-  天王寺区: "天王寺・上本町の文教地区。教育環境とアクセスでファミリー・単身とも需要が厚い。",
-  浪速区: "なんば南・新今宮。難波直結の利便性で単身需要が厚く再開発進行中。",
-  西淀川区: "工業・住宅混在。家賃手頃で単身需要。",
-  淀川区: "新大阪擁する交通要衝。出張・転勤の単身需要が高い。",
-  東淀川区: "住宅地中心。学生・単身に手頃な家賃帯。",
-  東成区: "中央区東隣の住宅地。職住近接でファミリー需要。",
-  生野区: "下町・多文化エリア。家賃手頃で実需中心。",
-  旭区: "住宅地。落ち着いた環境でファミリー需要。",
-  城東区: "京橋至近の住宅地。利便性とコスパで単身〜ファミリー。",
-  阿倍野区: "天王寺至近。あべのハルカス周辺の人気居住エリア。",
-  住吉区: "閑静な住宅地。ファミリー需要が中心。",
-  東住吉区: "住宅地。家賃手頃でファミリー・単身。",
-  西成区: "再開発と家賃の手頃さ。単身需要が中心。",
-  住之江区: "南港・住宅混在。コスパ重視の単身・ファミリー。",
-  鶴見区: "住宅地。緑地多くファミリー需要。",
-  平野区: "大阪市最大人口の住宅区。手頃な家賃でファミリー需要。",
-};
-
-const WARD_POP: Record<string, number> = {
-  北区: 10,
-  中央区: 10,
-  西区: 8,
-  天王寺区: 8,
-  福島区: 8,
-  浪速区: 7,
-  都島区: 6,
-  阿倍野区: 7,
-  淀川区: 6,
-  城東区: 5,
-  此花区: 4,
-  港区: 4,
-  東成区: 5,
-  生野区: 4,
-  旭区: 4,
-  住吉区: 5,
-  東住吉区: 4,
-  西成区: 4,
-  住之江区: 4,
-  鶴見区: 4,
-  平野区: 5,
-  大正区: 4,
-  西淀川区: 3,
-  東淀川区: 4,
-};
 
 const ALL_WARDS = WARD_GRID.flat()
   .filter((w): w is string => Boolean(w))
@@ -167,27 +108,6 @@ function deltaCell(current: number, previous?: number) {
 
 function rowKey(row: CsvRow) {
   return row["物件コード"] || `${normalizeId(row["物件名"])}-${normalizeId(row["部屋番号"])}`;
-}
-
-function computeAreaAllocation(ward: string) {
-  const positions: Record<string, { r: number; c: number }> = {};
-  WARD_GRID.forEach((row, r) => row.forEach((w, c) => {
-    if (w) positions[w] = { r, c };
-  }));
-
-  const pos = positions[ward];
-  if (!pos) return [];
-
-  const adjacent: string[] = [];
-  WARD_GRID.forEach((row, rr) => row.forEach((w, cc) => {
-    if (w && w !== ward && Math.abs(rr - pos.r) <= 1 && Math.abs(cc - pos.c) <= 1) adjacent.push(w);
-  }));
-
-  const targets = [ward, ...adjacent.sort((a, b) => (WARD_POP[b] || 3) - (WARD_POP[a] || 3)).slice(0, 5)];
-  const weights = targets.map((w, index) => (index === 0 ? (WARD_POP[w] || 5) * 1.6 : WARD_POP[w] || 3));
-  const sum = weights.reduce((acc, value) => acc + value, 0);
-
-  return targets.map((w, index) => ({ ward: w, pct: (weights[index] / sum) * 100, info: WARD_INFO[w] || "" }));
 }
 
 function maxValue(values: number[]) {
