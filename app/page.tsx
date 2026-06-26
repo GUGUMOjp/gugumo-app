@@ -23,6 +23,9 @@ import {
   normalizeId,
   readCsvFile,
 } from "@/src/server/services/csv";
+import {
+  buildPropertyViewModels,
+} from "@/src/server/services/property";
 import type {
   CsvRow,
   CsvSnapshot,
@@ -344,13 +347,10 @@ export default function Page() {
     setSettings((current) => ({ ...current, prices: { ...current.prices, [key]: value } }));
   };
 
-  const filteredProperties = propertyHistories
-    .filter((property) => {
-      const q = propertySearch.trim().toLowerCase();
-      if (!q) return true;
-      return [property.name, property.room, property.station, property.madori].some((value) => value.toLowerCase().includes(q));
-    })
-    .slice(0, 80);
+  const filteredProperties = useMemo(
+    () => buildPropertyViewModels(propertyHistories, propertySearch),
+    [propertyHistories, propertySearch],
+  );
 
   const currentWardCounts = useMemo(() => buildCurrentWardCounts(analysis.listedRows, areaAllocation), [analysis.listedRows, areaAllocation]);
   const areaBalance = useMemo(
@@ -537,17 +537,14 @@ export default function Page() {
             <div className="card">
               <input value={propertySearch} onChange={(event) => setPropertySearch(event.target.value)} placeholder="物件名・駅で検索..." style={{ width: "100%", padding: "7px 11px", fontSize: 12, border: "0.5px solid var(--line2)", borderRadius: 6, background: "var(--panel)", color: "var(--ink)", marginBottom: 10, fontFamily: "inherit" }} />
               {!filteredProperties.length ? <div className="empty">比較用に2日分以上のCSVを読み込んでください</div> : filteredProperties.map((property) => {
-                const totalList = property.entries.reduce((sum, entry) => sum + entry.dListPV, 0);
-                const totalInquiry = property.entries.reduce((sum, entry) => sum + entry.dInquiry, 0);
-                const changes = property.entries.filter((entry) => entry.smapicChanged || Math.abs(entry.competitionDelta) >= 3).length;
                 const open = openProperties[property.key];
                 return (
                   <div className="prop-row" key={property.key}>
                     <div className="prop-head" onClick={() => setOpenProperties((current) => ({ ...current, [property.key]: !current[property.key] }))}>
                       <span style={{ fontSize: 12, fontWeight: 500, flex: 1 }}>{property.name} {property.room}</span>
                       <span style={{ fontSize: 10, color: "var(--ink3)" }}>{property.station} / {property.madori}</span>
-                      <span style={{ fontSize: 10, color: "var(--ink3)", marginLeft: 6 }}>PV {formatNumber(totalList)} / 問合せ {formatNumber(totalInquiry)}</span>
-                      {changes ? <span className="tag tag-amber" style={{ marginLeft: 5 }}>変化{changes}件</span> : null}
+                      <span style={{ fontSize: 10, color: "var(--ink3)", marginLeft: 6 }}>PV {formatNumber(property.totalList)} / 問合せ {formatNumber(property.totalInquiry)}</span>
+                      {property.changes ? <span className="tag tag-amber" style={{ marginLeft: 5 }}>変化{property.changes}件</span> : null}
                       <i className="ti ti-chevron-down" style={{ fontSize: 12, color: "var(--ink3)", marginLeft: 4 }} />
                     </div>
                     <div className={`prop-body${open ? " open" : ""}`}>
