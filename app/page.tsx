@@ -3,7 +3,9 @@
 import { Fragment, useEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode } from "react";
 import { PAGE_TITLES } from "@/data/constants/pageTitles";
 import { NAVIGATION_GROUPS, SETTINGS_NAV_ITEM } from "@/data/navigation/navigation";
-import { supabase } from "@/lib/supabase";
+import {
+  saveCsvUploadRecords,
+} from "@/src/server/repositories";
 import {
   analyzeRows,
   buildDayDiffs,
@@ -283,15 +285,12 @@ export default function Page() {
 
     try {
       const parsed = await buildUploadSnapshots(fileList);
+      const { error, failedRecord } = await saveCsvUploadRecords(buildCsvUploadRecords(parsed));
 
-      for (const record of buildCsvUploadRecords(parsed)) {
-        const { error } = await supabase.from("csv_uploads").insert(record);
-
-        if (error) {
-          console.error(error);
-          alert(`Supabase保存に失敗しました: ${record.file_name}`);
-          return;
-        }
+      if (error && failedRecord) {
+        console.error(error);
+        alert(`Supabase保存に失敗しました: ${failedRecord.file_name}`);
+        return;
       }
 
       setSnapshots(parsed);
