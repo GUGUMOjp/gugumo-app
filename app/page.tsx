@@ -5,6 +5,14 @@ import { PAGE_TITLES } from "@/data/constants/pageTitles";
 import { NAVIGATION_GROUPS, SETTINGS_NAV_ITEM } from "@/data/navigation/navigation";
 import { supabase } from "@/lib/supabase";
 import {
+  isLowPvCandidate,
+  isLowerToSecondOptionCandidate,
+  isRaiseToSecondOptionCandidate,
+  isRaiseToThirdOptionCandidate,
+  isRemoveAllOptionCandidate,
+  isSmapicLowPerformance,
+} from "@/src/server/rules";
+import {
   buildDayDiffs,
   buildMonthly,
   buildPropertyHistories,
@@ -213,35 +221,29 @@ function analyzeRows(rows: CsvRow[], settings: Settings): AnalysisResult {
   const totalInquiry = rows.reduce((sum, row) => sum + C.inquiry(row), 0);
   const smapicRows = rows.filter(C.smapic).length;
   const lowPvRows = listedRows
-    .filter((row) => C.days(row) >= 3 && C.detailPvPerDay(row) > 0 && C.detailPvPerDay(row) < 0.3)
+    .filter(isLowPvCandidate)
     .sort((a, b) => C.detailPvPerDay(a) - C.detailPvPerDay(b));
 
   const removeAllRows = rows
-    .filter((row) => C.listed(row) && C.belong(row) >= 2 && C.total(row) <= 3)
+    .filter(isRemoveAllOptionCandidate)
     .sort((a, b) => C.score(a) - C.score(b));
 
   const lowerToSecondRows = rows
-    .filter((row) => {
-      if (!C.listed(row)) return false;
-      const totalByBasis = C.c3(row) + C.c2(row) + C.c1(row);
-      if (totalByBasis < 4 || C.c2(row) > 2) return false;
-      return C.c3(row) <= 2 && C.belong(row) === 3;
-    })
+    .filter(isLowerToSecondOptionCandidate)
     .sort((a, b) => C.total(b) - C.total(a));
 
   const raiseToSecondRows = rows
-    .filter((row) => C.listed(row) && C.belong(row) <= 1 && C.total(row) >= 4 && C.c3(row) <= 2 && C.c2(row) <= 2)
+    .filter(isRaiseToSecondOptionCandidate)
     .sort((a, b) => C.total(b) - C.total(a));
 
   const raiseToThirdRows = rows
-    .filter((row) => C.listed(row) && C.belong(row) <= 2 && C.total(row) >= 4 && C.c2(row) >= 2 && C.c1(row) >= 3)
+    .filter(isRaiseToThirdOptionCandidate)
     .sort((a, b) => C.inquiry(b) - C.inquiry(a));
 
   const smartScores: SmartItem[] = rows.map((row) => {
     const listPV = C.listPV(row);
     const detailPV = C.detailPV(row);
     const inquiry = C.inquiry(row);
-    const days = C.days(row);
     const competition = C.total(row);
     const detailRate = detailPV > 0 ? inquiry / detailPV : 0;
     const transitionRate = listPV > 0 ? detailPV / listPV : 0;
@@ -255,7 +257,7 @@ function analyzeRows(rows: CsvRow[], settings: Settings): AnalysisResult {
       score,
       priorityScore,
       currentSmapic: C.smapic(row),
-      lowPerformance: days >= 15 && inquiry <= 0 && competition <= 5,
+      lowPerformance: isSmapicLowPerformance(row),
     };
   });
 
