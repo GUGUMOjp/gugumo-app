@@ -1,0 +1,45 @@
+import { buildSummary } from "@/src/server/services/analysis";
+import { readCsvFile } from "@/src/server/services/csv";
+import type { CsvSnapshot } from "@/src/server/types/csv";
+
+type CsvUploadRecord = {
+  file_name: string;
+  file_data: CsvSnapshot["rows"];
+};
+
+function formatDate(date: Date) {
+  return `${date.getFullYear()}/${String(date.getMonth() + 1).padStart(2, "0")}/${String(date.getDate()).padStart(2, "0")}`;
+}
+
+function dateKey(date: Date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
+export function hasCsvUploadFiles(fileList: FileList | File[]) {
+  return Array.from(fileList).some((file) => file.name.toLowerCase().endsWith(".csv"));
+}
+
+export async function buildUploadSnapshots(fileList: FileList | File[]) {
+  const files = Array.from(fileList).filter((file) => file.name.toLowerCase().endsWith(".csv"));
+  if (!files.length) return [];
+
+  const snapshots = await Promise.all(files.sort((a, b) => a.name.localeCompare(b.name)).map((file) => readCsvFile(file, {
+    buildSummary,
+    dateKey,
+    formatDate,
+  })));
+  snapshots.sort((a, b) => a.date.getTime() - b.date.getTime());
+
+  return snapshots;
+}
+
+export function buildCsvUploadRecords(snapshots: CsvSnapshot[]): CsvUploadRecord[] {
+  return snapshots.map((snapshot) => ({
+    file_name: snapshot.fileName,
+    file_data: snapshot.rows,
+  }));
+}
+
+export function getLatestSnapshot(snapshots: CsvSnapshot[]) {
+  return snapshots[snapshots.length - 1];
+}

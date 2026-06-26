@@ -9,7 +9,6 @@ import {
   buildDayDiffs,
   buildMonthly,
   buildPropertyHistories,
-  buildSummary,
   buildWeekly,
 } from "@/src/server/services/analysis";
 import {
@@ -21,11 +20,16 @@ import {
 import {
   C,
   normalizeId,
-  readCsvFile,
 } from "@/src/server/services/csv";
 import {
   buildPropertyViewModels,
 } from "@/src/server/services/property";
+import {
+  buildCsvUploadRecords,
+  buildUploadSnapshots,
+  getLatestSnapshot,
+  hasCsvUploadFiles,
+} from "@/src/server/services/upload";
 import type {
   CsvRow,
   CsvSnapshot,
@@ -93,14 +97,6 @@ function formatNumber(value: number) {
 
 function formatMoney(value: number) {
   return `¥${Math.round(value).toLocaleString("ja-JP")}`;
-}
-
-function formatDate(date: Date) {
-  return `${date.getFullYear()}/${String(date.getMonth() + 1).padStart(2, "0")}/${String(date.getDate()).padStart(2, "0")}`;
-}
-
-function dateKey(date: Date) {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
 
 function deltaCell(current: number, previous?: number) {
@@ -241,8 +237,8 @@ export default function Page() {
     }
   }, [checkedState]);
 
-  const latestSnapshot = snapshots[snapshots.length - 1];
-  const latestRows = latestSnapshot?.rows ?? [];
+  const latestSnapshot = useMemo(() => getLatestSnapshot(snapshots), [snapshots]);
+  const latestRows = useMemo(() => latestSnapshot?.rows ?? [], [latestSnapshot]);
   const latestSummary = latestSnapshot?.summary;
   const dayDiffs = useMemo(() => buildDayDiffs(snapshots), [snapshots]);
   const weekly = useMemo(() => buildWeekly(dayDiffs), [dayDiffs]);
@@ -278,29 +274,20 @@ export default function Page() {
   };
 
   const loadFiles = async (fileList: FileList | File[]) => {
-    const files = Array.from(fileList).filter((file) => file.name.toLowerCase().endsWith(".csv"));
-    if (!files.length) return;
+    if (!hasCsvUploadFiles(fileList)) return;
 
     setIsReadingCsv(true);
     setCheckedState({});
 
     try {
-      const parsed = await Promise.all(files.sort((a, b) => a.name.localeCompare(b.name)).map((file) => readCsvFile(file, {
-        buildSummary,
-        dateKey,
-        formatDate,
-      })));
-      parsed.sort((a, b) => a.date.getTime() - b.date.getTime());
+      const parsed = await buildUploadSnapshots(fileList);
 
-      for (const snapshot of parsed) {
-        const { error } = await supabase.from("csv_uploads").insert({
-          file_name: snapshot.fileName,
-          file_data: snapshot.rows,
-        });
+      for (const record of buildCsvUploadRecords(parsed)) {
+        const { error } = await supabase.from("csv_uploads").insert(record);
 
         if (error) {
           console.error(error);
-          alert(`Supabase保存に失敗しました: ${snapshot.fileName}`);
+          alert(`Supabase保存に失敗しました: ${record.file_name}`);
           return;
         }
       }
