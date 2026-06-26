@@ -22,6 +22,9 @@ import {
   normalizeId,
 } from "@/src/server/services/csv";
 import {
+  buildDashboardViewModel,
+} from "@/src/server/services/dashboard";
+import {
   buildPropertyViewModels,
 } from "@/src/server/services/property";
 import {
@@ -246,12 +249,11 @@ export default function Page() {
   const propertyHistories = useMemo(() => buildPropertyHistories(dayDiffs), [dayDiffs]);
   const analysis = useMemo(() => analyzeRows(latestRows, settings), [latestRows, settings]);
   const areaAllocation = useMemo(() => computeAreaAllocation(settings.ward), [settings.ward]);
+  const dashboard = useMemo(() => buildDashboardViewModel(latestSummary, analysis, weekly), [latestSummary, analysis, weekly]);
 
   const goto = (id: PageId) => setActivePage(id);
   const navBadgeValue = (badge: "weeklyCount" | "optionReviewCount" | "lowPvCount") => {
-    if (badge === "weeklyCount") return weekly.length ? `${weekly.length}週` : "—";
-    if (badge === "optionReviewCount") return analysis.removeAllRows.length + analysis.lowerToSecondRows.length + analysis.raiseToSecondRows.length + analysis.raiseToThirdRows.length || "—";
-    return analysis.lowPvRows.length || "—";
+    return dashboard.navBadges[badge];
   };
 
   const toggleCheck = (tableId: string, key: string, checked: boolean) => {
@@ -415,26 +417,26 @@ export default function Page() {
 
         <div className="content">
           <div className={pageClass(activePage, "home")}>
-            {analysis.optionBalance.totalSaving > 0 && (
+            {dashboard.savings.totalSaving > 0 && (
               <div className="savings-banner">
                 <div className="savings-main">
                   <div className="savings-label"><i className="ti ti-sparkles" /> GUGUMOで削減できた無駄オプション費用（月額）</div>
-                  <div className="savings-amount">{formatMoney(analysis.optionBalance.totalSaving)}<small>/月</small></div>
-                  <div className="savings-sub">無駄オプション {analysis.optionBalance.totalWaste}件を特定（年間 {formatMoney(analysis.optionBalance.totalSaving * 12)} の削減効果）</div>
+                  <div className="savings-amount">{formatMoney(dashboard.savings.totalSaving)}<small>/月</small></div>
+                  <div className="savings-sub">無駄オプション {dashboard.savings.totalWaste}件を特定（年間 {formatMoney(dashboard.savings.annualSaving)} の削減効果）</div>
                 </div>
                 <div className="savings-detail">
-                  <div className="savings-stat"><div className="savings-stat-val">{analysis.optionBalance.waste.smapic}</div><div className="savings-stat-lbl">スマピク無駄</div></div>
-                  <div className="savings-stat"><div className="savings-stat-val">{analysis.optionBalance.waste.panorama}</div><div className="savings-stat-lbl">パノラマ無駄</div></div>
-                  <div className="savings-stat"><div className="savings-stat-val">{analysis.optionBalance.waste.misepic}</div><div className="savings-stat-lbl">店ピク無駄</div></div>
+                  <div className="savings-stat"><div className="savings-stat-val">{dashboard.savings.wasteSmapic}</div><div className="savings-stat-lbl">スマピク無駄</div></div>
+                  <div className="savings-stat"><div className="savings-stat-val">{dashboard.savings.wastePanorama}</div><div className="savings-stat-lbl">パノラマ無駄</div></div>
+                  <div className="savings-stat"><div className="savings-stat-val">{dashboard.savings.wasteMisepic}</div><div className="savings-stat-lbl">店ピク無駄</div></div>
                 </div>
               </div>
             )}
 
             <div className="metrics">
-              <div className="metric"><div className="metric-label">掲載物件数</div><div className="metric-value">{latestSummary ? formatNumber(latestSummary.listedRows) : "—"}</div><div className="metric-sub">件</div></div>
-              <div className="metric"><div className="metric-label">総問い合わせ</div><div className="metric-value">{latestSummary ? formatNumber(latestSummary.totalInquiry) : "—"}</div><div className="metric-sub">件</div></div>
-              <div className="metric"><div className="metric-label">スマピク適用</div><div className="metric-value">{latestSummary ? formatNumber(latestSummary.smapicRows) : "—"}</div><div className="metric-sub">件</div></div>
-              <div className="metric danger"><div className="metric-label">入替対象</div><div className="metric-value">{analysis.lowPvRows.length || "—"}</div><div className="metric-sub">件</div></div>
+              <div className="metric"><div className="metric-label">掲載物件数</div><div className="metric-value">{dashboard.metrics.listedRows !== undefined ? formatNumber(dashboard.metrics.listedRows) : "—"}</div><div className="metric-sub">件</div></div>
+              <div className="metric"><div className="metric-label">総問い合わせ</div><div className="metric-value">{dashboard.metrics.totalInquiry !== undefined ? formatNumber(dashboard.metrics.totalInquiry) : "—"}</div><div className="metric-sub">件</div></div>
+              <div className="metric"><div className="metric-label">スマピク適用</div><div className="metric-value">{dashboard.metrics.smapicRows !== undefined ? formatNumber(dashboard.metrics.smapicRows) : "—"}</div><div className="metric-sub">件</div></div>
+              <div className="metric danger"><div className="metric-label">入替対象</div><div className="metric-value">{dashboard.metrics.lowPvRows}</div><div className="metric-sub">件</div></div>
             </div>
 
             <div className="row3">
@@ -458,7 +460,7 @@ export default function Page() {
                       }}
                     >
                       <i className="ti ti-alert-triangle" style={{ fontSize: 16, color: "#A32D2D" }} />
-                      <span>入替対象 {analysis.lowPvRows.length}件</span>
+                      <span>入替対象 {dashboard.alerts.lowPvRows}件</span>
                     </div>
                     <div
                       className="notice"
@@ -473,7 +475,7 @@ export default function Page() {
                     >
                       <i className="ti ti-adjustments" style={{ fontSize: 16, color: "#854F0B" }} />
                       <span>
-                        オプション見直し {analysis.removeAllRows.length + analysis.lowerToSecondRows.length + analysis.raiseToSecondRows.length + analysis.raiseToThirdRows.length}件
+                        オプション見直し {dashboard.alerts.optionReviewCount}件
                       </span>
                     </div>
                     <div
@@ -488,7 +490,7 @@ export default function Page() {
                       }}
                     >
                       <i className="ti ti-star" style={{ fontSize: 16, color: "#185FA5" }} />
-                      <span>スマピク付与推奨 {analysis.smapicAdd.length}件 / 削除推奨 {analysis.smapicRemove.length}件</span>
+                      <span>スマピク付与推奨 {dashboard.alerts.smapicAdd}件 / 削除推奨 {dashboard.alerts.smapicRemove}件</span>
                     </div>
                   </div>
                 )}
