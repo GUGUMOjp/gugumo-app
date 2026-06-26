@@ -1,36 +1,33 @@
 import { supabase } from "@/lib/supabase";
+import {
+  err,
+  ok,
+  type ServerResult,
+} from "@/src/server/shared";
 
 export type CsvUploadRecord = {
   file_name: string;
   file_data: Record<string, string>[];
 };
 
-type CsvUploadSaveResult = {
-  ok: true;
-  error: null;
-  failedRecord: null;
-} | {
-  ok: false;
-  error: unknown;
+type CsvUploadSaveError = {
+  cause: unknown;
   failedRecord: CsvUploadRecord;
 };
+
+type CsvUploadSaveResult = ServerResult<void, CsvUploadSaveError>;
 
 export async function saveCsvUploadRecord(record: CsvUploadRecord) {
   const { error } = await supabase.from("csv_uploads").insert(record);
 
   if (error) {
-    return {
-      ok: false,
-      error,
+    return err({
+      cause: error,
       failedRecord: record,
-    } satisfies CsvUploadSaveResult;
+    }) satisfies CsvUploadSaveResult;
   }
 
-  return {
-    ok: true,
-    error: null,
-    failedRecord: null,
-  } satisfies CsvUploadSaveResult;
+  return ok(undefined) satisfies CsvUploadSaveResult;
 }
 
 export async function saveCsvUploadRecords(records: CsvUploadRecord[]) {
@@ -42,9 +39,5 @@ export async function saveCsvUploadRecords(records: CsvUploadRecord[]) {
     }
   }
 
-  return {
-    ok: true,
-    error: null,
-    failedRecord: null,
-  } satisfies CsvUploadSaveResult;
+  return ok(undefined) satisfies CsvUploadSaveResult;
 }

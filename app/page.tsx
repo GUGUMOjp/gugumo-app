@@ -288,8 +288,8 @@ export default function Page() {
       const saveResult = await saveCsvUploadRecords(buildCsvUploadRecords(parsed));
 
       if (!saveResult.ok) {
-        console.error(saveResult.error);
-        alert(`Supabase保存に失敗しました: ${saveResult.failedRecord.file_name}`);
+        console.error(saveResult.error.cause);
+        alert(`Supabase保存に失敗しました: ${saveResult.error.failedRecord.file_name}`);
         return;
       }
 
