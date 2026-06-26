@@ -1,1 +1,3 @@
-export {};
+export {
+  buildRecommendations,
+} from "./recommendationBuilder";
