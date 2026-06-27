@@ -4,6 +4,9 @@ import { Fragment, useEffect, useMemo, useRef, useState, type ChangeEvent, type 
 import { PAGE_TITLES } from "@/data/constants/pageTitles";
 import { NAVIGATION_GROUPS, SETTINGS_NAV_ITEM } from "@/data/navigation/navigation";
 import {
+  getCurrentWorkspaceContextAction,
+} from "@/src/server/actions/workspaceActions";
+import {
   saveCsvUploadRecords,
 } from "@/src/server/repositories";
 import {
@@ -39,6 +42,10 @@ import {
 import type {
   CsvSnapshot,
 } from "@/src/server/types/csv";
+import type {
+  CurrentWorkspaceContext,
+  WorkspaceRole,
+} from "@/src/server/core";
 import type { OptionKey } from "@/types/option";
 import type { PageId } from "@/types/page";
 import type { Settings } from "@/types/settings";
@@ -62,6 +69,32 @@ const DEFAULT_SETTINGS: Settings = {
 };
 
 type CheckState = Record<string, string[]>;
+
+type TenantHeaderDisplay = {
+  tenantName: string;
+  roleLabel: string;
+};
+
+const TENANT_HEADER_FALLBACK: TenantHeaderDisplay = {
+  tenantName: "GUGUMO デモ環境",
+  roleLabel: "未ログイン",
+};
+
+const ROLE_LABELS = {
+  owner: "オーナー",
+  admin: "管理者",
+  member: "メンバー",
+  viewer: "閲覧者",
+} satisfies Record<WorkspaceRole, string>;
+
+function buildTenantHeaderDisplay(context: CurrentWorkspaceContext | null): TenantHeaderDisplay {
+  if (!context) return TENANT_HEADER_FALLBACK;
+
+  return {
+    tenantName: `${context.companyName}　${context.workspaceName}`,
+    roleLabel: ROLE_LABELS[context.role],
+  };
+}
 
 function pageClass(activePage: string, id: PageId) {
   return `page${activePage === id ? " active" : ""}`;
@@ -203,7 +236,30 @@ export default function Page() {
   const [propertySearch, setPropertySearch] = useState("");
   const [openProperties, setOpenProperties] = useState<Record<string, boolean>>({});
   const [isDragOver, setIsDragOver] = useState(false);
+  const [tenantHeader, setTenantHeader] = useState<TenantHeaderDisplay>(TENANT_HEADER_FALLBACK);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadWorkspaceContext() {
+      try {
+        const result = await getCurrentWorkspaceContextAction();
+
+        if (isMounted && result.ok) {
+          setTenantHeader(buildTenantHeaderDisplay(result.data));
+        }
+      } catch (error) {
+        console.error(error);
+      }
+    }
+
+    loadWorkspaceContext();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   useEffect(() => {
     try {
@@ -393,6 +449,10 @@ export default function Page() {
       <div className="main">
         <div className="topbar">
           <span className="page-title">{PAGE_TITLES[activePage]}</span>
+          <div style={{ minWidth: 168, textAlign: "right", lineHeight: 1.35 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: "var(--ink)" }}>{tenantHeader.tenantName}</div>
+            <div style={{ fontSize: 10, color: "var(--ink3)" }}>{tenantHeader.roleLabel}</div>
+          </div>
           <span className={`status-pill${latestSnapshot ? " loaded" : ""}`}>{topbarStatus}</span>
           <button type="button" className="topbar-btn primary" onClick={() => goto("upload")}><i className="ti ti-upload" style={{ fontSize: 13 }} />CSVを読み込む</button>
         </div>
