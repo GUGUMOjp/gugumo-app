@@ -1,9 +1,7 @@
-import {
-  C,
-  normalizeId,
-} from "@/src/server/services/csv";
+import { C } from "@/src/server/services/csv";
 import type { PropertyHistory } from "@/src/server/services/analysis/summary";
 import type { CsvRow } from "@/src/server/types/csv";
+import { buildPropertyRowKey } from "@/src/server/shared";
 
 export type PropertyViewModel = PropertyHistory & {
   totalList: number;
@@ -34,10 +32,6 @@ export type LowPvPropertyRowViewModel = {
   total: number;
 };
 
-function propertyRowKey(row: CsvRow) {
-  return row["物件コード"] || `${normalizeId(row["物件名"])}-${normalizeId(row["部屋番号"])}`;
-}
-
 export function buildPropertyViewModels(propertyHistories: PropertyHistory[], propertySearch: string): PropertyViewModel[] {
   return propertyHistories
     .filter((property) => {
@@ -56,7 +50,7 @@ export function buildPropertyViewModels(propertyHistories: PropertyHistory[], pr
 
 export function buildOptionPropertyRowViewModels(rows: CsvRow[]): OptionPropertyRowViewModel[] {
   return rows.map((row) => ({
-    key: propertyRowKey(row),
+    key: buildPropertyRowKey(row),
     name: C.name(row),
     room: C.room(row),
     score: C.score(row),
@@ -69,7 +63,7 @@ export function buildOptionPropertyRowViewModels(rows: CsvRow[]): OptionProperty
 
 export function buildLowPvPropertyRowViewModels(rows: CsvRow[]): LowPvPropertyRowViewModel[] {
   return rows.map((row) => ({
-    key: propertyRowKey(row),
+    key: buildPropertyRowKey(row),
     name: C.name(row),
     room: C.room(row),
     station: C.station(row),

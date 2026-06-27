@@ -1,5 +1,6 @@
 import { isSmapicLowPerformance } from "@/src/server/rules";
-import { C, normalizeId } from "@/src/server/services/csv";
+import { C } from "@/src/server/services/csv";
+import { buildPropertyNameRoomKey } from "@/src/server/shared";
 import type { SmartItem } from "@/src/server/types";
 import type { CsvRow } from "@/src/server/types/csv";
 
@@ -20,7 +21,7 @@ export function buildRecommendations(rows: CsvRow[], smapicLimit: number): Recom
     const priorityScore = listPV + detailPV * 2 + competition * 5;
 
     return {
-      id: `${normalizeId(C.name(row))}-${normalizeId(C.room(row))}`,
+      id: buildPropertyNameRoomKey(C.name(row), C.room(row)),
       name: C.name(row),
       room: C.room(row),
       score,
@@ -30,7 +31,7 @@ export function buildRecommendations(rows: CsvRow[], smapicLimit: number): Recom
     };
   });
 
-  const available = smartScores.filter((item) => rows.find((row) => `${normalizeId(C.name(row))}-${normalizeId(C.room(row))}` === item.id && C.listed(row)) && !item.lowPerformance);
+  const available = smartScores.filter((item) => rows.find((row) => buildPropertyNameRoomKey(C.name(row), C.room(row)) === item.id && C.listed(row)) && !item.lowPerformance);
   const topBySmartScore = available.filter((item) => !item.currentSmapic).sort((a, b) => b.score - a.score).slice(0, 200);
   const topByPriority = [...available].sort((a, b) => b.priorityScore - a.priorityScore).slice(0, 100);
   const finalMap = new Map<string, SmartItem>();

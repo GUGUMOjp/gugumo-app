@@ -1,4 +1,5 @@
-import { C, normalizeId } from "@/src/server/services/csv";
+import { C } from "@/src/server/services/csv";
+import { buildPropertyNameRoomKey } from "@/src/server/shared";
 import type { OptionBalance, SmartItem } from "@/src/server/types";
 import type { CsvRow } from "@/src/server/types/csv";
 
@@ -17,14 +18,14 @@ export function buildOptionBalance(rows: CsvRow[], settings: OptionBalanceSettin
     movie: rows.filter(C.movie).length,
   };
 
-  const removeAllSet = new Set(removeAllRows.map((row) => `${normalizeId(C.name(row))}-${normalizeId(C.room(row))}`));
+  const removeAllSet = new Set(removeAllRows.map((row) => buildPropertyNameRoomKey(C.name(row), C.room(row))));
   let wasteMisepic = 0;
   let wastePanorama = 0;
   let wasteArea = 0;
   let wasteMovie = 0;
 
   rows.forEach((row) => {
-    const key = `${normalizeId(C.name(row))}-${normalizeId(C.room(row))}`;
+    const key = buildPropertyNameRoomKey(C.name(row), C.room(row));
     if (!removeAllSet.has(key)) return;
     if (C.misepic(row)) wasteMisepic += 1;
     if (C.panorama(row)) wastePanorama += 1;
