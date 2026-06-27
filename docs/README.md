@@ -206,7 +206,7 @@ app/page.tsxからServer側へ移行すべきBusiness Logicの棚卸しと移行
 
 ### 12_[MultiTenantSnapshotDesign.md](http://MultiTenantSnapshotDesign.md)
 
-法人別利用、Workspace、company_id / workspace_id、Snapshot管理、Auth/RLS設計を定義する。
+法人別利用、Workspace、company_id / workspace_id、Snapshot保存payload、Auth/RLS設計を定義する。
 
 ### 13_[LegalComplianceChecklist.md](http://LegalComplianceChecklist.md)
 

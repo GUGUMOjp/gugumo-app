@@ -1,4 +1,4 @@
-# Multi Tenant / Snapshot Design v1.1
+# Multi Tenant / Snapshot Design v1.2
 
 ## 0. 目的
 
@@ -147,14 +147,40 @@ Reports
 
 現状は `csv_uploads` に `file_name`, `file_data` を保存している。
 
+現在のCSV保存payload:
+
+```ts
+{
+  file_name: string;
+  file_data: Record<string, string>[];
+}
+```
+
 短期的には `csv_uploads` に以下を追加してもよい。
 
 - company_id
 - workspace_id
 - uploaded_by
 - snapshot_date
+- source
 - row_count
 - checksum
+
+β版まで暫定的に `csv_uploads` を使う場合のpayload:
+
+```ts
+type CsvUploadRecord = {
+  company_id: string;
+  workspace_id: string;
+  uploaded_by: string;
+  snapshot_date: string;
+  source: "suumo_csv";
+  file_name: string;
+  row_count: number;
+  checksum: string | null;
+  file_data: Record<string, string>[];
+};
+```
 
 ただし中長期では、`snapshots` / `snapshot_rows` へ移行する。
 
@@ -162,10 +188,60 @@ Reports
 
 - β版までは `csv_uploads + company_id + workspace_id` でも可
 - 本格運用前に `snapshots` へ移行するのが望ましい
+- DB変更前にRepository / Payload設計を固定する
 
 ---
 
-## 6. 認証方式
+## 6. Snapshot保存payload設計
+
+本格運用では `snapshots` / `snapshot_rows` を本命にする。
+
+`snapshots`:
+
+```ts
+type SnapshotRecord = {
+  company_id: string;
+  workspace_id: string;
+  uploaded_by: string;
+  snapshot_date: string;
+  source: "suumo_csv";
+  file_name: string;
+  row_count: number;
+  checksum: string | null;
+};
+```
+
+`snapshot_rows`:
+
+```ts
+type SnapshotRowRecord = {
+  company_id: string;
+  workspace_id: string;
+  snapshot_id: string;
+  row_data: Record<string, string>;
+  property_key: string | null;
+};
+```
+
+### ID・日付付与方針
+
+- `company_id`: CurrentWorkspaceContextから取得
+- `workspace_id`: CurrentWorkspaceContextから取得
+- `uploaded_by`: Current User IDから取得
+- `snapshot_date`: CsvSnapshot.dateKeyを使用
+- `row_count`: snapshot.rows.length
+- `source`: 初期は `"suumo_csv"`
+- `checksum`: 初期はnull許容、本格運用前にhash生成
+
+### 判断
+
+- 本格運用では `snapshots / snapshot_rows` を本命にする
+- `csv_uploads` 暫定拡張はβ版までの選択肢
+- DB変更前にRepository / Payload設計を固定する
+
+---
+
+## 7. 認証方式
 
 初期は Supabase Auth email/password を採用する。
 
@@ -177,7 +253,7 @@ Reports
 
 ---
 
-## 7. Role設計
+## 8. Role設計
 
 初期Role:
 
@@ -197,7 +273,7 @@ Reports
 
 ---
 
-## 8. Header Context方針
+## 9. Header Context方針
 
 ログイン後の画面には、所属Company / Workspace / Roleを表示する。
 
@@ -218,7 +294,7 @@ Reports
 
 ---
 
-## 9. RLS方針
+## 10. RLS方針
 
 基本方針:
 
@@ -262,7 +338,7 @@ workspace_id in (
 
 ---
 
-## 10. Server構成方針
+## 11. Server構成方針
 
 必要になる構成:
 
@@ -281,7 +357,7 @@ src/server/actions/snapshotActions.ts
 
 ---
 
-## 11. 実装順
+## 12. 実装順
 
 ### Sprint 6-5
 
@@ -315,15 +391,53 @@ Header Tenant Display
 
 ### Sprint 6-9
 
-Snapshot保存基盤
+Product Shell / Legal Navigation Foundation
 
-- csv_uploadsを暫定拡張するか
-- snapshots / snapshot_rows を作るか最終判断
-- Repository更新
+- Legal導線を追加
+- バージョン表示を追加
+- Product Shell情報を定数化
 
 ### Sprint 6-10
 
-DB migration / RLS
+Snapshot Save Payload Design
+
+- 現在のCSV保存payloadを調査
+- `csv_uploads` 暫定拡張案を整理
+- `snapshots / snapshot_rows` 本命案を整理
+
+### Sprint 6-11
+
+Snapshot Payload Design Docs
+
+- Snapshot保存payload設計をdocsへ固定
+- ID・日付付与方針を明文化
+
+### Sprint 6-12
+
+Snapshot Repository Foundation
+
+- `snapshotRepository.ts` を追加
+- `saveSnapshot`
+- `saveSnapshotRows`
+- `saveSnapshotWithRows`
+
+### Sprint 6-13
+
+Snapshot DB Migration Plan
+
+- DB migration内容を確定
+- `snapshots` / `snapshot_rows` を作成するか最終判断
+
+### Sprint 6-14
+
+Snapshot Save Integration
+
+- Upload保存処理をSnapshot Repositoryへ接続
+- `company_id` / `workspace_id` / `uploaded_by` / `snapshot_date` をpayloadへ付与
+
+### Sprint 6-15
+
+RLS Policy Foundation
 
 - company_id分離
 - workspace_id分離
@@ -332,13 +446,15 @@ DB migration / RLS
 
 ---
 
-## 12. 現時点の判断
+## 13. 現時点の判断
 
 今すぐ実装する:
 
 - Workspace設計のドキュメント化
 - Company / Workspace / Profile方針の確定
 - Header Context方針の確定
+- Snapshot Payload設計のドキュメント化
+- `snapshot_date = CsvSnapshot.dateKey` 方針の確定
 
 まだ実装しない:
 
@@ -347,3 +463,5 @@ DB migration / RLS
 - app/page.tsxへの認証組み込み
 - csv_uploads変更
 - workspace_settings DB化
+- Snapshot Repository実装
+- checksum本実装
