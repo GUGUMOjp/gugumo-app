@@ -220,6 +220,10 @@ Snapshot保存へ移行するためのDB migration / RLS / rollback方針。
 
 snapshots / snapshot_rows 作成予定SQL、index、RLS、rollback、実行前確認の下書き。
 
+### 16_[TenantBaseSqlDraft.md](http://TenantBaseSqlDraft.md)
+
+Company / Workspace / Profile のSQL Draft、index、RLS、rollback下書き。
+
 ---
 
 ## 5. GUGUMOの設計思想

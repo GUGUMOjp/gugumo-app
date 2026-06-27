@@ -94,6 +94,8 @@ Reports
 
 将来、複数Workspace所属が必要になった場合は `workspace_memberships` を追加する。
 
+Company / Workspace / Profile の作成SQLは、`docs/16_TenantBaseSqlDraft.md` で実行前レビュー用に管理する。
+
 ### snapshots
 
 - id uuid primary key
