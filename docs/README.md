@@ -228,6 +228,10 @@ Company / Workspace / Profile のSQL Draft、Migration管理方針、index、RLS
 
 開発用Company / Workspace / Profile seed手順、冪等SQL、確認SQL、rollback手順。
 
+### 18_[ServerAuthWorkspaceContextReview.md](http://ServerAuthWorkspaceContextReview.md)
+
+Server Auth、CurrentWorkspaceContext、Tenant Repositoryの現状確認とRLS前の修正点。
+
 ---
 
 ## 5. GUGUMOの設計思想
