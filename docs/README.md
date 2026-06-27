@@ -212,6 +212,10 @@ app/page.tsxからServer側へ移行すべきBusiness Logicの棚卸しと移行
 
 GUGUMOの法務ページ、禁止事項、Cookie / 外部送信、公開前レビュー項目を整理する。
 
+### 14_[SnapshotMigrationPlan.md](http://SnapshotMigrationPlan.md)
+
+Snapshot保存へ移行するためのDB migration / RLS / rollback方針。
+
 ---
 
 ## 5. GUGUMOの設計思想
