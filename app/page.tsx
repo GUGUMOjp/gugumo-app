@@ -20,13 +20,11 @@ import {
   WARD_GRID,
 } from "@/src/server/services/area";
 import {
-  C,
-  normalizeId,
-} from "@/src/server/services/csv";
-import {
   buildDashboardViewModel,
 } from "@/src/server/services/dashboard";
 import {
+  buildLowPvPropertyRowViewModels,
+  buildOptionPropertyRowViewModels,
   buildPropertyViewModels,
 } from "@/src/server/services/property";
 import {
@@ -36,7 +34,6 @@ import {
   hasCsvUploadFiles,
 } from "@/src/server/services/upload";
 import type {
-  CsvRow,
   CsvSnapshot,
 } from "@/src/server/types/csv";
 import type { OptionKey } from "@/types/option";
@@ -85,10 +82,6 @@ function deltaCell(current: number, previous?: number) {
   if (current > previous) return <span className="d-up">▲{rate.toFixed(1)}%</span>;
   if (current < previous) return <span className="d-down">▼{Math.abs(rate).toFixed(1)}%</span>;
   return <span style={{ color: "var(--ink3)" }}>±0%</span>;
-}
-
-function rowKey(row: CsvRow) {
-  return row["物件コード"] || `${normalizeId(row["物件名"])}-${normalizeId(row["部屋番号"])}`;
 }
 
 function maxValue(values: number[]) {
@@ -314,6 +307,11 @@ export default function Page() {
     () => buildPropertyViewModels(propertyHistories, propertySearch),
     [propertyHistories, propertySearch],
   );
+  const removeAllPropertyRows = useMemo(() => buildOptionPropertyRowViewModels(analysis.removeAllRows), [analysis.removeAllRows]);
+  const lowerToSecondPropertyRows = useMemo(() => buildOptionPropertyRowViewModels(analysis.lowerToSecondRows), [analysis.lowerToSecondRows]);
+  const raiseToSecondPropertyRows = useMemo(() => buildOptionPropertyRowViewModels(analysis.raiseToSecondRows), [analysis.raiseToSecondRows]);
+  const raiseToThirdPropertyRows = useMemo(() => buildOptionPropertyRowViewModels(analysis.raiseToThirdRows), [analysis.raiseToThirdRows]);
+  const lowPvPropertyRows = useMemo(() => buildLowPvPropertyRowViewModels(analysis.lowPvRows), [analysis.lowPvRows]);
 
   const currentWardCounts = useMemo(() => buildCurrentWardCounts(analysis.listedRows, areaAllocation), [analysis.listedRows, areaAllocation]);
   const areaBalance = useMemo(
@@ -522,15 +520,15 @@ export default function Page() {
           <div className={pageClass(activePage, "opt")}>
             <div className="opt-group remove">
               <div className="opt-group-label"><i className="ti ti-circle-minus" />オプションを外す系</div>
-              <div className="card"><div className="card-head"><div className="card-title">①全オプションを外す（スマピク以外）</div><ProgressActions tableId="t1" total={analysis.removeAllRows.length} checkedState={checkedState} onClear={clearChecks} /></div><div className="tbl-wrap"><table className="tbl"><thead><tr><th className="col-check" /><th>物件名</th><th>部屋番号</th><th>住戸名寄せ点数</th><th>競合数</th></tr></thead><tbody>{analysis.removeAllRows.length ? analysis.removeAllRows.slice(0, 200).map((row) => { const key = rowKey(row); return <CheckableRow key={key} tableId="t1" itemKey={key} checked={isChecked("t1", key)} onChange={toggleCheck}><td className="nm">{C.name(row)}</td><td>{C.room(row)}</td><td className="num">{C.score(row)}</td><td className="num">{C.total(row)}</td></CheckableRow>; }) : <EmptyRow colSpan={5} />}</tbody></table></div></div>
+              <div className="card"><div className="card-head"><div className="card-title">①全オプションを外す（スマピク以外）</div><ProgressActions tableId="t1" total={analysis.removeAllRows.length} checkedState={checkedState} onClear={clearChecks} /></div><div className="tbl-wrap"><table className="tbl"><thead><tr><th className="col-check" /><th>物件名</th><th>部屋番号</th><th>住戸名寄せ点数</th><th>競合数</th></tr></thead><tbody>{removeAllPropertyRows.length ? removeAllPropertyRows.slice(0, 200).map((row) => <CheckableRow key={row.key} tableId="t1" itemKey={row.key} checked={isChecked("t1", row.key)} onChange={toggleCheck}><td className="nm">{row.name}</td><td>{row.room}</td><td className="num">{row.score}</td><td className="num">{row.total}</td></CheckableRow>) : <EmptyRow colSpan={5} />}</tbody></table></div></div>
               <div style={{ height: 11 }} />
-              <div className="card"><div className="card-head"><div className="card-title">②第2基準まで落とす</div><ProgressActions tableId="t2" total={analysis.lowerToSecondRows.length} checkedState={checkedState} onClear={clearChecks} /></div><div className="tbl-wrap"><table className="tbl"><thead><tr><th className="col-check" /><th>物件名</th><th>部屋</th><th>第3</th><th>第2</th><th>第1</th><th>競合</th></tr></thead><tbody>{analysis.lowerToSecondRows.length ? analysis.lowerToSecondRows.slice(0, 200).map((row) => { const key = rowKey(row); return <CheckableRow key={key} tableId="t2" itemKey={key} checked={isChecked("t2", key)} onChange={toggleCheck}><td className="nm">{C.name(row)}</td><td>{C.room(row)}</td><td className="num">{C.c3(row)}</td><td className="num">{C.c2(row)}</td><td className="num">{C.c1(row)}</td><td className="num">{C.total(row)}</td></CheckableRow>; }) : <EmptyRow colSpan={7} />}</tbody></table></div></div>
+              <div className="card"><div className="card-head"><div className="card-title">②第2基準まで落とす</div><ProgressActions tableId="t2" total={analysis.lowerToSecondRows.length} checkedState={checkedState} onClear={clearChecks} /></div><div className="tbl-wrap"><table className="tbl"><thead><tr><th className="col-check" /><th>物件名</th><th>部屋</th><th>第3</th><th>第2</th><th>第1</th><th>競合</th></tr></thead><tbody>{lowerToSecondPropertyRows.length ? lowerToSecondPropertyRows.slice(0, 200).map((row) => <CheckableRow key={row.key} tableId="t2" itemKey={row.key} checked={isChecked("t2", row.key)} onChange={toggleCheck}><td className="nm">{row.name}</td><td>{row.room}</td><td className="num">{row.c3}</td><td className="num">{row.c2}</td><td className="num">{row.c1}</td><td className="num">{row.total}</td></CheckableRow>) : <EmptyRow colSpan={7} />}</tbody></table></div></div>
             </div>
             <div className="opt-group add">
               <div className="opt-group-label"><i className="ti ti-circle-plus" />オプションを付ける系</div>
-              <div className="card"><div className="card-head"><div className="card-title">③第2基準に上げる</div><ProgressActions tableId="t3" total={analysis.raiseToSecondRows.length} checkedState={checkedState} onClear={clearChecks} /></div><div className="tbl-wrap"><table className="tbl"><thead><tr><th className="col-check" /><th>物件名</th><th>部屋</th><th>第3</th><th>第2</th><th>第1</th><th>競合</th></tr></thead><tbody>{analysis.raiseToSecondRows.length ? analysis.raiseToSecondRows.slice(0, 200).map((row) => { const key = rowKey(row); return <CheckableRow key={key} tableId="t3" itemKey={key} checked={isChecked("t3", key)} onChange={toggleCheck}><td className="nm">{C.name(row)}</td><td>{C.room(row)}</td><td className="num">{C.c3(row)}</td><td className="num">{C.c2(row)}</td><td className="num">{C.c1(row)}</td><td className="num">{C.total(row)}</td></CheckableRow>; }) : <EmptyRow colSpan={7} />}</tbody></table></div></div>
+              <div className="card"><div className="card-head"><div className="card-title">③第2基準に上げる</div><ProgressActions tableId="t3" total={analysis.raiseToSecondRows.length} checkedState={checkedState} onClear={clearChecks} /></div><div className="tbl-wrap"><table className="tbl"><thead><tr><th className="col-check" /><th>物件名</th><th>部屋</th><th>第3</th><th>第2</th><th>第1</th><th>競合</th></tr></thead><tbody>{raiseToSecondPropertyRows.length ? raiseToSecondPropertyRows.slice(0, 200).map((row) => <CheckableRow key={row.key} tableId="t3" itemKey={row.key} checked={isChecked("t3", row.key)} onChange={toggleCheck}><td className="nm">{row.name}</td><td>{row.room}</td><td className="num">{row.c3}</td><td className="num">{row.c2}</td><td className="num">{row.c1}</td><td className="num">{row.total}</td></CheckableRow>) : <EmptyRow colSpan={7} />}</tbody></table></div></div>
               <div style={{ height: 11 }} />
-              <div className="card"><div className="card-head"><div className="card-title">④第3基準に上げる</div><ProgressActions tableId="t4" total={analysis.raiseToThirdRows.length} checkedState={checkedState} onClear={clearChecks} /></div><div className="tbl-wrap"><table className="tbl"><thead><tr><th className="col-check" /><th>物件名</th><th>部屋</th><th>第3</th><th>第2</th><th>第1</th><th>競合</th></tr></thead><tbody>{analysis.raiseToThirdRows.length ? analysis.raiseToThirdRows.slice(0, 200).map((row) => { const key = rowKey(row); return <CheckableRow key={key} tableId="t4" itemKey={key} checked={isChecked("t4", key)} onChange={toggleCheck}><td className="nm">{C.name(row)}</td><td>{C.room(row)}</td><td className="num">{C.c3(row)}</td><td className="num">{C.c2(row)}</td><td className="num">{C.c1(row)}</td><td className="num">{C.total(row)}</td></CheckableRow>; }) : <EmptyRow colSpan={7} />}</tbody></table></div></div>
+              <div className="card"><div className="card-head"><div className="card-title">④第3基準に上げる</div><ProgressActions tableId="t4" total={analysis.raiseToThirdRows.length} checkedState={checkedState} onClear={clearChecks} /></div><div className="tbl-wrap"><table className="tbl"><thead><tr><th className="col-check" /><th>物件名</th><th>部屋</th><th>第3</th><th>第2</th><th>第1</th><th>競合</th></tr></thead><tbody>{raiseToThirdPropertyRows.length ? raiseToThirdPropertyRows.slice(0, 200).map((row) => <CheckableRow key={row.key} tableId="t4" itemKey={row.key} checked={isChecked("t4", row.key)} onChange={toggleCheck}><td className="nm">{row.name}</td><td>{row.room}</td><td className="num">{row.c3}</td><td className="num">{row.c2}</td><td className="num">{row.c1}</td><td className="num">{row.total}</td></CheckableRow>) : <EmptyRow colSpan={7} />}</tbody></table></div></div>
             </div>
           </div>
 
@@ -542,7 +540,7 @@ export default function Page() {
           </div>
 
           <div className={pageClass(activePage, "lowpv")}>
-            <div className="card"><div className="card-head"><div className="card-title" style={{ color: "var(--red)" }}><i className="ti ti-alert-triangle" />入替対象物件</div><ProgressActions tableId="t6" total={analysis.lowPvRows.length} checkedState={checkedState} onClear={clearChecks} /></div><div className="tbl-wrap"><table className="tbl"><thead><tr><th className="col-check" /><th>物件名</th><th>部屋番号</th><th>駅</th><th>間取</th><th>賃料+管理費</th><th>掲載日数</th><th>問合せ</th><th>競合数</th></tr></thead><tbody>{analysis.lowPvRows.length ? analysis.lowPvRows.slice(0, 300).map((row) => { const key = rowKey(row); return <CheckableRow key={key} tableId="t6" itemKey={key} checked={isChecked("t6", key)} onChange={toggleCheck}><td className="nm">{C.name(row)}</td><td>{C.room(row)}</td><td>{C.station(row)}</td><td>{C.madori(row)}</td><td className="num">{C.rent(row)}万円</td><td className="num">{C.days(row)}日</td><td className="num">{C.inquiry(row)}件</td><td className="num">{C.total(row)}件</td></CheckableRow>; }) : <EmptyRow colSpan={9} />}</tbody></table></div></div>
+            <div className="card"><div className="card-head"><div className="card-title" style={{ color: "var(--red)" }}><i className="ti ti-alert-triangle" />入替対象物件</div><ProgressActions tableId="t6" total={analysis.lowPvRows.length} checkedState={checkedState} onClear={clearChecks} /></div><div className="tbl-wrap"><table className="tbl"><thead><tr><th className="col-check" /><th>物件名</th><th>部屋番号</th><th>駅</th><th>間取</th><th>賃料+管理費</th><th>掲載日数</th><th>問合せ</th><th>競合数</th></tr></thead><tbody>{lowPvPropertyRows.length ? lowPvPropertyRows.slice(0, 300).map((row) => <CheckableRow key={row.key} tableId="t6" itemKey={row.key} checked={isChecked("t6", row.key)} onChange={toggleCheck}><td className="nm">{row.name}</td><td>{row.room}</td><td>{row.station}</td><td>{row.madori}</td><td className="num">{row.rent}万円</td><td className="num">{row.days}日</td><td className="num">{row.inquiry}件</td><td className="num">{row.total}件</td></CheckableRow>) : <EmptyRow colSpan={9} />}</tbody></table></div></div>
           </div>
 
           <div className={pageClass(activePage, "optbal")}>
