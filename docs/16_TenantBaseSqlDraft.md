@@ -212,6 +212,7 @@ drop table if exists public.companies;
 - snapshots SQLより先に実行すること
 - RLSは同時にONにしないこと
 - 初期Company / Workspace / Profile seed手順を別Sprintで確認すること
+- 開発用seed手順は `docs/17_TenantSeedPlan.md` を参照すること
 
 ---
 
