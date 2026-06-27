@@ -24,3 +24,13 @@ export {
 export type {
   WorkspaceRecord,
 } from "./workspaceRepository";
+export {
+  saveSnapshot,
+  saveSnapshotRows,
+  saveSnapshotWithRows,
+} from "./snapshotRepository";
+export type {
+  SnapshotRecord,
+  SnapshotRowInputRecord,
+  SnapshotRowRecord,
+} from "./snapshotRepository";
