@@ -1,12 +1,39 @@
-# Tenant Base SQL Draft v1.0
+# Tenant Base SQL Draft v1.1
 
 ## 1. 目的
 
 Company / Workspace / Profile をMulti Tenantの前提テーブルとして作成するSQL Draft。
 
-このSQLはまだ実行しない。
+Tenant Base Schemaは開発Supabase環境で手動適用済み。
 
-DB変更・Supabase設定変更・RLS有効化は、別Sprintで実施判断する。
+このSprintではSQL実行・Supabase変更・RLS有効化は行わない。
+
+今後のDB変更は、手動SQLではなくMigration経由で管理する。
+
+---
+
+## 1.1 Migration管理方針
+
+Git管理用Migration:
+
+```text
+supabase/migrations/20260627_001_initial_tenant_schema.sql
+```
+
+Rollback:
+
+```text
+supabase/docs/rollback/20260627_001_initial_tenant_schema.rollback.sql
+```
+
+運用方針:
+
+- 開発環境ではTenant Base Schemaを手動適用済み
+- このMigrationは、手動適用済みSchemaをRepositoryに記録するためのもの
+- 今後のDB変更は `supabase/migrations/` に追加する
+- Rollback手順は `supabase/docs/rollback/` で管理する
+- RLS / Snapshot / Billingなど未来分のMigrationは、必要になったSprintで追加する
+- このSprintではSQL実行しない
 
 ---
 
@@ -195,6 +222,12 @@ owner / admin権限は後続Sprintで拡張する。
 
 Seedだけを戻す場合は、Schema rollbackではなく `docs/17_TenantSeedPlan.md` のSeed rollbackを使う。
 
+Schema rollback SQLは以下で管理する。
+
+```text
+supabase/docs/rollback/20260627_001_initial_tenant_schema.rollback.sql
+```
+
 ```sql
 drop table if exists public.profiles;
 drop table if exists public.workspaces;
@@ -218,13 +251,16 @@ drop table if exists public.companies;
 - 初期Company / Workspace / Profile seed手順を別Sprintで確認すること
 - 開発用seed手順は `docs/17_TenantSeedPlan.md` を参照すること
 - Schema rollbackとSeed rollbackを混同しないこと
+- Migrationファイルは `supabase/migrations/20260627_001_initial_tenant_schema.sql` で管理すること
+- Rollbackファイルは `supabase/docs/rollback/20260627_001_initial_tenant_schema.rollback.sql` で管理すること
+- 未来分のMigrationを先に作りすぎないこと
 
 ---
 
 ## 8. 今回の判断
 
-このSprintではSQLをdocs化するだけに留める。
+Tenant Base Schemaは開発Supabase環境で手動適用済み。
 
-Supabaseでの実行可否は、CTOレビュー後に別Sprintで判断する。
+このSprintでは、手動適用済みSchemaをMigrationとしてRepositoryへ記録する。
 
-現時点では、SQL実行はまだ不可。
+このSprintではSQL実行・Supabase変更・Seed再実行・RLS有効化はしない。
