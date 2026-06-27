@@ -226,7 +226,7 @@ Company / Workspace / Profile のSQL Draft、index、RLS、rollback下書き。
 
 ### 17_[TenantSeedPlan.md](http://TenantSeedPlan.md)
 
-開発用Company / Workspace / Profile seed手順、確認SQL、rollback手順。
+開発用Company / Workspace / Profile seed手順、冪等SQL、確認SQL、rollback手順。
 
 ---
 

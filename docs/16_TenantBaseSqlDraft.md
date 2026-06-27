@@ -191,6 +191,10 @@ owner / admin権限は後続Sprintで拡張する。
 
 削除順に注意する。
 
+既存データがある場合は `drop table` 禁止。
+
+Seedだけを戻す場合は、Schema rollbackではなく `docs/17_TenantSeedPlan.md` のSeed rollbackを使う。
+
 ```sql
 drop table if exists public.profiles;
 drop table if exists public.workspaces;
@@ -213,6 +217,7 @@ drop table if exists public.companies;
 - RLSは同時にONにしないこと
 - 初期Company / Workspace / Profile seed手順を別Sprintで確認すること
 - 開発用seed手順は `docs/17_TenantSeedPlan.md` を参照すること
+- Schema rollbackとSeed rollbackを混同しないこと
 
 ---
 
