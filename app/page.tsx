@@ -39,6 +39,9 @@ import type {
   CsvRow,
   CsvSnapshot,
 } from "@/src/server/types/csv";
+import type { OptionKey } from "@/types/option";
+import type { PageId } from "@/types/page";
+import type { Settings } from "@/types/settings";
 
 const ALL_WARDS = WARD_GRID.flat()
   .filter((w): w is string => Boolean(w))
@@ -57,34 +60,6 @@ const DEFAULT_SETTINGS: Settings = {
     movie: 600,
   },
 };
-
-type PageId =
-  | "home"
-  | "weekly"
-  | "monthly"
-  | "props"
-  | "opt"
-  | "smapic"
-  | "lowpv"
-  | "optbal"
-  | "area"
-  | "upload"
-  | "settings";
-
-type Settings = {
-  slots: number;
-  smapicLimit: number;
-  ward: string;
-  prices: {
-    smapic: number;
-    misepic: number;
-    panorama: number;
-    area: number;
-    movie: number;
-  };
-};
-
-type OptionKey = "smapic" | "misepic" | "panorama" | "area" | "movie";
 
 type CheckState = Record<string, string[]>;
 
