@@ -1,4 +1,4 @@
-const WARD_GRID = [
+export const WARD_GRID = [
     ["西淀川区", "淀川区", "東淀川区", "", ""],
     ["此花区", "福島区", "北区", "都島区", "旭区"],
     ["港区", "西区", "中央区", "東成区", "鶴見区"],
@@ -7,7 +7,7 @@ const WARD_GRID = [
     ["", "住吉区", "", "", ""],
   ];
 
-const WARD_INFO: Record<string, string> = {
+export const WARD_INFO: Record<string, string> = {
     北区: "梅田中心。オフィス集積で転勤者・単身若年層の需要が非常に高い大阪随一の中心地。",
     都島区: "京橋エリア。交通利便性が高く単身〜ファミリーまで安定需要。",
     福島区: "梅田隣接で人気飲食店が多く、利便性と住みやすさで若年層・単身に支持される上昇エリア。",
@@ -34,7 +34,7 @@ const WARD_INFO: Record<string, string> = {
     平野区: "大阪市最大人口の住宅区。手頃な家賃でファミリー需要。",
   };
   
-  const WARD_POP: Record<string, number> = {
+export const WARD_POP: Record<string, number> = {
     北区: 10,
     中央区: 10,
     西区: 8,
