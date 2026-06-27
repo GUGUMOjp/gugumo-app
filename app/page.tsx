@@ -4,6 +4,10 @@ import { Fragment, useEffect, useMemo, useRef, useState, type ChangeEvent, type 
 import { PAGE_TITLES } from "@/data/constants/pageTitles";
 import { NAVIGATION_GROUPS, SETTINGS_NAV_ITEM } from "@/data/navigation/navigation";
 import {
+  LEGAL_LINKS,
+  PRODUCT_META,
+} from "@/data/product/productMeta";
+import {
   getCurrentWorkspaceContextAction,
 } from "@/src/server/actions/workspaceActions";
 import {
@@ -443,6 +447,25 @@ export default function Page() {
         </div>
         <div className="sidebar-footer">
           <div className="settings-link" onClick={() => goto(SETTINGS_NAV_ITEM.id)}><i className={`ti ${SETTINGS_NAV_ITEM.icon}`} style={{ fontSize: 14 }} /><span>{SETTINGS_NAV_ITEM.label}</span></div>
+          <div style={{ marginTop: 12, paddingTop: 12, borderTop: "0.5px solid rgba(255, 255, 255, 0.08)" }}>
+            <div style={{ fontSize: 10.5, color: "rgba(255, 255, 255, 0.46)", lineHeight: 1.5 }}>
+              {PRODUCT_META.productName} {PRODUCT_META.version}
+            </div>
+            <div style={{ fontSize: 10, color: "rgba(255, 255, 255, 0.32)", lineHeight: 1.5 }}>
+              {PRODUCT_META.buildLabel}
+            </div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "4px 8px", marginTop: 8 }}>
+              {LEGAL_LINKS.map((link) => (
+                <a
+                  key={link.href}
+                  href={link.href}
+                  style={{ fontSize: 10, color: "rgba(255, 255, 255, 0.45)", textDecoration: "none" }}
+                >
+                  {link.label}
+                </a>
+              ))}
+            </div>
+          </div>
         </div>
       </aside>
 
