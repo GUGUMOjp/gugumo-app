@@ -1,42 +1,66 @@
-# Multi Tenant / Snapshot Design v1.0
+# Multi Tenant / Snapshot Design v1.1
 
 ## 0. 目的
 
-GUGUMOを複数法人が安全に利用できるBtoB SaaSへ進化させるため、Company / User / Snapshot / RLS の基本設計を定義する。
+GUGUMOを複数法人が安全に利用できるBtoB SaaSへ進化させるため、Company / Workspace / User / Snapshot / RLS の基本設計を定義する。
 
-GUGUMOではSUUMO CSVを単なるアップロードファイルではなく、法人ごとの「日次スナップショット」として扱う。
+GUGUMOではSUUMO CSVを単なるアップロードファイルではなく、法人・店舗ごとの「日次スナップショット」として扱う。
 
 ---
 
 ## 1. 基本方針
 
 - すべての業務データは `company_id` を持つ
+- 店舗・拠点単位で管理する業務データは `workspace_id` を持つ
 - ユーザーは必ず1つ以上のCompanyに所属する
-- 初期フェーズでは1ユーザー1Companyを基本とする
+- 初期フェーズでは1ユーザー1Company / 1Workspaceを基本とする
 - CSVは蓄積保存する
 - CSVは `csv_uploads` ではなく、将来的に `snapshots` 概念へ発展させる
 - `created_at` ではなく `snapshot_date` を分析軸にする
-- RLSにより他社データは参照・更新できない
+- RLSにより他社データ・他Workspaceデータは参照・更新できない
 
 ---
 
-## 2. 推奨ドメインモデル
+## 2. Workspace概念
+
+Workspaceは、Company配下の運用単位である。
+
+例:
+
+```text
+Company: 株式会社〇〇不動産
+Workspace: 梅田店 / 難波店 / 天王寺店
+```
+
+Companyは契約・請求・最上位データ境界を表す。
+
+WorkspaceはCSVアップロード、Settings、Snapshot、Analysis、Advice、Reportを実際に運用する店舗・拠点単位を表す。
+
+---
+
+## 3. 推奨ドメインモデル
 
 ```text
 Company
 ↓
-User / Profile
+Workspace
+↓
+Profile / User
 ↓
 Snapshot
 ↓
-CSV Rows / Analysis
+Snapshot Rows
 ↓
-Advice / Report
+Analysis
+↓
+Advice
+↓
+Reports
 ```
 
 ---
 
-## 3. 推奨テーブル
+## 4. 推奨テーブル
 
 ### companies
 
@@ -46,10 +70,19 @@ Advice / Report
 - plan text
 - created_at timestamptz default now()
 
+### workspaces
+
+- id uuid primary key
+- company_id uuid references companies(id)
+- name text not null
+- status text not null
+- created_at timestamptz default now()
+
 ### profiles
 
 - id uuid primary key
 - company_id uuid references companies(id)
+- workspace_id uuid references workspaces(id)
 - email text
 - name text
 - role text
@@ -57,10 +90,15 @@ Advice / Report
 
 `profiles.id` は `auth.users.id` と一致させる。
 
+初期は1ユーザー1Workspaceで運用する。
+
+将来、複数Workspace所属が必要になった場合は `workspace_memberships` を追加する。
+
 ### snapshots
 
 - id uuid primary key
 - company_id uuid references companies(id)
+- workspace_id uuid references workspaces(id)
 - uploaded_by uuid references auth.users(id)
 - snapshot_date date not null
 - source text default 'suumo_csv'
@@ -73,15 +111,17 @@ Advice / Report
 
 - id uuid primary key
 - company_id uuid references companies(id)
+- workspace_id uuid references workspaces(id)
 - snapshot_id uuid references snapshots(id)
 - row_data jsonb not null
 - property_key text
 - created_at timestamptz default now()
 
-### company_settings
+### workspace_settings
 
 - id uuid primary key
 - company_id uuid references companies(id)
+- workspace_id uuid references workspaces(id)
 - slots integer
 - smapic_limit integer
 - ward text
@@ -93,20 +133,24 @@ Advice / Report
 
 - id uuid primary key
 - company_id uuid references companies(id)
+- workspace_id uuid references workspaces(id)
 - snapshot_id uuid references snapshots(id)
 - report_type text
 - report_data jsonb
 - created_at timestamptz default now()
 
+`company_id` は最上位境界として残し、`workspace_id` は店舗・拠点ごとの運用データ分離に使う。
+
 ---
 
-## 4. 既存csv_uploadsとの関係
+## 5. 既存csv_uploadsとの関係
 
 現状は `csv_uploads` に `file_name`, `file_data` を保存している。
 
 短期的には `csv_uploads` に以下を追加してもよい。
 
 - company_id
+- workspace_id
 - uploaded_by
 - snapshot_date
 - row_count
@@ -116,12 +160,12 @@ Advice / Report
 
 判断:
 
-- β版までは `csv_uploads + company_id` でも可
+- β版までは `csv_uploads + company_id + workspace_id` でも可
 - 本格運用前に `snapshots` へ移行するのが望ましい
 
 ---
 
-## 5. 認証方式
+## 6. 認証方式
 
 初期は Supabase Auth email/password を採用する。
 
@@ -129,11 +173,11 @@ Advice / Report
 
 - 法人ごとにID/PWを発行しやすい
 - `auth.uid()` をRLSに利用できる
-- profiles と company_id を紐付けやすい
+- profiles と company_id / workspace_id を紐付けやすい
 
 ---
 
-## 6. Role設計
+## 7. Role設計
 
 初期Role:
 
@@ -146,18 +190,41 @@ Advice / Report
 
 権限方針:
 
-- owner: 契約・会社設定・ユーザー管理
-- admin: CSVアップロード、設定変更、閲覧
+- owner: 契約・会社設定・ユーザー管理・複数Workspace閲覧
+- admin: CSVアップロード、Workspace設定変更、閲覧
 - member: CSVアップロード、閲覧
 - viewer: 閲覧のみ
 
 ---
 
-## 7. RLS方針
+## 8. Header Context方針
+
+ログイン後の画面には、所属Company / Workspace / Roleを表示する。
+
+表示例:
+
+```text
+株式会社〇〇不動産　梅田店
+管理者
+```
+
+必要Context:
+
+- companyName
+- workspaceName
+- role
+- profileName
+- email
+
+---
+
+## 9. RLS方針
 
 基本方針:
 
 ユーザーは自社の `company_id` を持つデータのみ参照・更新できる。
+
+店舗・拠点ごとの業務データは `workspace_id` でも分離する。
 
 例:
 
@@ -169,53 +236,84 @@ company_id in (
 )
 ```
 
+Workspace単位の分離例:
+
+```sql
+workspace_id in (
+  select workspace_id
+  from profiles
+  where id = auth.uid()
+)
+```
+
+将来、owner / admin が複数Workspaceを閲覧できるようにする余地を残す。
+
+複数Workspace所属が必要になった場合は `workspace_memberships` を使ったPolicyへ移行する。
+
 対象:
 
 - companies
+- workspaces
 - profiles
 - snapshots
 - snapshot_rows
-- company_settings
+- workspace_settings
 - reports
 
 ---
 
-## 8. Server構成方針
+## 10. Server構成方針
 
 必要になる構成:
 
 ```text
 src/server/core/supabaseServerClient.ts
+src/server/core/workspaceContext.ts
 src/server/repositories/companyRepository.ts
+src/server/repositories/workspaceRepository.ts
 src/server/repositories/profileRepository.ts
 src/server/repositories/snapshotRepository.ts
 src/server/repositories/settingsRepository.ts
 src/server/actions/authActions.ts
+src/server/actions/workspaceActions.ts
 src/server/actions/snapshotActions.ts
 ```
 
 ---
 
-## 9. 実装順
+## 11. 実装順
 
-### Sprint 6-2
+### Sprint 6-5
 
-Auth基盤
+Workspace Design Docs Update
 
-- Supabase Auth接続
-- login/logout
-- session取得
-- 未ログインガード
+- Company / Workspace / Profile方針をdocsへ反映
+- Header Context方針を定義
+- RLS方針をCompany / Workspace二層へ更新
 
-### Sprint 6-3
+### Sprint 6-6
 
-Company Context
+Profile / Workspace Repository基盤
 
 - current profile取得
-- current company取得
+- current company / workspace取得
 - role取得
 
-### Sprint 6-4
+### Sprint 6-7
+
+Current Workspace Context Action
+
+- current profile / company / workspaceをまとめる
+- Header表示に必要なContextを返す
+
+### Sprint 6-8
+
+Header Tenant Display
+
+- ログイン中のCompany / Workspace / Roleを表示
+- UI表示のみを追加
+
+### Sprint 6-9
 
 Snapshot保存基盤
 
@@ -223,29 +321,24 @@ Snapshot保存基盤
 - snapshots / snapshot_rows を作るか最終判断
 - Repository更新
 
-### Sprint 6-5
+### Sprint 6-10
 
-Settings DB化
-
-- localStorageから company_settings へ段階移行
-
-### Sprint 6-6
-
-RLS有効化
+DB migration / RLS
 
 - company_id分離
+- workspace_id分離
 - role別権限
 - RLS policy確認
 
 ---
 
-## 10. 現時点の判断
+## 12. 現時点の判断
 
 今すぐ実装する:
 
-- 設計ドキュメント化
-- Auth導入順序の確定
-- Snapshot概念の確定
+- Workspace設計のドキュメント化
+- Company / Workspace / Profile方針の確定
+- Header Context方針の確定
 
 まだ実装しない:
 
@@ -253,4 +346,4 @@ RLS有効化
 - RLS有効化
 - app/page.tsxへの認証組み込み
 - csv_uploads変更
-- settings DB化
+- workspace_settings DB化
