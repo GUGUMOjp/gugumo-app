@@ -465,3 +465,27 @@ RLS Policy Foundation
 - workspace_settings DB化
 - Snapshot Repository実装
 - checksum本実装
+
+---
+
+## 14. 今後の不足・検討事項
+
+Billing用Companyカラムは今後追加予定。
+
+候補:
+
+- stripe_customer_id
+- stripe_subscription_id
+- billing_status
+- trial_ends_at
+- current_period_end
+- seat_limit
+- workspace_limit
+
+Legal / Security観点では以下を別途整理する。
+
+- データ保存期間
+- 退会時削除
+- 監査ログ
+- `row_data` 保存項目棚卸し
+- 専門家レビュー

@@ -218,7 +218,7 @@ Snapshot保存へ移行するためのDB migration / RLS / rollback方針。
 
 ### 15_[SnapshotMigrationSqlDraft.md](http://SnapshotMigrationSqlDraft.md)
 
-snapshots / snapshot_rows 作成予定SQL、index、RLS、rollback下書き。
+snapshots / snapshot_rows 作成予定SQL、index、RLS、rollback、実行前確認の下書き。
 
 ---
 
