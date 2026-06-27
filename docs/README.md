@@ -208,6 +208,10 @@ app/page.tsxからServer側へ移行すべきBusiness Logicの棚卸しと移行
 
 法人別利用、company_id、Snapshot管理、Auth/RLS設計を定義する。
 
+### 13_[LegalComplianceChecklist.md](http://LegalComplianceChecklist.md)
+
+GUGUMOの法務ページ、禁止事項、Cookie / 外部送信、公開前レビュー項目を整理する。
+
 ---
 
 ## 5. GUGUMOの設計思想
