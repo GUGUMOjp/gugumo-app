@@ -232,6 +232,10 @@ Company / Workspace / Profile のSQL Draft、Migration管理方針、index、RLS
 
 Server Auth、CurrentWorkspaceContext、Tenant Repositoryの現状確認とRLS前の修正点。
 
+### 19_[ServerSupabaseClientDesign.md](http://ServerSupabaseClientDesign.md)
+
+Browser / Server User / Service Role Supabase clientの責務分離とRLS前のServer Auth設計。
+
 ---
 
 ## 5. GUGUMOの設計思想
