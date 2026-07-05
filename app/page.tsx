@@ -80,8 +80,8 @@ type TenantHeaderDisplay = {
 };
 
 const TENANT_HEADER_FALLBACK: TenantHeaderDisplay = {
-  tenantName: "GUGUMO デモ環境",
-  roleLabel: "未ログイン",
+  tenantName: "GUGUMO",
+  roleLabel: "",
 };
 
 const ROLE_LABELS = {
@@ -458,13 +458,13 @@ export default function Page() {
 
       if (!saveResult.ok) {
         console.error(saveResult.error.cause);
-        alert(`Supabase保存に失敗しました: ${saveResult.error.failedRecord.file_name}`);
+        alert(`CSVの保存に失敗しました: ${saveResult.error.failedRecord.file_name}`);
         return;
       }
 
       setSnapshots(parsed);
       goto("home");
-      alert("CSVを読み込み、Supabaseに保存しました。");
+      alert("CSVを読み込み、分析に反映しました。");
     } catch (error) {
       console.error(error);
       alert("CSVの読み込みに失敗しました。ファイル形式を確認してください。");
@@ -524,7 +524,7 @@ export default function Page() {
   const latestMonth = monthly.at(-1);
   const previousMonth = monthly.at(-2);
 
-  const topbarStatus = latestSnapshot ? `${snapshots.length}ファイル読み込み済み / 最新 ${latestSnapshot.dateLabel}` : "データ未読み込み";
+  const topbarStatus = latestSnapshot ? `${snapshots.length}ファイル読み込み済み / 最終更新 ${latestSnapshot.dateLabel}` : "データ未読み込み";
 
   return (
     <div className="shell">
@@ -584,10 +584,7 @@ export default function Page() {
           <div className="settings-link" onClick={() => goto(SETTINGS_NAV_ITEM.id)}><i className={`ti ${SETTINGS_NAV_ITEM.icon}`} style={{ fontSize: 14 }} /><span>{SETTINGS_NAV_ITEM.label}</span></div>
           <div style={{ marginTop: 12, paddingTop: 12, borderTop: "0.5px solid rgba(255, 255, 255, 0.08)" }}>
             <div style={{ fontSize: 10.5, color: "rgba(255, 255, 255, 0.46)", lineHeight: 1.5 }}>
-              {PRODUCT_META.productName} {PRODUCT_META.version}
-            </div>
-            <div style={{ fontSize: 10, color: "rgba(255, 255, 255, 0.32)", lineHeight: 1.5 }}>
-              {PRODUCT_META.buildLabel}
+              {PRODUCT_META.productName}
             </div>
             <div style={{ display: "flex", flexWrap: "wrap", gap: "4px 8px", marginTop: 8 }}>
               {LEGAL_LINKS.map((link) => (
@@ -609,7 +606,7 @@ export default function Page() {
           <span className="page-title">{PAGE_TITLES[activePage]}</span>
           <div style={{ minWidth: 168, textAlign: "right", lineHeight: 1.35 }}>
             <div style={{ fontSize: 11, fontWeight: 700, color: "var(--ink)" }}>{tenantHeader.tenantName}</div>
-            <div style={{ fontSize: 10, color: "var(--ink3)" }}>{tenantHeader.roleLabel}</div>
+            {tenantHeader.roleLabel ? <div style={{ fontSize: 10, color: "var(--ink3)" }}>{tenantHeader.roleLabel}</div> : null}
           </div>
           <span className={`status-pill${latestSnapshot ? " loaded" : ""}`}>{topbarStatus}</span>
           <button type="button" className="topbar-btn primary" onClick={() => goto("upload")}><i className="ti ti-upload" style={{ fontSize: 13 }} />CSVを読み込む</button>
@@ -618,8 +615,8 @@ export default function Page() {
         <div className="content">
           <div className={pageClass(activePage, "home")}>
             <PageIntro
-              title="営業デモ用ダッシュボード"
-              description="最新CSVから、経営サマリー・改善候補・次に見るべき画面をまとめて確認できます。"
+              title="ダッシュボード"
+              description="最新の分析結果から、経営サマリー・改善候補・次に見るべき画面をまとめて確認できます。"
             >
               <button type="button" className="topbar-btn" onClick={() => goto("weekly")}>週次を見る</button>
               <button type="button" className="topbar-btn" onClick={() => goto("upload")}>CSVを追加</button>
@@ -656,7 +653,7 @@ export default function Page() {
             <div className="row3">
               <div className="card">
                 <div className="card-head"><div className="card-title"><i className="ti ti-chart-bar" />週次PV推移</div></div>
-                <div className="chart-wrap"><MiniBarChart data={weekly.map((week, index) => ({ label: `W${index + 1}`, value: week.listPV }))} /></div>
+                <div className="chart-wrap"><MiniBarChart data={weekly.map((week, index) => ({ label: `第${index + 1}週`, value: week.listPV }))} /></div>
               </div>
               <div className="card">
                 <div className="card-head"><div className="card-title"><i className="ti ti-alert-triangle" />要対応アラート</div></div>
@@ -728,7 +725,7 @@ export default function Page() {
               </div>
             </div>
             <div className="card"><div className="card-head"><div className="card-title"><i className="ti ti-chart-bar" />週次PV推移（木〜水締め）</div></div><div className="chart-wrap tall"><MiniBarChart data={weekly.map((week) => ({ label: week.label, value: week.listPV }))} /></div></div>
-            <div className="card"><div className="tbl-wrap"><table className="tbl"><thead><tr><th>週</th><th>期間</th><th>一覧PV</th><th>前週比</th><th>詳細PV</th><th>前週比</th><th>問合せ</th><th>前週比</th><th>平均競合数</th></tr></thead><tbody>{weekly.length ? weekly.map((week, index) => { const prev = weekly[index - 1]; return <tr key={week.key}><td>W{index + 1}</td><td style={{ color: "var(--ink3)", fontSize: 10 }}>{week.label}</td><td className="num">{formatNumber(week.listPV)}</td><td>{deltaCell(week.listPV, prev?.listPV)}</td><td className="num">{formatNumber(week.detailPV)}</td><td>{deltaCell(week.detailPV, prev?.detailPV)}</td><td className="num">{formatNumber(week.inquiry)}</td><td>{deltaCell(week.inquiry, prev?.inquiry)}</td><td className="num">{week.avgCompetition.toFixed(1)}</td></tr>; }) : <EmptyRow colSpan={9} text="比較用に2日分以上のCSVを読み込んでください" />}</tbody></table></div></div>
+            <div className="card"><div className="tbl-wrap"><table className="tbl"><thead><tr><th>週</th><th>期間</th><th>一覧PV</th><th>前週比</th><th>詳細PV</th><th>前週比</th><th>問合せ</th><th>前週比</th><th>平均競合数</th></tr></thead><tbody>{weekly.length ? weekly.map((week, index) => { const prev = weekly[index - 1]; return <tr key={week.key}><td>{index === weekly.length - 1 ? "直近週" : `第${index + 1}週`}</td><td style={{ color: "var(--ink3)", fontSize: 10 }}>{week.label}</td><td className="num">{formatNumber(week.listPV)}</td><td>{deltaCell(week.listPV, prev?.listPV)}</td><td className="num">{formatNumber(week.detailPV)}</td><td>{deltaCell(week.detailPV, prev?.detailPV)}</td><td className="num">{formatNumber(week.inquiry)}</td><td>{deltaCell(week.inquiry, prev?.inquiry)}</td><td className="num">{week.avgCompetition.toFixed(1)}</td></tr>; }) : <EmptyRow colSpan={9} text="比較用に2日分以上のCSVを読み込んでください" />}</tbody></table></div></div>
           </div>
 
           <div className={pageClass(activePage, "monthly")}>
@@ -786,7 +783,7 @@ export default function Page() {
                       <span style={{ fontSize: 12, fontWeight: 500, flex: 1 }}>{property.name} {property.room}</span>
                       <span style={{ fontSize: 10, color: "var(--ink3)" }}>{property.station} / {property.madori}</span>
                       <span style={{ fontSize: 10, color: "var(--ink3)", marginLeft: 6 }}>PV {formatNumber(property.totalList)} / 問合せ {formatNumber(property.totalInquiry)}</span>
-                      {property.changes ? <span className="tag tag-amber" style={{ marginLeft: 5 }}>変化{property.changes}件</span> : null}
+                      {property.changes ? <span className="tag tag-amber" style={{ marginLeft: 5 }}>掲載状態に変化あり</span> : null}
                       <i className="ti ti-chevron-down" style={{ fontSize: 12, color: "var(--ink3)", marginLeft: 4 }} />
                     </div>
                     <div className={`prop-body${open ? " open" : ""}`}>
@@ -806,19 +803,19 @@ export default function Page() {
               <button type="button" className="topbar-btn" onClick={() => goto("optbal")}>収支分析を見る</button>
             </PageIntro>
             <StatusNotice tone="info" icon="ti-info-circle" title="オプション判断の見方">
-              各表は最新CSVの状態をもとに、対応確認用の候補を整理したものです。チェック状態は画面内の作業管理として保存されます。
+              各表は最新の掲載状況をもとに、対応確認用の候補を整理したものです。チェック状態は画面内の作業管理として保存されます。
             </StatusNotice>
             <div className="opt-group remove">
               <div className="opt-group-label"><i className="ti ti-circle-minus" />オプションを外す系</div>
-              <div className="card"><div className="card-head"><div className="card-title">①全オプションを外す（スマピク以外）</div><ProgressActions tableId="t1" total={analysis.removeAllRows.length} checkedState={checkedState} onClear={clearChecks} /></div><div className="tbl-wrap"><table className="tbl"><thead><tr><th className="col-check" /><th>物件名</th><th>部屋番号</th><th>住戸名寄せ点数</th><th>競合数</th></tr></thead><tbody>{removeAllPropertyRows.length ? removeAllPropertyRows.slice(0, 200).map((row) => <CheckableRow key={row.key} tableId="t1" itemKey={row.key} checked={isChecked("t1", row.key)} onChange={toggleCheck}><td className="nm">{row.name}</td><td>{row.room}</td><td className="num">{row.score}</td><td className="num">{row.total}</td></CheckableRow>) : <EmptyRow colSpan={5} />}</tbody></table></div></div>
+              <div className="card"><div className="card-head"><div className="card-title">外す候補（スマピク以外）</div><ProgressActions tableId="t1" total={analysis.removeAllRows.length} checkedState={checkedState} onClear={clearChecks} /></div><div className="tbl-wrap"><table className="tbl"><thead><tr><th className="col-check" /><th>物件名</th><th>部屋番号</th><th>競合数</th></tr></thead><tbody>{removeAllPropertyRows.length ? removeAllPropertyRows.slice(0, 200).map((row) => <CheckableRow key={row.key} tableId="t1" itemKey={row.key} checked={isChecked("t1", row.key)} onChange={toggleCheck}><td className="nm">{row.name}</td><td>{row.room}</td><td className="num">{row.total}</td></CheckableRow>) : <EmptyRow colSpan={4} />}</tbody></table></div></div>
               <div style={{ height: 11 }} />
-              <div className="card"><div className="card-head"><div className="card-title">②第2基準まで落とす</div><ProgressActions tableId="t2" total={analysis.lowerToSecondRows.length} checkedState={checkedState} onClear={clearChecks} /></div><div className="tbl-wrap"><table className="tbl"><thead><tr><th className="col-check" /><th>物件名</th><th>部屋</th><th>第3</th><th>第2</th><th>第1</th><th>競合</th></tr></thead><tbody>{lowerToSecondPropertyRows.length ? lowerToSecondPropertyRows.slice(0, 200).map((row) => <CheckableRow key={row.key} tableId="t2" itemKey={row.key} checked={isChecked("t2", row.key)} onChange={toggleCheck}><td className="nm">{row.name}</td><td>{row.room}</td><td className="num">{row.c3}</td><td className="num">{row.c2}</td><td className="num">{row.c1}</td><td className="num">{row.total}</td></CheckableRow>) : <EmptyRow colSpan={7} />}</tbody></table></div></div>
+              <div className="card"><div className="card-head"><div className="card-title">掲載を抑える候補</div><ProgressActions tableId="t2" total={analysis.lowerToSecondRows.length} checkedState={checkedState} onClear={clearChecks} /></div><div className="tbl-wrap"><table className="tbl"><thead><tr><th className="col-check" /><th>物件名</th><th>部屋番号</th><th>競合数</th></tr></thead><tbody>{lowerToSecondPropertyRows.length ? lowerToSecondPropertyRows.slice(0, 200).map((row) => <CheckableRow key={row.key} tableId="t2" itemKey={row.key} checked={isChecked("t2", row.key)} onChange={toggleCheck}><td className="nm">{row.name}</td><td>{row.room}</td><td className="num">{row.total}</td></CheckableRow>) : <EmptyRow colSpan={4} />}</tbody></table></div></div>
             </div>
             <div className="opt-group add">
               <div className="opt-group-label"><i className="ti ti-circle-plus" />オプションを付ける系</div>
-              <div className="card"><div className="card-head"><div className="card-title">③第2基準に上げる</div><ProgressActions tableId="t3" total={analysis.raiseToSecondRows.length} checkedState={checkedState} onClear={clearChecks} /></div><div className="tbl-wrap"><table className="tbl"><thead><tr><th className="col-check" /><th>物件名</th><th>部屋</th><th>第3</th><th>第2</th><th>第1</th><th>競合</th></tr></thead><tbody>{raiseToSecondPropertyRows.length ? raiseToSecondPropertyRows.slice(0, 200).map((row) => <CheckableRow key={row.key} tableId="t3" itemKey={row.key} checked={isChecked("t3", row.key)} onChange={toggleCheck}><td className="nm">{row.name}</td><td>{row.room}</td><td className="num">{row.c3}</td><td className="num">{row.c2}</td><td className="num">{row.c1}</td><td className="num">{row.total}</td></CheckableRow>) : <EmptyRow colSpan={7} />}</tbody></table></div></div>
+              <div className="card"><div className="card-head"><div className="card-title">付ける候補</div><ProgressActions tableId="t3" total={analysis.raiseToSecondRows.length} checkedState={checkedState} onClear={clearChecks} /></div><div className="tbl-wrap"><table className="tbl"><thead><tr><th className="col-check" /><th>物件名</th><th>部屋番号</th><th>競合数</th></tr></thead><tbody>{raiseToSecondPropertyRows.length ? raiseToSecondPropertyRows.slice(0, 200).map((row) => <CheckableRow key={row.key} tableId="t3" itemKey={row.key} checked={isChecked("t3", row.key)} onChange={toggleCheck}><td className="nm">{row.name}</td><td>{row.room}</td><td className="num">{row.total}</td></CheckableRow>) : <EmptyRow colSpan={4} />}</tbody></table></div></div>
               <div style={{ height: 11 }} />
-              <div className="card"><div className="card-head"><div className="card-title">④第3基準に上げる</div><ProgressActions tableId="t4" total={analysis.raiseToThirdRows.length} checkedState={checkedState} onClear={clearChecks} /></div><div className="tbl-wrap"><table className="tbl"><thead><tr><th className="col-check" /><th>物件名</th><th>部屋</th><th>第3</th><th>第2</th><th>第1</th><th>競合</th></tr></thead><tbody>{raiseToThirdPropertyRows.length ? raiseToThirdPropertyRows.slice(0, 200).map((row) => <CheckableRow key={row.key} tableId="t4" itemKey={row.key} checked={isChecked("t4", row.key)} onChange={toggleCheck}><td className="nm">{row.name}</td><td>{row.room}</td><td className="num">{row.c3}</td><td className="num">{row.c2}</td><td className="num">{row.c1}</td><td className="num">{row.total}</td></CheckableRow>) : <EmptyRow colSpan={7} />}</tbody></table></div></div>
+              <div className="card"><div className="card-head"><div className="card-title">優先的に強める候補</div><ProgressActions tableId="t4" total={analysis.raiseToThirdRows.length} checkedState={checkedState} onClear={clearChecks} /></div><div className="tbl-wrap"><table className="tbl"><thead><tr><th className="col-check" /><th>物件名</th><th>部屋番号</th><th>競合数</th></tr></thead><tbody>{raiseToThirdPropertyRows.length ? raiseToThirdPropertyRows.slice(0, 200).map((row) => <CheckableRow key={row.key} tableId="t4" itemKey={row.key} checked={isChecked("t4", row.key)} onChange={toggleCheck}><td className="nm">{row.name}</td><td>{row.room}</td><td className="num">{row.total}</td></CheckableRow>) : <EmptyRow colSpan={4} />}</tbody></table></div></div>
             </div>
           </div>
 
@@ -828,8 +825,8 @@ export default function Page() {
               description="スマピクの付与・削除候補を一覧で確認し、掲載改善の作業順を決めやすくします。"
             />
             <div className="row2">
-              <div className="card"><div className="card-head"><div className="card-title"><i className="ti ti-circle-plus" />付与推奨</div><ProgressActions tableId="t5" total={analysis.smapicAdd.length} checkedState={checkedState} onClear={clearChecks} /></div><div className="tbl-wrap"><table className="tbl"><thead><tr><th className="col-check" /><th>#</th><th>物件名</th><th>部屋番号</th><th>スコア</th><th>現在</th></tr></thead><tbody>{analysis.smapicAdd.length ? analysis.smapicAdd.slice(0, 200).map((item, index) => <CheckableRow key={item.id} tableId="t5" itemKey={item.id} checked={isChecked("t5", item.id)} onChange={toggleCheck}><td className="num">{index + 1}</td><td className="nm">{item.name}</td><td>{item.room}</td><td className="num">{item.score.toFixed(1)}</td><td>なし</td></CheckableRow>) : <EmptyRow colSpan={6} />}</tbody></table></div></div>
-              <div className="card"><div className="card-head"><div className="card-title"><i className="ti ti-circle-minus" />削除推奨</div><ProgressActions tableId="t5r" total={analysis.smapicRemove.length} checkedState={checkedState} onClear={clearChecks} /></div><div className="tbl-wrap"><table className="tbl"><thead><tr><th className="col-check" /><th>#</th><th>物件名</th><th>部屋番号</th><th>スコア</th></tr></thead><tbody>{analysis.smapicRemove.length ? analysis.smapicRemove.slice(0, 200).map((item, index) => <CheckableRow key={item.id} tableId="t5r" itemKey={item.id} checked={isChecked("t5r", item.id)} onChange={toggleCheck}><td className="num">{index + 1}</td><td className="nm">{item.name}</td><td>{item.room}</td><td className="num">{item.score.toFixed(1)}</td></CheckableRow>) : <EmptyRow colSpan={5} />}</tbody></table></div></div>
+              <div className="card"><div className="card-head"><div className="card-title"><i className="ti ti-circle-plus" />付与推奨</div><ProgressActions tableId="t5" total={analysis.smapicAdd.length} checkedState={checkedState} onClear={clearChecks} /></div><div className="tbl-wrap"><table className="tbl"><thead><tr><th className="col-check" /><th>物件名</th><th>部屋番号</th><th>現在</th></tr></thead><tbody>{analysis.smapicAdd.length ? analysis.smapicAdd.slice(0, 200).map((item) => <CheckableRow key={item.id} tableId="t5" itemKey={item.id} checked={isChecked("t5", item.id)} onChange={toggleCheck}><td className="nm">{item.name}</td><td>{item.room}</td><td>未付与</td></CheckableRow>) : <EmptyRow colSpan={4} />}</tbody></table></div></div>
+              <div className="card"><div className="card-head"><div className="card-title"><i className="ti ti-circle-minus" />削除推奨</div><ProgressActions tableId="t5r" total={analysis.smapicRemove.length} checkedState={checkedState} onClear={clearChecks} /></div><div className="tbl-wrap"><table className="tbl"><thead><tr><th className="col-check" /><th>物件名</th><th>部屋番号</th><th>現在</th></tr></thead><tbody>{analysis.smapicRemove.length ? analysis.smapicRemove.slice(0, 200).map((item) => <CheckableRow key={item.id} tableId="t5r" itemKey={item.id} checked={isChecked("t5r", item.id)} onChange={toggleCheck}><td className="nm">{item.name}</td><td>{item.room}</td><td>付与中</td></CheckableRow>) : <EmptyRow colSpan={4} />}</tbody></table></div></div>
             </div>
           </div>
 
@@ -842,7 +839,7 @@ export default function Page() {
               <button type="button" className="topbar-btn" onClick={() => goto("upload")}>CSVを追加</button>
             </PageIntro>
             <StatusNotice tone="warning" icon="ti-alert-triangle" title="入替対象の扱い">
-              表示される候補は最新CSVに基づく確認リストです。実際の掲載判断は営業状況とオーナー方針を踏まえて確認してください。
+              表示される候補は確認リストです。実際の掲載判断は営業状況とオーナー方針を踏まえて確認してください。
             </StatusNotice>
             <div className="card"><div className="card-head"><div className="card-title" style={{ color: "var(--red)" }}><i className="ti ti-alert-triangle" />入替対象物件</div><ProgressActions tableId="t6" total={analysis.lowPvRows.length} checkedState={checkedState} onClear={clearChecks} /></div><div className="tbl-wrap"><table className="tbl"><thead><tr><th className="col-check" /><th>物件名</th><th>部屋番号</th><th>駅</th><th>間取</th><th>賃料+管理費</th><th>掲載日数</th><th>問合せ</th><th>競合数</th></tr></thead><tbody>{lowPvPropertyRows.length ? lowPvPropertyRows.slice(0, 300).map((row) => <CheckableRow key={row.key} tableId="t6" itemKey={row.key} checked={isChecked("t6", row.key)} onChange={toggleCheck}><td className="nm">{row.name}</td><td>{row.room}</td><td>{row.station}</td><td>{row.madori}</td><td className="num">{row.rent}万円</td><td className="num">{row.days}日</td><td className="num">{row.inquiry}件</td><td className="num">{row.total}件</td></CheckableRow>) : <EmptyRow colSpan={9} />}</tbody></table></div></div>
           </div>
@@ -855,7 +852,7 @@ export default function Page() {
               <button type="button" className="topbar-btn" onClick={() => goto("opt")}>運用候補を見る</button>
             </PageIntro>
             <div className="savings-banner" style={{ marginBottom: 14 }}><div className="savings-main"><div className="savings-label"><i className="ti ti-coin" /> 月額オプション節約効果</div><div className="savings-amount">{formatMoney(analysis.optionBalance.totalSaving)}<small>/月</small></div><div className="savings-sub">最適化による無駄オプションの削減額</div></div><div className="savings-detail"><div className="savings-stat"><div className="savings-stat-val">{analysis.optionBalance.totalWaste}</div><div className="savings-stat-lbl">無駄オプション計</div></div><div className="savings-stat"><div className="savings-stat-val">{formatMoney(analysis.optionBalance.totalSaving * 12)}</div><div className="savings-stat-lbl">年間削減</div></div></div></div>
-            <div className="card"><div className="card-head"><div className="card-title"><i className="ti ti-scale" />オプション収支分析（現状 vs 最適化後）</div></div><div className="optbal-grid">{analysis.optionBalance.cards.map((card) => <div className="optbal-card" key={card.key}><div className="optbal-name"><i className={`ti ${card.icon}`} style={{ color: "var(--green)" }} />{card.name}</div><div className="optbal-row"><span>現在の付与</span><b>{card.current}件</b></div><div className="optbal-row"><span>無駄（外せる）</span><b style={{ color: "var(--red)" }}>{card.waste}件</b></div><div className="optbal-row"><span>最適化後</span><b>{Math.max(0, card.current - card.waste)}件</b></div><div className="optbal-row"><span>単価</span><b>{formatMoney(card.price)}</b></div><div className={`optbal-verdict ${card.waste > 0 ? "verdict-cut" : "verdict-ok"}`}>{card.waste > 0 ? <>▼ {card.waste}件 削減推奨<br /><span style={{ fontSize: 10, fontWeight: 400, color: "var(--ink3)" }}>月 {formatMoney(card.saving)} 節約</span></> : "適正"}</div></div>)}</div><div style={{ fontSize: 11, color: "var(--ink3)", marginTop: 6 }}>※「最適化後の必要数」は現在の掲載・競合状況から、各基準を満たすのに必要なオプション件数を試算したものです。単価は設定画面で変更できます。</div></div>
+            <div className="card"><div className="card-head"><div className="card-title"><i className="ti ti-scale" />オプション収支分析（現在と見直し後）</div></div><div className="optbal-grid">{analysis.optionBalance.cards.map((card) => <div className="optbal-card" key={card.key}><div className="optbal-name"><i className={`ti ${card.icon}`} style={{ color: "var(--green)" }} />{card.name}</div><div className="optbal-row"><span>現在の付与</span><b>{card.current}件</b></div><div className="optbal-row"><span>見直し候補</span><b style={{ color: "var(--red)" }}>{card.waste}件</b></div><div className="optbal-row"><span>見直し後</span><b>{Math.max(0, card.current - card.waste)}件</b></div><div className="optbal-row"><span>単価</span><b>{formatMoney(card.price)}</b></div><div className={`optbal-verdict ${card.waste > 0 ? "verdict-cut" : "verdict-ok"}`}>{card.waste > 0 ? <>▼ {card.waste}件 削減推奨<br /><span style={{ fontSize: 10, fontWeight: 400, color: "var(--ink3)" }}>月 {formatMoney(card.saving)} 節約</span></> : "適正"}</div></div>)}</div><div style={{ fontSize: 11, color: "var(--ink3)", marginTop: 6 }}>※現在の掲載・競合状況から、必要なオプション件数を試算したものです。単価は設定画面で変更できます。</div></div>
           </div>
 
           <div className={pageClass(activePage, "area")}>
@@ -934,7 +931,7 @@ export default function Page() {
                   })
                 )}
               </div></div>
-            <div className="card"><div className="card-head"><div className="card-title"><i className="ti ti-chart-pie" />推奨掲載配分 vs 現状の掲載件数</div></div><div style={{ fontSize: 11, color: "var(--ink2)", marginBottom: 10 }}>推奨配分（緑）に対し、最新CSVの所在地から各区の現掲載件数を集計。<span style={{ color: "var(--red)" }}>不足</span>＝もっと載せるべき／<span style={{ color: "var(--blue)" }}>過剰</span>＝載せ過ぎ。</div><div className="tbl-wrap"><table className="tbl"><thead><tr><th>区</th><th>推奨配分</th><th>推奨件数</th><th>現掲載</th><th>過不足</th><th className="num" style={{ width: 180 }}>バランス</th><th>特性</th></tr></thead><tbody>{areaBalance.length && latestSnapshot ? areaBalance.map((item) => { const status = item.statusType === "shortage" ? <span style={{ color: "var(--red)", fontWeight: 700 }}>不足 {Math.abs(item.diff)}</span> : item.statusType === "excess" ? <span style={{ color: "var(--blue)", fontWeight: 700 }}>過剰 +{item.diff}</span> : <span style={{ color: "var(--green)" }}>適正</span>; return <tr key={item.ward}><td className="nm" style={{ fontWeight: 700 }}>{item.ward}{item.ward === settings.ward ? <span className="tag" style={{ background: "#1e1e2e", color: "#fff", marginLeft: 4 }}>所属</span> : null}</td><td className="num">{item.pct.toFixed(1)}%</td><td className="num">{item.recommended}件</td><td className="num">{item.actual}件</td><td>{status}</td><td><div className="area-bar"><div style={{ width: `${(item.actual / item.max) * 100}%`, background: item.statusType === "shortage" ? "var(--red)" : item.statusType === "excess" ? "var(--blue)" : "var(--green)" }} /></div></td><td style={{ whiteSpace: "normal", maxWidth: 260, fontSize: 10.5, color: "var(--ink2)" }}>{item.info}</td></tr>; }) : <EmptyRow colSpan={7} text="設定画面で所属区を選び、CSVを読み込んでください" />}</tbody></table></div></div>
+            <div className="card"><div className="card-head"><div className="card-title"><i className="ti ti-chart-pie" />推奨掲載配分と現在の掲載件数</div></div><div style={{ fontSize: 11, color: "var(--ink2)", marginBottom: 10 }}>推奨配分に対し、各区の現在の掲載件数を確認できます。<span style={{ color: "var(--red)" }}>不足</span>＝掲載を増やす余地あり／<span style={{ color: "var(--blue)" }}>多め</span>＝配分を見直す余地あり。</div><div className="tbl-wrap"><table className="tbl"><thead><tr><th>区</th><th>推奨配分</th><th>推奨件数</th><th>現掲載</th><th>過不足</th><th className="num" style={{ width: 180 }}>バランス</th><th>特性</th></tr></thead><tbody>{areaBalance.length && latestSnapshot ? areaBalance.map((item) => { const status = item.statusType === "shortage" ? <span style={{ color: "var(--red)", fontWeight: 700 }}>不足 {Math.abs(item.diff)}</span> : item.statusType === "excess" ? <span style={{ color: "var(--blue)", fontWeight: 700 }}>多め +{item.diff}</span> : <span style={{ color: "var(--green)" }}>適正</span>; return <tr key={item.ward}><td className="nm" style={{ fontWeight: 700 }}>{item.ward}{item.ward === settings.ward ? <span className="tag" style={{ background: "#1e1e2e", color: "#fff", marginLeft: 4 }}>所属</span> : null}</td><td className="num">{item.pct.toFixed(1)}%</td><td className="num">{item.recommended}件</td><td className="num">{item.actual}件</td><td>{status}</td><td><div className="area-bar"><div style={{ width: `${(item.actual / item.max) * 100}%`, background: item.statusType === "shortage" ? "var(--red)" : item.statusType === "excess" ? "var(--blue)" : "var(--green)" }} /></div></td><td style={{ whiteSpace: "normal", maxWidth: 260, fontSize: 10.5, color: "var(--ink2)" }}>{item.info}</td></tr>; }) : <EmptyRow colSpan={7} text="設定画面で所属区を選び、CSVを読み込んでください" />}</tbody></table></div></div>
           </div>
 
           <div className={pageClass(activePage, "upload")}>
@@ -949,14 +946,14 @@ export default function Page() {
                   <>
                     <i className="ti ti-files" style={{ fontSize: 28, color: "var(--ink2)", display: "block", marginBottom: 9 }} />
                     <div style={{ fontSize: 13.5, color: "var(--ink2)" }}>複数ファイルをまとめてドロップ、またはクリックして選択</div>
-                    <div style={{ fontSize: 11, color: "var(--ink3)", marginTop: 5 }}>keisaibukken_report_YYYYMMDD_hhmmss.csv / Shift-JIS・UTF-8 対応</div>
+                    <div style={{ fontSize: 11, color: "var(--ink3)", marginTop: 5 }}>SUUMO掲載CSV / Shift-JIS・UTF-8 対応</div>
                   </>
                 )}
               </div>
               <input ref={fileInputRef} type="file" accept=".csv" multiple style={{ display: "none" }} onChange={handleFileInput} />
               <div style={{ marginTop: 9 }}>{snapshots.map((snapshot) => <span className="chip" key={snapshot.fileName}>{snapshot.dateLabel} / {snapshot.rows.length}件</span>)}</div>
-              <StatusNotice tone="info" icon="ti-database" title="読み込み後の保存">
-                CSVはブラウザで解析し、保存用データをSupabaseへ記録します。
+              <StatusNotice tone="info" icon="ti-database" title="アップロード後の反映">
+                読み込んだCSVは、各レポートと分析画面に反映されます。
               </StatusNotice>
               <StatusNotice tone="warning" icon="ti-refresh" title="チェック状態の扱い">
                 新しいCSVを読み込むと、対応済みチェックはリセットされます。
@@ -982,9 +979,9 @@ export default function Page() {
             <div className="card">
               <div className="card-head"><div className="card-title"><i className="ti ti-road" />今後追加予定</div></div>
               <div className="future-list">
-                <div><b>ログイン・権限管理</b><span>Company / Workspace Context とSupabase Authを接続し、管理者・メンバー・閲覧者の権限を整理します。</span></div>
+                <div><b>ログイン・権限管理</b><span>会社・店舗・権限ごとに、利用できる画面や操作を整理します。</span></div>
                 <div><b>店舗別設定</b><span>店舗ごとの契約枠・配信設定・レポート出力設定を保存できるようにします。</span></div>
-                <div><b>レポート配信</b><span>週次・月次レポートを通知やPDF出力へ接続する予定です。</span></div>
+                <div><b>レポート配信</b><span>週次・月次レポートを関係者へ共有しやすくする予定です。</span></div>
               </div>
             </div>
           </div>

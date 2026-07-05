@@ -6,16 +6,18 @@ GUGUMO
 
 ## Current Sprint
 
-Release Epic 9 implementation ready for review
+Release Candidate UI Cleanup ready for review
 
 ## Latest Completed Commit
 
-b9c117f docs: review server auth workspace context
+d3901a2 Release Epic 9: polish MVP UI and navigation
 
 ## Current Uncommitted Changes
 
 - app/page.tsx
+- app/legal-content.tsx
 - app/gugumo.css
+- docs/20_ReleaseEpic9UiPolish.md
 - MASTER_PROGRESS.md
 
 ## Build Status
@@ -48,7 +50,7 @@ b9c117f docs: review server auth workspace context
 
 ## Next Sprint
 
-CTO review of Release Epic 9 UI polish
+CTO review of Release Candidate customer-facing UI cleanup
 
 ## Strict Prohibitions
 
