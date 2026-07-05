@@ -14,9 +14,6 @@ import {
   saveCsvUploadRecords,
 } from "@/src/server/repositories";
 import {
-  buildAdvices,
-} from "@/src/server/engines/advice";
-import {
   analyzeRows,
   buildDayDiffs,
   buildMonthly,
@@ -412,15 +409,8 @@ export default function Page() {
   const monthly = useMemo(() => buildMonthly(dayDiffs), [dayDiffs]);
   const propertyHistories = useMemo(() => buildPropertyHistories(dayDiffs), [dayDiffs]);
   const analysis = useMemo(() => analyzeRows(latestRows, settings), [latestRows, settings]);
-  const advices = useMemo(() => buildAdvices(analysis), [analysis]);
   const areaAllocation = useMemo(() => computeAreaAllocation(settings.ward), [settings.ward]);
   const dashboard = useMemo(() => buildDashboardViewModel(latestSummary, analysis, weekly), [latestSummary, analysis, weekly]);
-
-  useEffect(() => {
-    if (process.env.NODE_ENV === "development" && advices.length) {
-      console.debug("GUGUMO structured advices", advices);
-    }
-  }, [advices]);
 
   const goto = (id: PageId) => setActivePage(id);
   const navBadgeValue = (badge: "weeklyCount" | "optionReviewCount" | "lowPvCount") => {

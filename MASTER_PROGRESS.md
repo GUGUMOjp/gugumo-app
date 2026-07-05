@@ -6,7 +6,7 @@ GUGUMO
 
 ## Current Sprint
 
-Release Candidate UI Cleanup ready for review
+Release Candidate UI Cleanup deletion pass ready for review
 
 ## Latest Completed Commit
 
@@ -15,8 +15,6 @@ d3901a2 Release Epic 9: polish MVP UI and navigation
 ## Current Uncommitted Changes
 
 - app/page.tsx
-- app/legal-content.tsx
-- app/gugumo.css
 - docs/20_ReleaseEpic9UiPolish.md
 - MASTER_PROGRESS.md
 
@@ -50,7 +48,7 @@ d3901a2 Release Epic 9: polish MVP UI and navigation
 
 ## Next Sprint
 
-CTO review of Release Candidate customer-facing UI cleanup
+CTO review of Release Candidate UI deletion pass
 
 ## Strict Prohibitions
 
