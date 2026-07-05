@@ -151,13 +151,144 @@ function CheckableRow({
   );
 }
 
-function EmptyRow({ colSpan, text = "—" }: { colSpan: number; text?: string }) {
+const EMPTY_MESSAGES = {
+  noData: "CSVを読み込むと、ここに分析結果が表示されます。",
+  needComparison: "比較には2日分以上のCSVが必要です。",
+  noRecommendation: "現在、優先対応が必要な候補はありません。",
+  noSummary: "サマリーを表示するにはCSVを読み込んでください。",
+};
+
+function EmptyRow({ colSpan, text = "該当データはありません" }: { colSpan: number; text?: string }) {
   return (
     <tr>
       <td colSpan={colSpan} className="empty">
         {text}
       </td>
     </tr>
+  );
+}
+
+function EmptyState({
+  title = "まだデータがありません",
+  message = EMPTY_MESSAGES.noData,
+  actionLabel,
+  onAction,
+}: {
+  title?: string;
+  message?: string;
+  actionLabel?: string;
+  onAction?: () => void;
+}) {
+  return (
+    <div className="empty-state">
+      <i className="ti ti-database empty-icon" />
+      <div className="empty-title">{title}</div>
+      <div className="empty-text">{message}</div>
+      {actionLabel && onAction ? (
+        <button type="button" className="topbar-btn primary" onClick={onAction}>
+          {actionLabel}
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
+function LoadingState({ text = "読み込み中です..." }: { text?: string }) {
+  return (
+    <div className="loading-state">
+      <div className="skeleton-line" />
+      <div className="skeleton-line short" />
+      <span>{text}</span>
+    </div>
+  );
+}
+
+function StatusNotice({
+  tone = "info",
+  icon = "ti-info-circle",
+  title,
+  children,
+}: {
+  tone?: "info" | "warning" | "critical" | "success";
+  icon?: string;
+  title: string;
+  children?: ReactNode;
+}) {
+  return (
+    <div className={`notice-card ${tone}`}>
+      <i className={`ti ${icon}`} />
+      <div>
+        <div className="notice-title">{title}</div>
+        {children ? <div className="notice-text">{children}</div> : null}
+      </div>
+    </div>
+  );
+}
+
+function KpiCard({
+  label,
+  value,
+  unit,
+  sub,
+  tone = "default",
+}: {
+  label: string;
+  value: ReactNode;
+  unit?: string;
+  sub?: ReactNode;
+  tone?: "default" | "danger" | "success" | "warning";
+}) {
+  return (
+    <div className={`kpi-card ${tone}`}>
+      <div className="kpi-label">{label}</div>
+      <div className="kpi-value">
+        {value}
+        {unit ? <small>{unit}</small> : null}
+      </div>
+      {sub ? <div className="kpi-sub">{sub}</div> : null}
+    </div>
+  );
+}
+
+function PageIntro({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description: string;
+  children?: ReactNode;
+}) {
+  return (
+    <div className="section-intro">
+      <div>
+        <div className="section-title">{title}</div>
+        <div className="section-desc">{description}</div>
+      </div>
+      {children ? <div className="section-actions">{children}</div> : null}
+    </div>
+  );
+}
+
+function QuickLink({
+  icon,
+  label,
+  description,
+  onClick,
+}: {
+  icon: string;
+  label: string;
+  description: string;
+  onClick: () => void;
+}) {
+  return (
+    <button type="button" className="quick-link" onClick={onClick}>
+      <i className={`ti ${icon} quick-icon`} />
+      <span>
+        <b>{label}</b>
+        <small>{description}</small>
+      </span>
+    </button>
   );
 }
 
@@ -175,7 +306,7 @@ function ProgressActions({ tableId, total, checkedState, onClear }: { tableId: s
 
 function MiniBarChart({ data }: { data: Array<{ label: string; value: number }> }) {
   const max = maxValue(data.map((item) => item.value));
-  if (!data.length) return <div className="empty">比較用に2日分以上のCSVを読み込んでください</div>;
+  if (!data.length) return <EmptyState title="推移データがありません" message={EMPTY_MESSAGES.needComparison} />;
 
   return (
     <div style={{ padding: "8px 2px", display: "grid", gap: 8 }}>
@@ -388,6 +519,10 @@ export default function Page() {
     () => buildAreaBalanceViewModel(areaAllocation, currentWardCounts, analysis.listedRows.length),
     [areaAllocation, currentWardCounts, analysis.listedRows.length],
   );
+  const latestWeek = weekly.at(-1);
+  const previousWeek = weekly.at(-2);
+  const latestMonth = monthly.at(-1);
+  const previousMonth = monthly.at(-2);
 
   const topbarStatus = latestSnapshot ? `${snapshots.length}ファイル読み込み済み / 最新 ${latestSnapshot.dateLabel}` : "データ未読み込み";
 
@@ -482,6 +617,20 @@ export default function Page() {
 
         <div className="content">
           <div className={pageClass(activePage, "home")}>
+            <PageIntro
+              title="営業デモ用ダッシュボード"
+              description="最新CSVから、経営サマリー・改善候補・次に見るべき画面をまとめて確認できます。"
+            >
+              <button type="button" className="topbar-btn" onClick={() => goto("weekly")}>週次を見る</button>
+              <button type="button" className="topbar-btn" onClick={() => goto("upload")}>CSVを追加</button>
+            </PageIntro>
+            <div className="quick-grid">
+              <QuickLink icon="ti-chart-bar" label="週次レポート" description="短期の反響変化を確認" onClick={() => goto("weekly")} />
+              <QuickLink icon="ti-calendar-stats" label="月次レポート" description="経営向けの月次推移" onClick={() => goto("monthly")} />
+              <QuickLink icon="ti-alert-triangle" label="入替対象" description="優先対応物件を確認" onClick={() => goto("lowpv")} />
+              <QuickLink icon="ti-scale" label="オプション分析" description="無駄コストを確認" onClick={() => goto("optbal")} />
+              <QuickLink icon="ti-upload" label="CSVアップロード" description="新しい分析を開始" onClick={() => goto("upload")} />
+            </div>
             {dashboard.savings.totalSaving > 0 && (
               <div className="savings-banner">
                 <div className="savings-main">
@@ -498,10 +647,10 @@ export default function Page() {
             )}
 
             <div className="metrics">
-              <div className="metric"><div className="metric-label">掲載物件数</div><div className="metric-value">{dashboard.metrics.listedRows !== undefined ? formatNumber(dashboard.metrics.listedRows) : "—"}</div><div className="metric-sub">件</div></div>
-              <div className="metric"><div className="metric-label">総問い合わせ</div><div className="metric-value">{dashboard.metrics.totalInquiry !== undefined ? formatNumber(dashboard.metrics.totalInquiry) : "—"}</div><div className="metric-sub">件</div></div>
-              <div className="metric"><div className="metric-label">スマピク適用</div><div className="metric-value">{dashboard.metrics.smapicRows !== undefined ? formatNumber(dashboard.metrics.smapicRows) : "—"}</div><div className="metric-sub">件</div></div>
-              <div className="metric danger"><div className="metric-label">入替対象</div><div className="metric-value">{dashboard.metrics.lowPvRows}</div><div className="metric-sub">件</div></div>
+              <KpiCard label="掲載物件数" value={dashboard.metrics.listedRows !== undefined ? formatNumber(dashboard.metrics.listedRows) : "—"} unit="件" />
+              <KpiCard label="総問い合わせ" value={dashboard.metrics.totalInquiry !== undefined ? formatNumber(dashboard.metrics.totalInquiry) : "—"} unit="件" />
+              <KpiCard label="スマピク適用" value={dashboard.metrics.smapicRows !== undefined ? formatNumber(dashboard.metrics.smapicRows) : "—"} unit="件" />
+              <KpiCard label="入替対象" value={dashboard.metrics.lowPvRows} unit="件" tone="danger" />
             </div>
 
             <div className="row3">
@@ -511,52 +660,17 @@ export default function Page() {
               </div>
               <div className="card">
                 <div className="card-head"><div className="card-title"><i className="ti ti-alert-triangle" />要対応アラート</div></div>
-                {!latestSnapshot ? <div className="empty">データを読み込んでください</div> : (
+                {!latestSnapshot ? <EmptyState title="分析データがありません" message={EMPTY_MESSAGES.noSummary} actionLabel="CSVを読み込む" onAction={() => goto("upload")} /> : (
                   <div style={{ display: "grid", gap: 10 }}>
-                    <div
-                      className="notice"
-                      style={{
-                        background: "#FCEBEB",
-                        border: "1px solid #F4B8B8",
-                        color: "#A32D2D",
-                        borderRadius: 10,
-                        padding: "12px 14px",
-                        fontWeight: 700,
-                      }}
-                    >
-                      <i className="ti ti-alert-triangle" style={{ fontSize: 16, color: "#A32D2D" }} />
-                      <span>入替対象 {dashboard.alerts.lowPvRows}件</span>
-                    </div>
-                    <div
-                      className="notice"
-                      style={{
-                        background: "#FAEEDA",
-                        border: "1px solid #E8C58E",
-                        color: "#854F0B",
-                        borderRadius: 10,
-                        padding: "12px 14px",
-                        fontWeight: 700,
-                      }}
-                    >
-                      <i className="ti ti-adjustments" style={{ fontSize: 16, color: "#854F0B" }} />
-                      <span>
-                        オプション見直し {dashboard.alerts.optionReviewCount}件
-                      </span>
-                    </div>
-                    <div
-                      className="notice"
-                      style={{
-                        background: "#E6F1FB",
-                        border: "1px solid #B8D8F1",
-                        color: "#185FA5",
-                        borderRadius: 10,
-                        padding: "12px 14px",
-                        fontWeight: 700,
-                      }}
-                    >
-                      <i className="ti ti-star" style={{ fontSize: 16, color: "#185FA5" }} />
-                      <span>スマピク付与推奨 {dashboard.alerts.smapicAdd}件 / 削除推奨 {dashboard.alerts.smapicRemove}件</span>
-                    </div>
+                    <StatusNotice tone="critical" icon="ti-alert-triangle" title={`入替対象 ${dashboard.alerts.lowPvRows}件`}>
+                      反響が弱い物件を優先して確認します。
+                    </StatusNotice>
+                    <StatusNotice tone="warning" icon="ti-adjustments" title={`オプション見直し ${dashboard.alerts.optionReviewCount}件`}>
+                      掲載状況に対して過不足のあるオプションを確認します。
+                    </StatusNotice>
+                    <StatusNotice tone="info" icon="ti-star" title={`スマピク付与推奨 ${dashboard.alerts.smapicAdd}件 / 削除推奨 ${dashboard.alerts.smapicRemove}件`}>
+                      推薦候補はスマピク分析画面で確認できます。
+                    </StatusNotice>
                   </div>
                 )}
               </div>
@@ -570,7 +684,7 @@ export default function Page() {
                   <tbody>
                     {dayDiffs.length ? [...dayDiffs].reverse().slice(0, 7).map((day) => (
                       <tr key={day.dateKey}><td>{day.dateLabel}</td><td className="num">{formatNumber(day.listPV)}</td><td className="num">{formatNumber(day.detailPV)}</td><td className="num">{formatNumber(day.inquiry)}</td><td className="num">{day.avgCompetition.toFixed(1)}</td><td className="num">{formatNumber(day.listedCount)}</td></tr>
-                    )) : <EmptyRow colSpan={6} text="比較用に2日分以上のCSVを読み込んでください" />}
+                    )) : <EmptyRow colSpan={6} text={EMPTY_MESSAGES.needComparison} />}
                   </tbody>
                 </table>
               </div>
@@ -578,19 +692,93 @@ export default function Page() {
           </div>
 
           <div className={pageClass(activePage, "weekly")}>
+            <PageIntro
+              title="週次レポート"
+              description="木曜から水曜までの反響変化を、経営者向けサマリーと優先確認項目に整理します。"
+            >
+              <button type="button" className="topbar-btn" onClick={() => goto("monthly")}>月次を見る</button>
+              <button type="button" className="topbar-btn" onClick={() => goto("lowpv")}>入替対象を見る</button>
+            </PageIntro>
+            <div className="metrics">
+              <KpiCard label="一覧PV" value={latestWeek ? formatNumber(latestWeek.listPV) : "—"} sub={deltaCell(latestWeek?.listPV ?? 0, previousWeek?.listPV)} />
+              <KpiCard label="詳細PV" value={latestWeek ? formatNumber(latestWeek.detailPV) : "—"} sub={deltaCell(latestWeek?.detailPV ?? 0, previousWeek?.detailPV)} />
+              <KpiCard label="問い合わせ" value={latestWeek ? formatNumber(latestWeek.inquiry) : "—"} unit="件" sub={deltaCell(latestWeek?.inquiry ?? 0, previousWeek?.inquiry)} />
+              <KpiCard label="平均競合数" value={latestWeek ? latestWeek.avgCompetition.toFixed(1) : "—"} unit="件" />
+            </div>
+            <div className="row2">
+              <div className="card">
+                <div className="card-head"><div className="card-title"><i className="ti ti-report-analytics" />経営サマリー</div></div>
+                {latestWeek ? (
+                  <div className="summary-list">
+                    <div><b>対象期間</b><span>{latestWeek.label}</span></div>
+                    <div><b>一覧PV</b><span>{formatNumber(latestWeek.listPV)} PV</span></div>
+                    <div><b>問い合わせ</b><span>{formatNumber(latestWeek.inquiry)} 件</span></div>
+                    <div><b>平均競合数</b><span>{latestWeek.avgCompetition.toFixed(1)} 件</span></div>
+                  </div>
+                ) : <EmptyState title="週次サマリーがありません" message={EMPTY_MESSAGES.needComparison} />}
+              </div>
+              <div className="card">
+                <div className="card-head"><div className="card-title"><i className="ti ti-list-check" />改善ポイント・優先確認項目</div></div>
+                {latestSnapshot ? (
+                  <div style={{ display: "grid", gap: 10 }}>
+                    <StatusNotice tone="critical" icon="ti-alert-triangle" title={`入替対象 ${analysis.lowPvRows.length}件`}>反響が弱い物件から優先確認します。</StatusNotice>
+                    <StatusNotice tone="warning" icon="ti-adjustments" title={`オプション見直し ${analysis.optionBalance.totalWaste}件`}>無駄なオプション費用を抑えられる可能性があります。</StatusNotice>
+                  </div>
+                ) : <EmptyState title="優先確認項目がありません" message={EMPTY_MESSAGES.noSummary} />}
+              </div>
+            </div>
             <div className="card"><div className="card-head"><div className="card-title"><i className="ti ti-chart-bar" />週次PV推移（木〜水締め）</div></div><div className="chart-wrap tall"><MiniBarChart data={weekly.map((week) => ({ label: week.label, value: week.listPV }))} /></div></div>
             <div className="card"><div className="tbl-wrap"><table className="tbl"><thead><tr><th>週</th><th>期間</th><th>一覧PV</th><th>前週比</th><th>詳細PV</th><th>前週比</th><th>問合せ</th><th>前週比</th><th>平均競合数</th></tr></thead><tbody>{weekly.length ? weekly.map((week, index) => { const prev = weekly[index - 1]; return <tr key={week.key}><td>W{index + 1}</td><td style={{ color: "var(--ink3)", fontSize: 10 }}>{week.label}</td><td className="num">{formatNumber(week.listPV)}</td><td>{deltaCell(week.listPV, prev?.listPV)}</td><td className="num">{formatNumber(week.detailPV)}</td><td>{deltaCell(week.detailPV, prev?.detailPV)}</td><td className="num">{formatNumber(week.inquiry)}</td><td>{deltaCell(week.inquiry, prev?.inquiry)}</td><td className="num">{week.avgCompetition.toFixed(1)}</td></tr>; }) : <EmptyRow colSpan={9} text="比較用に2日分以上のCSVを読み込んでください" />}</tbody></table></div></div>
           </div>
 
           <div className={pageClass(activePage, "monthly")}>
+            <PageIntro
+              title="月次レポート"
+              description="月末締めの推移を、営業報告で説明しやすい形に整理します。"
+            >
+              <button type="button" className="topbar-btn" onClick={() => goto("weekly")}>週次を見る</button>
+              <button type="button" className="topbar-btn" onClick={() => goto("optbal")}>オプション分析を見る</button>
+            </PageIntro>
+            <div className="metrics">
+              <KpiCard label="一覧PV" value={latestMonth ? formatNumber(latestMonth.listPV) : "—"} sub={deltaCell(latestMonth?.listPV ?? 0, previousMonth?.listPV)} />
+              <KpiCard label="詳細PV" value={latestMonth ? formatNumber(latestMonth.detailPV) : "—"} sub={deltaCell(latestMonth?.detailPV ?? 0, previousMonth?.detailPV)} />
+              <KpiCard label="問い合わせ" value={latestMonth ? formatNumber(latestMonth.inquiry) : "—"} unit="件" sub={deltaCell(latestMonth?.inquiry ?? 0, previousMonth?.inquiry)} />
+              <KpiCard label="平均競合数" value={latestMonth ? latestMonth.avgCompetition.toFixed(1) : "—"} unit="件" />
+            </div>
+            <div className="row2">
+              <div className="card">
+                <div className="card-head"><div className="card-title"><i className="ti ti-report" />月次経営サマリー</div></div>
+                {latestMonth ? (
+                  <div className="summary-list">
+                    <div><b>対象月</b><span>{latestMonth.label}</span></div>
+                    <div><b>一覧PV</b><span>{formatNumber(latestMonth.listPV)} PV</span></div>
+                    <div><b>問い合わせ</b><span>{formatNumber(latestMonth.inquiry)} 件</span></div>
+                    <div><b>平均競合数</b><span>{latestMonth.avgCompetition.toFixed(1)} 件</span></div>
+                  </div>
+                ) : <EmptyState title="月次サマリーがありません" message={EMPTY_MESSAGES.needComparison} />}
+              </div>
+              <div className="card">
+                <div className="card-head"><div className="card-title"><i className="ti ti-flag" />優先課題</div></div>
+                {latestSnapshot ? (
+                  <div style={{ display: "grid", gap: 10 }}>
+                    <StatusNotice tone="critical" icon="ti-alert-triangle" title={`入替対象 ${analysis.lowPvRows.length}件`}>低反響物件を入替候補として確認します。</StatusNotice>
+                    <StatusNotice tone="success" icon="ti-coin" title={`月額削減見込み ${formatMoney(analysis.optionBalance.totalSaving)}`}>オプション運用の見直し余地を確認できます。</StatusNotice>
+                  </div>
+                ) : <EmptyState title="優先課題がありません" message={EMPTY_MESSAGES.noSummary} />}
+              </div>
+            </div>
             <div className="card"><div className="card-head"><div className="card-title"><i className="ti ti-chart-bar" />月次推移（月末締め）</div></div><div className="chart-wrap tall"><MiniBarChart data={monthly.map((month) => ({ label: month.label, value: month.listPV }))} /></div></div>
             <div className="card"><div className="tbl-wrap"><table className="tbl"><thead><tr><th>月</th><th>一覧PV</th><th>前月比</th><th>詳細PV</th><th>前月比</th><th>問合せ</th><th>前月比</th><th>平均競合数</th></tr></thead><tbody>{monthly.length ? monthly.map((month, index) => { const prev = monthly[index - 1]; return <tr key={month.key}><td>{month.label}</td><td className="num">{formatNumber(month.listPV)}</td><td>{deltaCell(month.listPV, prev?.listPV)}</td><td className="num">{formatNumber(month.detailPV)}</td><td>{deltaCell(month.detailPV, prev?.detailPV)}</td><td className="num">{formatNumber(month.inquiry)}</td><td>{deltaCell(month.inquiry, prev?.inquiry)}</td><td className="num">{month.avgCompetition.toFixed(1)}</td></tr>; }) : <EmptyRow colSpan={8} text="比較用に2日分以上のCSVを読み込んでください" />}</tbody></table></div></div>
           </div>
 
           <div className={pageClass(activePage, "props")}>
+            <PageIntro
+              title="物件推移"
+              description="物件ごとのPV・問い合わせ・競合変化を確認し、営業説明に使える変化点を追えます。"
+            />
             <div className="card">
               <input value={propertySearch} onChange={(event) => setPropertySearch(event.target.value)} placeholder="物件名・駅で検索..." style={{ width: "100%", padding: "7px 11px", fontSize: 12, border: "0.5px solid var(--line2)", borderRadius: 6, background: "var(--panel)", color: "var(--ink)", marginBottom: 10, fontFamily: "inherit" }} />
-              {!filteredProperties.length ? <div className="empty">比較用に2日分以上のCSVを読み込んでください</div> : filteredProperties.map((property) => {
+              {!filteredProperties.length ? <EmptyState title="物件推移がありません" message={EMPTY_MESSAGES.needComparison} /> : filteredProperties.map((property) => {
                 const open = openProperties[property.key];
                 return (
                   <div className="prop-row" key={property.key}>
@@ -611,6 +799,15 @@ export default function Page() {
           </div>
 
           <div className={pageClass(activePage, "opt")}>
+            <PageIntro
+              title="オプション運用"
+              description="掲載状況に対して、外す候補・付ける候補を同じ基準で確認できます。"
+            >
+              <button type="button" className="topbar-btn" onClick={() => goto("optbal")}>収支分析を見る</button>
+            </PageIntro>
+            <StatusNotice tone="info" icon="ti-info-circle" title="オプション判断の見方">
+              各表は最新CSVの状態をもとに、対応確認用の候補を整理したものです。チェック状態は画面内の作業管理として保存されます。
+            </StatusNotice>
             <div className="opt-group remove">
               <div className="opt-group-label"><i className="ti ti-circle-minus" />オプションを外す系</div>
               <div className="card"><div className="card-head"><div className="card-title">①全オプションを外す（スマピク以外）</div><ProgressActions tableId="t1" total={analysis.removeAllRows.length} checkedState={checkedState} onClear={clearChecks} /></div><div className="tbl-wrap"><table className="tbl"><thead><tr><th className="col-check" /><th>物件名</th><th>部屋番号</th><th>住戸名寄せ点数</th><th>競合数</th></tr></thead><tbody>{removeAllPropertyRows.length ? removeAllPropertyRows.slice(0, 200).map((row) => <CheckableRow key={row.key} tableId="t1" itemKey={row.key} checked={isChecked("t1", row.key)} onChange={toggleCheck}><td className="nm">{row.name}</td><td>{row.room}</td><td className="num">{row.score}</td><td className="num">{row.total}</td></CheckableRow>) : <EmptyRow colSpan={5} />}</tbody></table></div></div>
@@ -626,6 +823,10 @@ export default function Page() {
           </div>
 
           <div className={pageClass(activePage, "smapic")}>
+            <PageIntro
+              title="スマピク推薦"
+              description="スマピクの付与・削除候補を一覧で確認し、掲載改善の作業順を決めやすくします。"
+            />
             <div className="row2">
               <div className="card"><div className="card-head"><div className="card-title"><i className="ti ti-circle-plus" />付与推奨</div><ProgressActions tableId="t5" total={analysis.smapicAdd.length} checkedState={checkedState} onClear={clearChecks} /></div><div className="tbl-wrap"><table className="tbl"><thead><tr><th className="col-check" /><th>#</th><th>物件名</th><th>部屋番号</th><th>スコア</th><th>現在</th></tr></thead><tbody>{analysis.smapicAdd.length ? analysis.smapicAdd.slice(0, 200).map((item, index) => <CheckableRow key={item.id} tableId="t5" itemKey={item.id} checked={isChecked("t5", item.id)} onChange={toggleCheck}><td className="num">{index + 1}</td><td className="nm">{item.name}</td><td>{item.room}</td><td className="num">{item.score.toFixed(1)}</td><td>なし</td></CheckableRow>) : <EmptyRow colSpan={6} />}</tbody></table></div></div>
               <div className="card"><div className="card-head"><div className="card-title"><i className="ti ti-circle-minus" />削除推奨</div><ProgressActions tableId="t5r" total={analysis.smapicRemove.length} checkedState={checkedState} onClear={clearChecks} /></div><div className="tbl-wrap"><table className="tbl"><thead><tr><th className="col-check" /><th>#</th><th>物件名</th><th>部屋番号</th><th>スコア</th></tr></thead><tbody>{analysis.smapicRemove.length ? analysis.smapicRemove.slice(0, 200).map((item, index) => <CheckableRow key={item.id} tableId="t5r" itemKey={item.id} checked={isChecked("t5r", item.id)} onChange={toggleCheck}><td className="num">{index + 1}</td><td className="nm">{item.name}</td><td>{item.room}</td><td className="num">{item.score.toFixed(1)}</td></CheckableRow>) : <EmptyRow colSpan={5} />}</tbody></table></div></div>
@@ -633,15 +834,35 @@ export default function Page() {
           </div>
 
           <div className={pageClass(activePage, "lowpv")}>
+            <PageIntro
+              title="入替対象分析"
+              description="反響が弱い物件を確認し、入替・改善の優先順位を営業現場で説明しやすくします。"
+            >
+              <button type="button" className="topbar-btn" onClick={() => goto("weekly")}>週次を見る</button>
+              <button type="button" className="topbar-btn" onClick={() => goto("upload")}>CSVを追加</button>
+            </PageIntro>
+            <StatusNotice tone="warning" icon="ti-alert-triangle" title="入替対象の扱い">
+              表示される候補は最新CSVに基づく確認リストです。実際の掲載判断は営業状況とオーナー方針を踏まえて確認してください。
+            </StatusNotice>
             <div className="card"><div className="card-head"><div className="card-title" style={{ color: "var(--red)" }}><i className="ti ti-alert-triangle" />入替対象物件</div><ProgressActions tableId="t6" total={analysis.lowPvRows.length} checkedState={checkedState} onClear={clearChecks} /></div><div className="tbl-wrap"><table className="tbl"><thead><tr><th className="col-check" /><th>物件名</th><th>部屋番号</th><th>駅</th><th>間取</th><th>賃料+管理費</th><th>掲載日数</th><th>問合せ</th><th>競合数</th></tr></thead><tbody>{lowPvPropertyRows.length ? lowPvPropertyRows.slice(0, 300).map((row) => <CheckableRow key={row.key} tableId="t6" itemKey={row.key} checked={isChecked("t6", row.key)} onChange={toggleCheck}><td className="nm">{row.name}</td><td>{row.room}</td><td>{row.station}</td><td>{row.madori}</td><td className="num">{row.rent}万円</td><td className="num">{row.days}日</td><td className="num">{row.inquiry}件</td><td className="num">{row.total}件</td></CheckableRow>) : <EmptyRow colSpan={9} />}</tbody></table></div></div>
           </div>
 
           <div className={pageClass(activePage, "optbal")}>
+            <PageIntro
+              title="オプション収支分析"
+              description="現在の付与数・無駄候補・削減見込みをまとめ、費用対効果を説明しやすくします。"
+            >
+              <button type="button" className="topbar-btn" onClick={() => goto("opt")}>運用候補を見る</button>
+            </PageIntro>
             <div className="savings-banner" style={{ marginBottom: 14 }}><div className="savings-main"><div className="savings-label"><i className="ti ti-coin" /> 月額オプション節約効果</div><div className="savings-amount">{formatMoney(analysis.optionBalance.totalSaving)}<small>/月</small></div><div className="savings-sub">最適化による無駄オプションの削減額</div></div><div className="savings-detail"><div className="savings-stat"><div className="savings-stat-val">{analysis.optionBalance.totalWaste}</div><div className="savings-stat-lbl">無駄オプション計</div></div><div className="savings-stat"><div className="savings-stat-val">{formatMoney(analysis.optionBalance.totalSaving * 12)}</div><div className="savings-stat-lbl">年間削減</div></div></div></div>
             <div className="card"><div className="card-head"><div className="card-title"><i className="ti ti-scale" />オプション収支分析（現状 vs 最適化後）</div></div><div className="optbal-grid">{analysis.optionBalance.cards.map((card) => <div className="optbal-card" key={card.key}><div className="optbal-name"><i className={`ti ${card.icon}`} style={{ color: "var(--green)" }} />{card.name}</div><div className="optbal-row"><span>現在の付与</span><b>{card.current}件</b></div><div className="optbal-row"><span>無駄（外せる）</span><b style={{ color: "var(--red)" }}>{card.waste}件</b></div><div className="optbal-row"><span>最適化後</span><b>{Math.max(0, card.current - card.waste)}件</b></div><div className="optbal-row"><span>単価</span><b>{formatMoney(card.price)}</b></div><div className={`optbal-verdict ${card.waste > 0 ? "verdict-cut" : "verdict-ok"}`}>{card.waste > 0 ? <>▼ {card.waste}件 削減推奨<br /><span style={{ fontSize: 10, fontWeight: 400, color: "var(--ink3)" }}>月 {formatMoney(card.saving)} 節約</span></> : "適正"}</div></div>)}</div><div style={{ fontSize: 11, color: "var(--ink3)", marginTop: 6 }}>※「最適化後の必要数」は現在の掲載・競合状況から、各基準を満たすのに必要なオプション件数を試算したものです。単価は設定画面で変更できます。</div></div>
           </div>
 
           <div className={pageClass(activePage, "area")}>
+            <PageIntro
+              title="エリア配分"
+              description="所属区を基準に、推奨掲載配分と現在の掲載バランスを確認します。"
+            />
             <div className="card"><div className="card-head"><div className="card-title"><i className="ti ti-map-2" />掲載エリアマップ — <span style={{ color: "var(--green)" }}>{settings.ward}</span>基準</div></div><div style={{ fontSize: 11, color: "var(--ink2)", marginBottom: 12 }}>所属区（濃紺）と、データ上反響が見込める推奨掲載区（緑）。設定画面で所属区を変更できます。</div><div className="area-map">
                 {WARD_GRID.map((row, r) =>
                   row.map((ward, c) => {
@@ -717,12 +938,55 @@ export default function Page() {
           </div>
 
           <div className={pageClass(activePage, "upload")}>
-            <div className="card"><div className="card-head"><div className="card-title"><i className="ti ti-upload" />CSVアップロード</div></div><div className={`upload-zone${isDragOver ? " drag" : ""}`} onClick={openFileDialog} onDragOver={(event) => { event.preventDefault(); setIsDragOver(true); }} onDragLeave={() => setIsDragOver(false)} onDrop={(event) => { event.preventDefault(); setIsDragOver(false); if (event.dataTransfer.files.length) loadFiles(event.dataTransfer.files); }} style={{ cursor: "pointer" }}><i className="ti ti-files" style={{ fontSize: 28, color: "var(--ink2)", display: "block", marginBottom: 9 }} /><div style={{ fontSize: 13.5, color: "var(--ink2)" }}>{isReadingCsv ? "読み込み中..." : "複数ファイルをまとめてドロップ or クリック"}</div><div style={{ fontSize: 11, color: "var(--ink3)", marginTop: 5 }}>keisaibukken_report_YYYYMMDD_hhmmss.csv / Shift-JIS・UTF-8 対応</div></div><input ref={fileInputRef} type="file" accept=".csv" multiple style={{ display: "none" }} onChange={handleFileInput} /><div style={{ marginTop: 9 }}>{snapshots.map((snapshot) => <span className="chip" key={snapshot.fileName}>{snapshot.dateLabel} / {snapshot.rows.length}件</span>)}</div><div className="notice"><i className="ti ti-lock" style={{ fontSize: 13 }} />データはブラウザ内のみで処理。サーバーには送信されません。</div><div className="notice"><i className="ti ti-refresh" style={{ fontSize: 13 }} />新しいCSVを読み込むと、チェック（対応済み）はリセットされます。</div></div>
+            <PageIntro
+              title="CSVアップロード"
+              description="SUUMOのCSVを読み込み、ダッシュボードや各レポートで確認できる状態にします。"
+            />
+            <div className="card">
+              <div className="card-head"><div className="card-title"><i className="ti ti-upload" />CSVアップロード</div></div>
+              <div className={`upload-zone${isDragOver ? " drag" : ""}`} onClick={openFileDialog} onDragOver={(event) => { event.preventDefault(); setIsDragOver(true); }} onDragLeave={() => setIsDragOver(false)} onDrop={(event) => { event.preventDefault(); setIsDragOver(false); if (event.dataTransfer.files.length) loadFiles(event.dataTransfer.files); }} style={{ cursor: "pointer" }}>
+                {isReadingCsv ? <LoadingState text="CSVを読み込んでいます..." /> : (
+                  <>
+                    <i className="ti ti-files" style={{ fontSize: 28, color: "var(--ink2)", display: "block", marginBottom: 9 }} />
+                    <div style={{ fontSize: 13.5, color: "var(--ink2)" }}>複数ファイルをまとめてドロップ、またはクリックして選択</div>
+                    <div style={{ fontSize: 11, color: "var(--ink3)", marginTop: 5 }}>keisaibukken_report_YYYYMMDD_hhmmss.csv / Shift-JIS・UTF-8 対応</div>
+                  </>
+                )}
+              </div>
+              <input ref={fileInputRef} type="file" accept=".csv" multiple style={{ display: "none" }} onChange={handleFileInput} />
+              <div style={{ marginTop: 9 }}>{snapshots.map((snapshot) => <span className="chip" key={snapshot.fileName}>{snapshot.dateLabel} / {snapshot.rows.length}件</span>)}</div>
+              <StatusNotice tone="info" icon="ti-database" title="読み込み後の保存">
+                CSVはブラウザで解析し、保存用データをSupabaseへ記録します。
+              </StatusNotice>
+              <StatusNotice tone="warning" icon="ti-refresh" title="チェック状態の扱い">
+                新しいCSVを読み込むと、対応済みチェックはリセットされます。
+              </StatusNotice>
+            </div>
+            <div className="card">
+              <div className="card-head"><div className="card-title"><i className="ti ti-route" />アップロード後に見る画面</div></div>
+              <div className="quick-grid compact">
+                <QuickLink icon="ti-dashboard" label="ダッシュボードを見る" description="全体状況を確認" onClick={() => goto("home")} />
+                <QuickLink icon="ti-chart-bar" label="週次レポートを見る" description="直近の反響を確認" onClick={() => goto("weekly")} />
+                <QuickLink icon="ti-alert-triangle" label="入替対象を見る" description="優先対応を確認" onClick={() => goto("lowpv")} />
+              </div>
+            </div>
           </div>
 
           <div className={pageClass(activePage, "settings")}>
+            <PageIntro
+              title="設定"
+              description="契約枠・所属区・オプション単価を調整し、分析結果を店舗運用に合わせます。"
+            />
             <div className="card"><div className="card-head"><div className="card-title"><i className="ti ti-settings" />SUUMO契約枠</div></div><div className="setting-grid"><div className="setting-card"><div className="setting-label">掲載枠数（総数）</div><div style={{ display: "flex", alignItems: "center", gap: 6 }}><input className="setting-input" type="number" value={settings.slots} min={0} onChange={(event) => setSettings((current) => ({ ...current, slots: Number(event.target.value) }))} /><span style={{ fontSize: 11, color: "var(--ink3)" }}>件</span></div></div><div className="setting-card"><div className="setting-label">スマピク上限</div><div style={{ display: "flex", alignItems: "center", gap: 6 }}><input className="setting-input" type="number" value={settings.smapicLimit} min={0} onChange={(event) => setSettings((current) => ({ ...current, smapicLimit: Number(event.target.value) }))} /><span style={{ fontSize: 11, color: "var(--ink3)" }}>件</span></div></div><div className="setting-card"><div className="setting-label">所属区（エリア配分の基準）</div><div><select className="setting-select" value={settings.ward} onChange={(event) => setSettings((current) => ({ ...current, ward: event.target.value }))}>{ALL_WARDS.map((ward) => <option key={ward} value={ward}>{ward}</option>)}</select></div></div><div className="setting-card" style={{ display: "flex", alignItems: "flex-end" }}><button type="button" className="save-btn" onClick={saveSettings}>保存して再計算</button>{savedVisible ? <span style={{ fontSize: 10, color: "#3B6D11", marginLeft: 8 }}>✓ 保存済み</span> : null}</div></div></div>
             <div className="card"><div className="card-head"><div className="card-title"><i className="ti ti-coin" />オプション単価（月額・1件あたり）</div></div><div className="setting-grid"><div className="setting-card"><div className="setting-label">スマピク</div><div style={{ display: "flex", alignItems: "center", gap: 6 }}>¥<input className="setting-input" type="number" value={settings.prices.smapic} min={0} onChange={(event) => setPrice("smapic", Number(event.target.value))} /></div></div><div className="setting-card"><div className="setting-label">店ピク</div><div style={{ display: "flex", alignItems: "center", gap: 6 }}>¥<input className="setting-input" type="number" value={settings.prices.misepic} min={0} onChange={(event) => setPrice("misepic", Number(event.target.value))} /></div></div><div className="setting-card"><div className="setting-label">パノラマ</div><div style={{ display: "flex", alignItems: "center", gap: 6 }}>¥<input className="setting-input" type="number" value={settings.prices.panorama} min={0} onChange={(event) => setPrice("panorama", Number(event.target.value))} /></div></div><div className="setting-card"><div className="setting-label">得意なエリア</div><div style={{ display: "flex", alignItems: "center", gap: 6 }}>¥<input className="setting-input" type="number" value={settings.prices.area} min={0} onChange={(event) => setPrice("area", Number(event.target.value))} /></div></div><div className="setting-card"><div className="setting-label">動画</div><div style={{ display: "flex", alignItems: "center", gap: 6 }}>¥<input className="setting-input" type="number" value={settings.prices.movie} min={0} onChange={(event) => setPrice("movie", Number(event.target.value))} /></div></div></div></div>
+            <div className="card">
+              <div className="card-head"><div className="card-title"><i className="ti ti-road" />今後追加予定</div></div>
+              <div className="future-list">
+                <div><b>ログイン・権限管理</b><span>Company / Workspace Context とSupabase Authを接続し、管理者・メンバー・閲覧者の権限を整理します。</span></div>
+                <div><b>店舗別設定</b><span>店舗ごとの契約枠・配信設定・レポート出力設定を保存できるようにします。</span></div>
+                <div><b>レポート配信</b><span>週次・月次レポートを通知やPDF出力へ接続する予定です。</span></div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
