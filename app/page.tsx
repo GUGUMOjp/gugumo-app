@@ -11,8 +11,8 @@ import {
   getCurrentWorkspaceContextAction,
 } from "@/src/server/actions/workspaceActions";
 import {
-  saveCsvUploadRecords,
-} from "@/src/server/repositories";
+  saveCsvUploadRecordsAction,
+} from "@/src/server/actions/csvUploadActions";
 import {
   analyzeRows,
   buildDayDiffs,
@@ -516,11 +516,11 @@ export default function Page() {
 
     try {
       const parsed = await buildUploadSnapshots(fileList);
-      const saveResult = await saveCsvUploadRecords(buildCsvUploadRecords(parsed));
+      const saveResult = await saveCsvUploadRecordsAction(buildCsvUploadRecords(parsed));
 
       if (!saveResult.ok) {
-        console.error(saveResult.error.cause);
-        alert(`CSVの保存に失敗しました: ${saveResult.error.failedRecord.file_name}`);
+        console.error(saveResult.error);
+        alert("CSVの保存に失敗しました。時間をおいて再度お試しください。");
         return;
       }
 

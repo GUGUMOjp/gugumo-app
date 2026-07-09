@@ -15,7 +15,8 @@ d3901a2 Release Epic 9: polish MVP UI and navigation
 ## Current Uncommitted Changes
 
 - app/page.tsx
-- docs/20_ReleaseEpic9UiPolish.md
+- src/server/actions/csvUploadActions.ts
+- next.config.ts
 - MASTER_PROGRESS.md
 
 ## Build Status
@@ -45,6 +46,10 @@ d3901a2 Release Epic 9: polish MVP UI and navigation
 ## Current Blocker
 
 - none
+
+## Latest Implementation Note
+
+- CSV upload保存をServer Action経由に戻した後、実CSV payloadがNext.js Server Actionの既定1MB制限を超えたため、`serverActions.bodySizeLimit` を `10mb` に変更。
 
 ## Next Sprint
 
