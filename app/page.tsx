@@ -11,6 +11,7 @@ import {
   getCurrentWorkspaceContextAction,
 } from "@/src/server/actions/workspaceActions";
 import {
+  loadRecentCsvUploadSnapshotsAction,
   saveCsvUploadRecordsAction,
 } from "@/src/server/actions/csvUploadActions";
 import {
@@ -424,6 +425,8 @@ export default function Page() {
   const [activePage, setActivePage] = useState<PageId>("home");
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [snapshots, setSnapshots] = useState<CsvSnapshot[]>([]);
+  const [isRestoringCsv, setIsRestoringCsv] = useState(false);
+  const [restoreError, setRestoreError] = useState("");
   const [isReadingCsv, setIsReadingCsv] = useState(false);
   const [settings, setSettings] = useHydratedSettings();
   const [checkedState, setCheckedState] = useState<CheckState>(() => {
@@ -464,6 +467,42 @@ export default function Page() {
       isMounted = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (!isLoggedIn) return;
+
+    let isMounted = true;
+
+    async function restoreRecentCsv() {
+      try {
+        const result = await loadRecentCsvUploadSnapshotsAction();
+
+        if (!isMounted) return;
+
+        if (result.ok) {
+          setSnapshots(result.data);
+        } else {
+          setRestoreError("保存済みデータを読み込めませんでした。時間をおいて再度お試しください。");
+        }
+      } catch (error) {
+        console.error(error);
+
+        if (isMounted) {
+          setRestoreError("保存済みデータを読み込めませんでした。時間をおいて再度お試しください。");
+        }
+      } finally {
+        if (isMounted) {
+          setIsRestoringCsv(false);
+        }
+      }
+    }
+
+    restoreRecentCsv();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [isLoggedIn]);
 
   useEffect(() => {
     try {
@@ -525,6 +564,7 @@ export default function Page() {
       }
 
       setSnapshots(parsed);
+      setRestoreError("");
       goto("home");
       alert("CSVを読み込み、分析に反映しました。");
     } catch (error) {
@@ -586,10 +626,20 @@ export default function Page() {
   const latestMonth = monthly.at(-1);
   const previousMonth = monthly.at(-2);
 
-  const topbarStatus = latestSnapshot ? `${snapshots.length}ファイル読み込み済み / 最終更新 ${latestSnapshot.dateLabel}` : "データ未読み込み";
+  const topbarStatus = isRestoringCsv
+    ? "保存済みデータを確認中"
+    : latestSnapshot
+      ? `${snapshots.length}ファイル読み込み済み / 最終更新 ${latestSnapshot.dateLabel}`
+      : "データ未読み込み";
+
+  const handleLogin = () => {
+    setRestoreError("");
+    setIsRestoringCsv(true);
+    setIsLoggedIn(true);
+  };
 
   if (!isLoggedIn) {
-    return <LoginScreen onLogin={() => setIsLoggedIn(true)} />;
+    return <LoginScreen onLogin={handleLogin} />;
   }
 
   return (
@@ -678,7 +728,17 @@ export default function Page() {
           <button type="button" className="topbar-btn primary" onClick={() => goto("upload")}><i className="ti ti-upload" style={{ fontSize: 13 }} />CSVを読み込む</button>
         </div>
 
-        <div className="content">
+        <div className={`content${isRestoringCsv ? " restoring" : ""}`}>
+          {isRestoringCsv ? (
+            <div className="restore-state">
+              <LoadingState text="保存済みデータを読み込んでいます..." />
+            </div>
+          ) : null}
+          {restoreError ? (
+            <StatusNotice tone="warning" icon="ti-alert-circle" title="保存済みデータを読み込めませんでした">
+              時間をおいて再度お試しください。CSVを新しく読み込むこともできます。
+            </StatusNotice>
+          ) : null}
           <div className={pageClass(activePage, "home")}>
             <PageIntro
               title="ダッシュボード"

@@ -10,12 +10,38 @@ export type CsvUploadRecord = {
   file_data: Record<string, string>[];
 };
 
+export type StoredCsvUploadRecord = CsvUploadRecord & {
+  created_at: string | null;
+};
+
 type CsvUploadSaveError = {
   cause: unknown;
   failedRecord: CsvUploadRecord;
 };
 
+type CsvUploadReadError = {
+  cause: unknown;
+};
+
 type CsvUploadSaveResult = ServerResult<void, CsvUploadSaveError>;
+type CsvUploadReadResult = ServerResult<StoredCsvUploadRecord[], CsvUploadReadError>;
+
+export async function getRecentCsvUploadRecords(limit = 10) {
+  const { data, error } = await supabase
+    .from("csv_uploads")
+    .select("file_name, file_data, created_at")
+    .order("created_at", { ascending: false })
+    .limit(limit)
+    .returns<StoredCsvUploadRecord[]>();
+
+  if (error) {
+    return err({
+      cause: error,
+    }) satisfies CsvUploadReadResult;
+  }
+
+  return ok(data) satisfies CsvUploadReadResult;
+}
 
 export async function saveCsvUploadRecord(record: CsvUploadRecord) {
   const { error } = await supabase.from("csv_uploads").insert(record);

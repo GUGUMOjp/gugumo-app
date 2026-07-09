@@ -14,9 +14,12 @@ d3901a2 Release Epic 9: polish MVP UI and navigation
 
 ## Current Uncommitted Changes
 
-- next.config.ts
 - app/page.tsx
 - app/gugumo.css
+- src/server/actions/csvUploadActions.ts
+- src/server/repositories/csvUploadRepository.ts
+- src/server/services/upload/index.ts
+- src/server/services/upload/uploadSnapshots.ts
 - MASTER_PROGRESS.md
 
 ## Build Status
@@ -49,9 +52,8 @@ d3901a2 Release Epic 9: polish MVP UI and navigation
 
 ## Latest Implementation Note
 
-- RC実CSV10件の保存payloadがJSON時点で約11.36MBとなり、`10mb`制限を超えることを確認したため、`serverActions.bodySizeLimit` を `20mb` に変更。
-- 実データ表示確認で、週次グラフの期間省略と月途中データに対する「月末締め」表記を修正。
-- 390px幅で1列になっていたナビゲーションを2列のまま表示し、本文までのスクロール量を削減。
+- Supabaseの`csv_uploads`から直近10件をServer Action経由で取得し、保存済みCSVから分析画面を復元する導線を追加。
+- 復元中は読み込み表示、取得失敗時は顧客向けメッセージ、保存データがない場合は既存の空状態を表示。
 
 ## Next Sprint
 

@@ -1,10 +1,17 @@
 import { buildSummary } from "@/src/server/services/analysis";
-import { readCsvFile } from "@/src/server/services/csv";
+import {
+  extractDataDate,
+  readCsvFile,
+} from "@/src/server/services/csv";
 import type { CsvSnapshot } from "@/src/server/types/csv";
 
 type CsvUploadRecord = {
   file_name: string;
   file_data: CsvSnapshot["rows"];
+};
+
+type StoredCsvUploadRecord = CsvUploadRecord & {
+  created_at: string | null;
 };
 
 function formatDate(date: Date) {
@@ -38,6 +45,34 @@ export function buildCsvUploadRecords(snapshots: CsvSnapshot[]): CsvUploadRecord
     file_name: snapshot.fileName,
     file_data: snapshot.rows,
   }));
+}
+
+export function buildStoredUploadSnapshots(records: StoredCsvUploadRecord[]) {
+  const latestByFileName = new Map<string, StoredCsvUploadRecord>();
+
+  records.forEach((record) => {
+    if (!latestByFileName.has(record.file_name)) {
+      latestByFileName.set(record.file_name, record);
+    }
+  });
+
+  const snapshots = Array.from(latestByFileName.values()).map((record): CsvSnapshot => {
+    const createdAt = record.created_at ? new Date(record.created_at) : new Date();
+    const date = extractDataDate(record.file_name) ?? createdAt;
+
+    return {
+      fileName: record.file_name,
+      date,
+      dateKey: dateKey(date),
+      dateLabel: formatDate(date),
+      rows: record.file_data,
+      summary: buildSummary(record.file_data),
+    };
+  });
+
+  snapshots.sort((a, b) => a.date.getTime() - b.date.getTime());
+
+  return snapshots;
 }
 
 export function getLatestSnapshot(snapshots: CsvSnapshot[]) {

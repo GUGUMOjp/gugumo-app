@@ -1,5 +1,6 @@
 export {
   buildCsvUploadRecords,
+  buildStoredUploadSnapshots,
   buildUploadSnapshots,
   getLatestSnapshot,
   hasCsvUploadFiles,

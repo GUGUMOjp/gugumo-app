@@ -450,6 +450,19 @@ body {
   overflow-y: auto;
 }
 
+.content.restoring > .page {
+  display: none;
+}
+
+.restore-state {
+  min-height: 260px;
+  display: grid;
+  place-items: center;
+  background: var(--panel);
+  border: 0.5px solid var(--line);
+  border-radius: var(--radius);
+}
+
 .section-intro {
   background: var(--panel);
   border: 0.5px solid var(--line);
