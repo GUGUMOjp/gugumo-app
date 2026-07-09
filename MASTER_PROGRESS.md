@@ -14,9 +14,9 @@ d3901a2 Release Epic 9: polish MVP UI and navigation
 
 ## Current Uncommitted Changes
 
-- app/page.tsx
-- src/server/actions/csvUploadActions.ts
 - next.config.ts
+- app/page.tsx
+- app/gugumo.css
 - MASTER_PROGRESS.md
 
 ## Build Status
@@ -49,7 +49,9 @@ d3901a2 Release Epic 9: polish MVP UI and navigation
 
 ## Latest Implementation Note
 
-- CSV upload保存をServer Action経由に戻した後、実CSV payloadがNext.js Server Actionの既定1MB制限を超えたため、`serverActions.bodySizeLimit` を `10mb` に変更。
+- RC実CSV10件の保存payloadがJSON時点で約11.36MBとなり、`10mb`制限を超えることを確認したため、`serverActions.bodySizeLimit` を `20mb` に変更。
+- 実データ表示確認で、週次グラフの期間省略と月途中データに対する「月末締め」表記を修正。
+- 390px幅で1列になっていたナビゲーションを2列のまま表示し、本文までのスクロール量を削減。
 
 ## Next Sprint
 

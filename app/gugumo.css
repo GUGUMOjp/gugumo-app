@@ -1697,10 +1697,6 @@ tr.done td .bl-green {
 }
 
 @media (max-width: 420px) {
-  .nav {
-    grid-template-columns: 1fr;
-  }
-
   .topbar-btn {
     width: 100%;
     justify-content: center;

@@ -379,7 +379,7 @@ function MiniBarChart({ data }: { data: Array<{ label: string; value: number }> 
   return (
     <div style={{ padding: "8px 2px", display: "grid", gap: 8 }}>
       {data.slice(-10).map((item) => (
-        <div key={item.label} style={{ display: "grid", gridTemplateColumns: "96px 1fr 72px", alignItems: "center", gap: 8, fontSize: 11 }}>
+        <div key={item.label} style={{ display: "grid", gridTemplateColumns: "minmax(132px, 160px) minmax(80px, 1fr) 72px", alignItems: "center", gap: 8, fontSize: 11 }}>
           <div style={{ color: "var(--ink2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.label}</div>
           <div style={{ height: 12, background: "var(--green-l)", borderRadius: 8, overflow: "hidden" }}>
             <div style={{ height: "100%", width: `${Math.max(3, (item.value / max) * 100)}%`, background: "var(--green)", borderRadius: 8 }} />
@@ -825,7 +825,7 @@ export default function Page() {
           <div className={pageClass(activePage, "monthly")}>
             <PageIntro
               title="月次レポート"
-              description="月末締めの推移を、営業報告で説明しやすい形に整理します。"
+              description="読み込み済みCSVの月ごとの推移を、営業報告で説明しやすい形に整理します。"
             >
               {monthly.length ? (
                 <>
@@ -838,7 +838,7 @@ export default function Page() {
               <EmptyActionPanel
                 icon="ti-calendar-stats"
                 title="複数日のCSV読み込み後に月次サマリーを表示します"
-                message="月末締めの推移や優先課題は、複数日のCSVを読み込むと確認できます。"
+                message="月ごとの推移や優先課題は、複数日のCSVを読み込むと確認できます。"
                 onAction={() => goto("upload")}
               />
             ) : (
@@ -867,7 +867,7 @@ export default function Page() {
                   </div>
                   </div>
                 </div>
-                <div className="card"><div className="card-head"><div className="card-title"><i className="ti ti-chart-bar" />月次推移（月末締め）</div></div><div className="chart-wrap tall"><MiniBarChart data={monthly.map((month) => ({ label: month.label, value: month.listPV }))} /></div></div>
+                <div className="card"><div className="card-head"><div className="card-title"><i className="ti ti-chart-bar" />月次推移</div></div><div className="chart-wrap tall"><MiniBarChart data={monthly.map((month) => ({ label: month.label, value: month.listPV }))} /></div></div>
                 <div className="card"><div className="tbl-wrap"><table className="tbl"><thead><tr><th>月</th><th>一覧PV</th><th>前月比</th><th>詳細PV</th><th>前月比</th><th>問合せ</th><th>前月比</th><th>平均競合数</th></tr></thead><tbody>{monthly.map((month, index) => { const prev = monthly[index - 1]; return <tr key={month.key}><td>{month.label}</td><td className="num">{formatNumber(month.listPV)}</td><td>{deltaCell(month.listPV, prev?.listPV)}</td><td className="num">{formatNumber(month.detailPV)}</td><td>{deltaCell(month.detailPV, prev?.detailPV)}</td><td className="num">{formatNumber(month.inquiry)}</td><td>{deltaCell(month.inquiry, prev?.inquiry)}</td><td className="num">{month.avgCompetition.toFixed(1)}</td></tr>; })}</tbody></table></div></div>
               </>
             )}
