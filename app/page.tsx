@@ -228,6 +228,8 @@ function LoadingState({ text = "読み込み中です..." }: { text?: string }) 
 }
 
 function LoginScreen({ onLogin }: { onLogin: () => void }) {
+  const [resetMessage, setResetMessage] = useState("");
+
   return (
     <main className="login-page">
       <div className="login-shell">
@@ -259,6 +261,14 @@ function LoginScreen({ onLogin }: { onLogin: () => void }) {
               <span>パスワード</span>
               <input type="password" placeholder="パスワード" />
             </label>
+            <button
+              type="button"
+              className="forgot-password-link"
+              onClick={() => setResetMessage("パスワード再設定（準備中）: 正式版では入力したメールアドレス宛に再設定メールを送信します。")}
+            >
+              パスワードをお忘れですか？
+            </button>
+            {resetMessage ? <div className="login-support-message">{resetMessage}</div> : null}
             <button type="submit" className="login-submit">ログイン</button>
           </form>
         </section>
@@ -638,6 +648,15 @@ export default function Page() {
     setIsLoggedIn(true);
   };
 
+  const handleLogout = () => {
+    setIsLoggedIn(false);
+    setIsRestoringCsv(false);
+    setRestoreError("");
+    setSnapshots([]);
+    setCheckedState({});
+    setActivePage("home");
+  };
+
   if (!isLoggedIn) {
     return <LoginScreen onLogin={handleLogin} />;
   }
@@ -726,6 +745,7 @@ export default function Page() {
           </div>
           <span className={`status-pill${latestSnapshot ? " loaded" : ""}`}>{topbarStatus}</span>
           <button type="button" className="topbar-btn primary" onClick={() => goto("upload")}><i className="ti ti-upload" style={{ fontSize: 13 }} />CSVを読み込む</button>
+          <button type="button" className="topbar-btn" onClick={handleLogout}><i className="ti ti-logout" style={{ fontSize: 13 }} />ログアウト</button>
         </div>
 
         <div className={`content${isRestoringCsv ? " restoring" : ""}`}>

@@ -10,15 +10,19 @@ export const LEGAL_LINKS = [
     href: "/terms",
   },
   {
-    label: "プライバシー",
+    label: "プライバシーポリシー",
     href: "/privacy",
   },
   {
-    label: "Cookie",
-    href: "/cookie",
+    label: "データ取扱方針",
+    href: "/data-policy",
   },
   {
-    label: "セキュリティ",
-    href: "/security",
+    label: "サポート",
+    href: "/support",
+  },
+  {
+    label: "特商法表記",
+    href: "/legal",
   },
 ] as const;

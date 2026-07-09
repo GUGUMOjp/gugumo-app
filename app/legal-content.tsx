@@ -18,10 +18,12 @@ const prohibitedItems = [
   "法令違反目的での利用禁止",
 ];
 
+const operatorName = "GUGUMO 代表 田中 純一";
+
 export const legalPages = {
   terms: {
     title: "利用規約",
-    description: "GUGUMOの利用条件、禁止事項、責任範囲を整理するための仮文面です。",
+    description: "GUGUMOを安心してご利用いただくための、サービス利用条件に関するRC用の暫定文面です。",
     sections: [
       {
         title: "サービス利用",
@@ -37,21 +39,21 @@ export const legalPages = {
       {
         title: "免責",
         body: [
-          "本ページは法務レビュー前の仮文面です。",
-          "最終公開前に、事業内容、契約形態、運用実態に合わせた専門家確認を行います。",
+          "本サービスの分析結果は、掲載運用の判断材料を整理するものであり、反響や成約を保証するものではありません。",
+          "正式な契約条件は、個別契約または申込時に提示する条件を優先します。",
         ],
       },
     ],
   },
   privacy: {
     title: "プライバシーポリシー",
-    description: "GUGUMOで扱う個人情報・法人情報・アップロードデータの取扱い方針の仮文面です。",
+    description: "GUGUMOで扱う個人情報・法人情報の取扱い方針に関するRC用の暫定文面です。",
     sections: [
       {
         title: "取得する情報",
         body: [
           "アカウント情報、法人情報、CSVアップロード情報、操作履歴など、サービス提供に必要な情報を取得する場合があります。",
-          "取得する情報の範囲は、正式版公開前に実際の機能と照合して確定します。",
+          "取得する情報の範囲は、契約内容、利用プラン、実際の利用機能に応じて定めます。",
         ],
       },
       {
@@ -66,6 +68,98 @@ export const legalPages = {
         body: [
           "利用者の同意または法令上の根拠がある場合を除き、取得情報を第三者へ提供しません。",
           "解析結果、CSVデータ、他社データの第三者提供は禁止事項として扱います。",
+        ],
+      },
+    ],
+  },
+  dataPolicy: {
+    title: "データ取扱方針",
+    description: "お客様が読み込むCSVデータと分析結果の取扱いに関するRC用の暫定文面です。",
+    sections: [
+      {
+        title: "対象データ",
+        body: [
+          "GUGUMOは、利用者が正当な権限に基づいて取得したSUUMO掲載管理用CSVを分析対象とします。",
+          "GUGUMOはCSVを生成せず、利用者が読み込んだCSVの内容をもとに掲載運用の確認ポイントを整理します。",
+        ],
+      },
+      {
+        title: "利用範囲",
+        body: [
+          "読み込まれたデータは、サービス提供、分析結果の表示、問い合わせ対応、品質改善のために必要な範囲で取り扱います。",
+          "お客様の掲載データや分析結果を、法令上必要な場合を除き、第三者へ無断で提供しません。",
+        ],
+      },
+      {
+        title: "保管と削除",
+        body: [
+          "データの保管期間、削除方法、バックアップの扱いは、契約時または運用開始時に個別に案内します。",
+          "検証環境で取り扱うデータは、営業デモや初期確認に必要な範囲に限定します。",
+        ],
+      },
+    ],
+  },
+  support: {
+    title: "サポート・お問い合わせ",
+    description: "GUGUMOの導入相談、操作相談、契約に関するお問い合わせ窓口のRC用案内です。",
+    sections: [
+      {
+        title: "お問い合わせ",
+        body: [
+          "導入前のご相談、初期設定、操作方法、契約内容、請求に関するお問い合わせを受け付けます。",
+          "お問い合わせ時は、会社名、担当者名、確認したい内容をお知らせください。",
+        ],
+      },
+      {
+        title: "サポート内容",
+        body: [
+          "SUUMO CSVの読み込み手順、各分析画面の見方、営業デモ時の説明ポイントを案内します。",
+          "お客様の運用状況に応じて、初回利用時の確認や画面説明を個別に行います。",
+        ],
+      },
+      {
+        title: "営業時間",
+        body: [
+          "通常の対応時間は、契約時または導入時に個別に案内します。",
+          "営業時間外のお問い合わせは、翌営業日以降に順次確認します。",
+        ],
+      },
+      {
+        title: "問い合わせ先",
+        body: [
+          "正式な問い合わせ先メールアドレス、電話番号、受付時間は契約時またはお問い合わせ時に個別に案内します。",
+          "初期顧客向けの導入支援は、契約内容に応じてオンラインまたは個別連絡で対応します。",
+        ],
+      },
+      {
+        title: "運営者",
+        body: [operatorName],
+      },
+    ],
+  },
+  legal: {
+    title: "特定商取引法に基づく表記",
+    description: "GUGUMOの提供者情報と取引条件に関するRC用の暫定表記です。",
+    sections: [
+      {
+        title: "販売事業者",
+        body: [
+          operatorName,
+          "所在地、電話番号、メールアドレスは、契約時またはお問い合わせ時に個別に案内します。",
+        ],
+      },
+      {
+        title: "販売価格・支払条件",
+        body: [
+          "利用料金、支払時期、支払方法は、申込書、見積書、契約書、または個別案内に記載します。",
+          "追加費用が発生する場合は、事前に内容と条件を案内します。",
+        ],
+      },
+      {
+        title: "提供時期・解約",
+        body: [
+          "サービス提供開始時期、契約期間、解約条件は、契約時に提示する条件に従います。",
+          "デジタルサービスの性質上、提供開始後の返金可否は個別契約条件に基づきます。",
         ],
       },
     ],
@@ -125,11 +219,11 @@ export function LegalPage({ content }: { content: LegalPageContent }) {
   return (
     <main className="min-h-screen bg-slate-50 px-6 py-12 text-slate-900">
       <article className="mx-auto max-w-3xl">
-        <p className="text-sm font-semibold text-slate-500">GUGUMO Legal</p>
+        <p className="text-sm font-semibold text-slate-500">GUGUMO 法務案内</p>
         <h1 className="mt-3 text-3xl font-bold">{content.title}</h1>
         <p className="mt-4 text-base leading-7 text-slate-700">{content.description}</p>
         <p className="mt-4 rounded border border-amber-300 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-900">
-          このページは法務ページの骨組みとして作成した仮文面です。最終公開前に専門家確認が必要です。
+          このページはRC期間中の暫定案内です。正式な契約条件は、個別契約または申込時に提示する内容を優先します。
         </p>
 
         <div className="mt-10 space-y-8">
@@ -144,6 +238,9 @@ export function LegalPage({ content }: { content: LegalPageContent }) {
             </section>
           ))}
         </div>
+        <p className="mt-8 text-xs leading-6 text-slate-500">
+          運営者: {operatorName}
+        </p>
       </article>
     </main>
   );

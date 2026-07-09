@@ -6,20 +6,21 @@ GUGUMO
 
 ## Current Sprint
 
-Release Candidate UI Cleanup deletion pass ready for review
+Release Candidate Launch Readiness ready for review
 
 ## Latest Completed Commit
 
-d3901a2 Release Epic 9: polish MVP UI and navigation
+b02198f RC: restore persisted dashboard state
 
 ## Current Uncommitted Changes
 
 - app/page.tsx
 - app/gugumo.css
-- src/server/actions/csvUploadActions.ts
-- src/server/repositories/csvUploadRepository.ts
-- src/server/services/upload/index.ts
-- src/server/services/upload/uploadSnapshots.ts
+- app/legal-content.tsx
+- app/data-policy/page.tsx
+- app/support/page.tsx
+- app/legal/page.tsx
+- data/product/productMeta.ts
 - MASTER_PROGRESS.md
 
 ## Build Status
@@ -52,12 +53,15 @@ d3901a2 Release Epic 9: polish MVP UI and navigation
 
 ## Latest Implementation Note
 
-- Supabaseの`csv_uploads`から直近10件をServer Action経由で取得し、保存済みCSVから分析画面を復元する導線を追加。
-- 復元中は読み込み表示、取得失敗時は顧客向けメッセージ、保存データがない場合は既存の空状態を表示。
+- ログイン後画面にログアウト導線を追加し、モックログイン状態をログイン前へ戻す操作を整理。
+- ログイン画面のパスワード再設定導線を、正式版のメール再設定フロー前提の「準備中」案内へ変更。
+- `/data-policy`、`/support`、`/legal`を追加し、ログイン画面とサイドバー下部の法務リンクを更新。
+- サポートページは問い合わせ、サポート内容、営業時間、問い合わせ先の独立ページとして整理。
+- 左下NアイコンはNext.js開発環境由来の表示。`npm run build`後の`next start`相当では表示されないことを確認。
 
 ## Next Sprint
 
-CTO review of Release Candidate UI deletion pass
+CTO review of Release Candidate Launch Readiness
 
 ## Strict Prohibitions
 
