@@ -1063,6 +1063,8 @@ export default function Page() {
     return <LoginScreen onLogin={handleLogin} isSubmitting={isSigningIn} errorMessage={loginError} />;
   }
 
+  const [sidebarCompanyName, sidebarWorkspaceName = ""] = tenantHeader.tenantName.split("　");
+
   return (
     <div className="shell">
       <aside className="sidebar">
@@ -1103,6 +1105,16 @@ export default function Page() {
           <div className="mascot-msg">今日も<br />最適化しよう</div>
         </div>
         <div className="sidebar-footer">
+          <div className="sidebar-account">
+            <div className="sidebar-account-label">アカウント</div>
+            <div className="sidebar-account-company">{sidebarCompanyName}</div>
+            {sidebarWorkspaceName ? <div className="sidebar-account-workspace">{sidebarWorkspaceName}</div> : null}
+            {tenantHeader.roleLabel ? <div className="sidebar-account-role">{tenantHeader.roleLabel}</div> : null}
+          </div>
+          <button type="button" className="sidebar-logout" onClick={handleLogout}>
+            <i className="ti ti-logout" />
+            <span>ログアウト</span>
+          </button>
           <div className="settings-link" onClick={() => goto(SETTINGS_NAV_ITEM.id)}><i className={`ti ${SETTINGS_NAV_ITEM.icon}`} style={{ fontSize: 14 }} /><span>{SETTINGS_NAV_ITEM.label}</span></div>
           <div style={{ marginTop: 12, paddingTop: 12, borderTop: "0.5px solid rgba(255, 255, 255, 0.08)" }}>
             <div style={{ fontSize: 10.5, color: "rgba(255, 255, 255, 0.46)", lineHeight: 1.5 }}>
@@ -1126,13 +1138,8 @@ export default function Page() {
       <div className="main">
         <div className="topbar">
           <span className="page-title">{PAGE_TITLES[activePage]}</span>
-          <div style={{ minWidth: 168, textAlign: "right", lineHeight: 1.35 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: "var(--ink)" }}>{tenantHeader.tenantName}</div>
-            {tenantHeader.roleLabel ? <div style={{ fontSize: 10, color: "var(--ink3)" }}>{tenantHeader.roleLabel}</div> : null}
-          </div>
           <span className={`status-pill${latestSnapshot ? " loaded" : ""}`}>{topbarStatus}</span>
           <button type="button" className="topbar-btn primary" onClick={() => goto("upload")}><i className="ti ti-upload" style={{ fontSize: 13 }} />CSVを読み込む</button>
-          <button type="button" className="topbar-btn" onClick={handleLogout}><i className="ti ti-logout" style={{ fontSize: 13 }} />ログアウト</button>
         </div>
 
         <div className={`content${isRestoringCsv ? " restoring" : ""}`}>
