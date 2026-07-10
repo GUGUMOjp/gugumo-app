@@ -68,8 +68,16 @@ b02198f RC: restore persisted dashboard state
 - RLS有効化は次フェーズ。`csv_uploads` の `company_id / workspace_id / uploaded_by / snapshot_date / checksum / status / excluded_at / excluded_by` backfill方針確定後に実施する。
 - `checksum` backfillは既存 `file_data` からSQLだけで安全に再現しにくいため、正規化ルールとアプリ側backfill script方針の確定が必要。
 - `snapshots / snapshot_rows` 移行は正式運用前の検討事項として継続。
-- Supabase環境ズレを確認。ローカル `.env.local` と実CSV 22件の保存先は `annvqxnupddnozyghqdw`。今後の正DB・手動SQL適用対象は `annvqxnupddnozyghqdw` とする。
-- `ivtaxvuysqqnzpnwndqt` はSQL Editorで誤って `01_add_columns.sql` が適用された別Projectとして扱い、現時点では追加操作せず放置する。必要になった場合のみ別途rollback/cleanup方針をレビューする。
+- Supabase手動SQL適用対象は GUGUMOjp's Project `annvqxnupddnozyghqdw` とする。`.env.local` の `NEXT_PUBLIC_SUPABASE_URL`、`csv_uploads` 22件、Demo Company / Demo Workspace / owner profile の一致を確認済み。
+- `ivtaxvuysqqnzpnwndqt` は誤って一部SQLを適用した別DBとして扱い、今回は触らず放置する。
+- Data Integrity Phase1 Ready。対象Project `annvqxnupddnozyghqdw` 向けに `supabase/sql_editor/20260711_001_csv_uploads_phase1/` の Add Columns / Backfill / Verify SQL Editor用パッケージを作成。
+- Phase1ではConstraint / Index / RLS / Repository変更 / UI変更は行わない。既存 `csv_uploads` 全件を対象に、件数固定ではなく日付抽出・異常データチェックを通したうえでbackfillをSQL Editorで手動適用し、verify後に次フェーズへ進む。
+- Data Integrity Phase1 SQLは正DB `annvqxnupddnozyghqdw` へ手動適用済み。Verify結果は `total_csv_uploads=22`、tenant/snapshot/status NULL 0件、`checksum_null_count=22`、除外情報NULL 0件で正常。
+- Repository/Server Actionの読み取り型を `company_id / workspace_id / uploaded_by / snapshot_date / checksum / status / excluded_at / excluded_by` 対応へ拡張。既存22件のchecksum NULLは正常扱い。DB status/snapshot_dateベースの分析対象選定・除外永続化は次Sprintで実施する。
+- Upload除外/有効化は `csv_uploads.id + workspace_id` 単位のDB更新へ移行。owner/adminのみ実行し、除外時は `status='excluded' / excluded_at / excluded_by`、有効化時は `status='active' / excluded_at=null / excluded_by=null` に更新する。
+- 分析対象候補はDB `status` を反映した履歴状態で絞り込み、同一データ日付ではアップロード日時が新しいCSVを採用する。古い `snapshot_date` の後追いUploadは最新分析対象にならない。
+- 既存checksum NULL行は重複判定対象外。DB保存済み行の `contentHash` はDB `checksum` のみを使い、localStorage hash fallbackはDB保存済み行へ適用しない。
+- `getRecentCsvUploadRecords` は暫定で `limit=100`。Upload履歴が増えた場合に分析対象候補が漏れる可能性があるため、将来的には「履歴表示」と「現在分析対象取得」をRepositoryで分ける。
 - ログイン後画面にログアウト導線を追加し、モックログイン状態をログイン前へ戻す操作を整理。
 - ログイン画面のパスワード再設定導線を、正式版のメール再設定フロー前提の「準備中」案内へ変更。
 - `/data-policy`、`/support`、`/legal`を追加し、ログイン画面とサイドバー下部の法務リンクを更新。

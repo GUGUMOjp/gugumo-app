@@ -17,6 +17,7 @@ import {
   loadRecentCsvUploadHistoryAction,
   loadRecentCsvUploadSnapshotsAction,
   saveCsvUploadRecordsAction,
+  updateCsvUploadStatusAction,
 } from "@/src/server/actions/csvUploadActions";
 import {
   analyzeRows,
@@ -85,6 +86,7 @@ type UploadHistoryStatus = "active" | "excluded";
 
 type UploadHistoryEntry = {
   id: string;
+  databaseId?: number;
   fileName: string;
   dateKey: string;
   rowCount: number;
@@ -98,6 +100,14 @@ type UploadHistoryMetadata = {
   fileName: string;
   rowCount: number;
   uploadedAt: string | null;
+  companyId: string | null;
+  workspaceId: string | null;
+  uploadedBy: string | null;
+  snapshotDate: string | null;
+  checksum: string | null;
+  status: UploadHistoryStatus | null;
+  excludedAt: string | null;
+  excludedBy: string | null;
 };
 
 type UploadSnapshot = CsvSnapshot & {
@@ -202,15 +212,9 @@ async function buildCsvContentHash(file: File) {
 function buildUploadHistoryFromSnapshots(
   sourceSnapshots: UploadSnapshot[],
   metadata: UploadHistoryMetadata[],
-  current: UploadHistoryEntry[],
 ) {
   const metadataById = new Map(metadata.map((item) => [`stored-${item.id}`, item]));
   const metadataByFileName = new Map(metadata.map((item) => [item.fileName, item]));
-  const hashByFileName = new Map(
-    current
-      .filter((item) => item.contentHash)
-      .map((item) => [item.fileName, item.contentHash]),
-  );
 
   return sourceSnapshots.map((snapshot): UploadHistoryEntry => {
     const id = getSnapshotHistoryId(snapshot);
@@ -218,12 +222,13 @@ function buildUploadHistoryFromSnapshots(
 
     return {
       id,
+      databaseId: stored?.id,
       fileName: snapshot.fileName,
       dateKey: snapshot.dateKey,
       rowCount: stored?.rowCount ?? snapshot.rows.length,
       uploadedAt: stored?.uploadedAt ?? snapshot.uploadedAt ?? null,
-      status: "active",
-      contentHash: hashByFileName.get(snapshot.fileName),
+      status: stored?.status ?? "active",
+      contentHash: stored?.checksum ?? undefined,
     };
   });
 }
@@ -633,6 +638,7 @@ export default function Page() {
   const [isDragOver, setIsDragOver] = useState(false);
   const [tenantHeader, setTenantHeader] = useState<TenantHeaderDisplay>(TENANT_HEADER_FALLBACK);
   const [currentRole, setCurrentRole] = useState<WorkspaceRole | null>(null);
+  const [currentWorkspaceContext, setCurrentWorkspaceContext] = useState<CurrentWorkspaceContext | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const authUserId = session?.user.id ?? null;
   const authAccessToken = session?.access_token ?? null;
@@ -647,6 +653,7 @@ export default function Page() {
     setActivePage("home");
     setTenantHeader(TENANT_HEADER_FALLBACK);
     setCurrentRole(null);
+    setCurrentWorkspaceContext(null);
   }, []);
 
   useEffect(() => {
@@ -711,6 +718,7 @@ export default function Page() {
         if (isMounted && result.ok) {
           setTenantHeader(buildTenantHeaderDisplay(result.data));
           setCurrentRole(result.data?.role ?? null);
+          setCurrentWorkspaceContext(result.data);
         }
         // TODO: tenant未紐付けユーザーの専用案内は本番Auth移行後に整理する。
       } catch (error) {
@@ -726,27 +734,27 @@ export default function Page() {
   }, [authUserId, authAccessToken]);
 
   useEffect(() => {
-    if (!authUserId) return;
+    if (!authUserId || !authAccessToken || !currentWorkspaceContext) return;
 
     let isMounted = true;
+    const accessToken = authAccessToken;
 
     async function restoreRecentCsv() {
       setIsRestoringCsv(true);
 
       try {
         const [result, historyResult] = await Promise.all([
-          loadRecentCsvUploadSnapshotsAction(),
-          loadRecentCsvUploadHistoryAction(),
+          loadRecentCsvUploadSnapshotsAction(accessToken),
+          loadRecentCsvUploadHistoryAction(accessToken),
         ]);
 
         if (!isMounted) return;
 
         if (result.ok) {
           setSnapshots(result.data);
-          setUploadHistory((current) => buildUploadHistoryFromSnapshots(
+          setUploadHistory(() => buildUploadHistoryFromSnapshots(
             result.data,
             historyResult.ok ? historyResult.data : [],
-            current,
           ));
           setExcludedUploadIds([]);
         } else {
@@ -770,7 +778,7 @@ export default function Page() {
     return () => {
       isMounted = false;
     };
-  }, [authUserId]);
+  }, [authUserId, authAccessToken, currentWorkspaceContext]);
 
   useEffect(() => {
     try {
@@ -852,6 +860,10 @@ export default function Page() {
 
   const loadFiles = async (fileList: FileList | File[]) => {
     if (!hasCsvUploadFiles(fileList)) return;
+    if (!authAccessToken || !currentWorkspaceContext) {
+      alert("ログイン状態を確認してから、もう一度お試しください。");
+      return;
+    }
 
     setIsReadingCsv(true);
     setCheckedState({});
@@ -862,6 +874,7 @@ export default function Page() {
         fileName: file.name,
         contentHash: await buildCsvContentHash(file),
       })));
+      const hashByFileName = new Map(hashItems.map((item) => [item.fileName, item.contentHash]));
       const duplicateItems = hashItems
         .map((item) => {
           const previous = uploadHistory.find((history) => history.contentHash === item.contentHash && history.status !== "excluded");
@@ -888,7 +901,11 @@ export default function Page() {
       }
 
       const parsed = await buildUploadSnapshots(fileList);
-      const saveResult = await saveCsvUploadRecordsAction(buildCsvUploadRecords(parsed));
+      const uploadRecords = buildCsvUploadRecords(parsed).map((record) => ({
+        ...record,
+        checksum: hashByFileName.get(record.file_name) ?? null,
+      }));
+      const saveResult = await saveCsvUploadRecordsAction(uploadRecords, authAccessToken);
 
       if (!saveResult.ok) {
         console.error(saveResult.error);
@@ -896,32 +913,34 @@ export default function Page() {
         return;
       }
 
-      const uploadedAt = new Date().toISOString();
-      const hashByFileName = new Map(hashItems.map((item) => [item.fileName, item.contentHash]));
-      const parsedWithIds = parsed.map((snapshot, index): UploadSnapshot => {
-        const historyId = `session-${buildSnapshotUploadKey(snapshot)}-${uploadedAt}-${index}`;
-
-        return {
-          ...snapshot,
-          uploadHistoryId: historyId,
-          uploadedAt,
-        };
-      });
-      setSnapshots(parsedWithIds);
-      setUploadHistory((current) => [
-        ...parsedWithIds.map((snapshot): UploadHistoryEntry => {
-          return {
-            id: getSnapshotHistoryId(snapshot),
-            fileName: snapshot.fileName,
-            dateKey: snapshot.dateKey,
-            rowCount: snapshot.rows.length,
-            uploadedAt,
-            status: "active",
-            contentHash: hashByFileName.get(snapshot.fileName),
-          };
-        }),
-        ...current,
+      const [restoredResult, restoredHistoryResult] = await Promise.all([
+        loadRecentCsvUploadSnapshotsAction(authAccessToken),
+        loadRecentCsvUploadHistoryAction(authAccessToken),
       ]);
+
+      if (restoredResult.ok) {
+        setSnapshots(restoredResult.data);
+        setUploadHistory(() => buildUploadHistoryFromSnapshots(
+          restoredResult.data,
+          restoredHistoryResult.ok ? restoredHistoryResult.data : [],
+        ));
+      } else {
+        setSnapshots(parsed);
+        setUploadHistory((current) => [
+          ...parsed.map((snapshot): UploadHistoryEntry => {
+            return {
+              id: getSnapshotHistoryId(snapshot),
+              fileName: snapshot.fileName,
+              dateKey: snapshot.dateKey,
+              rowCount: snapshot.rows.length,
+              uploadedAt: new Date().toISOString(),
+              status: "active",
+              contentHash: hashByFileName.get(snapshot.fileName),
+            };
+          }),
+          ...current,
+        ]);
+      }
       setExcludedUploadIds([]);
       setRestoreError("");
       goto("home");
@@ -939,22 +958,50 @@ export default function Page() {
     if (event.target.files?.length) loadFiles(event.target.files);
   };
 
-  const excludeUpload = (entry: UploadHistoryEntry) => {
+  const excludeUpload = async (entry: UploadHistoryEntry) => {
     if (currentRole !== "owner" && currentRole !== "admin") return;
+    if (!entry.databaseId || !authAccessToken) {
+      alert("保存済みCSVを確認できませんでした。画面を再読み込みしてから再度お試しください。");
+      return;
+    }
     if (!window.confirm("このCSVを分析対象から除外しますか？\n同じファイル名の他のCSVには影響しません。")) return;
 
-    setExcludedUploadIds((current) => current.includes(entry.id) ? current : [...current, entry.id]);
+    const result = await updateCsvUploadStatusAction({
+      uploadId: entry.databaseId,
+      status: "excluded",
+      accessToken: authAccessToken,
+    });
+
+    if (!result.ok) {
+      alert(result.error.message);
+      return;
+    }
+
     setUploadHistory((current) => current.map((item) => item.id === entry.id ? {
       ...item,
       status: "excluded",
     } : item));
   };
 
-  const activateUpload = (entry: UploadHistoryEntry) => {
+  const activateUpload = async (entry: UploadHistoryEntry) => {
     if (currentRole !== "owner" && currentRole !== "admin") return;
+    if (!entry.databaseId || !authAccessToken) {
+      alert("保存済みCSVを確認できませんでした。画面を再読み込みしてから再度お試しください。");
+      return;
+    }
     if (!window.confirm("このCSVを有効に戻しますか？\n最新データ日付でない場合、分析対象にはなりません。")) return;
 
-    setExcludedUploadIds((current) => current.filter((id) => id !== entry.id));
+    const result = await updateCsvUploadStatusAction({
+      uploadId: entry.databaseId,
+      status: "active",
+      accessToken: authAccessToken,
+    });
+
+    if (!result.ok) {
+      alert(result.error.message);
+      return;
+    }
+
     setUploadHistory((current) => current.map((item) => item.id === entry.id ? {
       ...item,
       status: "active",
@@ -1608,7 +1655,7 @@ export default function Page() {
                 <div className="upload-history-head">
                   <div>
                     <div className="upload-history-title">アップロード履歴</div>
-                    <div className="upload-history-note">除外はこのブラウザ上だけの一時操作です。リロードすると元に戻ります。</div>
+                    <div className="upload-history-note">除外はアップロード履歴の1行単位で保存されます。同じファイル名の他のCSVには影響しません。</div>
                   </div>
                 </div>
                 {visibleUploadHistory.length ? (

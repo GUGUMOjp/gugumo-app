@@ -8,12 +8,20 @@ import type { CsvSnapshot } from "@/src/server/types/csv";
 type CsvUploadRecord = {
   file_name: string;
   file_data: CsvSnapshot["rows"];
+  snapshot_date?: string | null;
 };
 
 type StoredCsvUploadRecord = CsvUploadRecord & {
   id: number;
   created_at: string | null;
   uploaded_at?: string | null;
+  company_id?: string | null;
+  workspace_id?: string | null;
+  uploaded_by?: string | null;
+  checksum?: string | null;
+  status?: "active" | "excluded" | null;
+  excluded_at?: string | null;
+  excluded_by?: string | null;
 };
 
 function formatDate(date: Date) {
@@ -46,13 +54,15 @@ export function buildCsvUploadRecords(snapshots: CsvSnapshot[]): CsvUploadRecord
   return snapshots.map((snapshot) => ({
     file_name: snapshot.fileName,
     file_data: snapshot.rows,
+    snapshot_date: snapshot.dateKey,
   }));
 }
 
 export function buildStoredUploadSnapshots(records: StoredCsvUploadRecord[]) {
   const snapshots = records.map((record) => {
     const createdAt = record.created_at ? new Date(record.created_at) : new Date();
-    const date = extractDataDate(record.file_name) ?? createdAt;
+    const storedDate = record.snapshot_date ? new Date(`${record.snapshot_date}T00:00:00`) : null;
+    const date = storedDate ?? extractDataDate(record.file_name) ?? createdAt;
 
     return {
       uploadHistoryId: `stored-${record.id}`,

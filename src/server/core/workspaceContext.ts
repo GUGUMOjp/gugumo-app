@@ -17,6 +17,7 @@ export type WorkspaceRole = "owner" | "admin" | "member" | "viewer";
 export type CurrentWorkspaceContext = {
   userId: string;
   email: string | null;
+  profileId: string;
   profileName: string | null;
   companyId: string;
   companyName: string;
@@ -115,6 +116,7 @@ export async function getCurrentWorkspaceContext(accessToken?: string): Promise<
   return ok({
     userId: userResult.data.id,
     email: userResult.data.email,
+    profileId: profile.id,
     profileName: profile.name,
     companyId: companyResult.data.id,
     companyName: companyResult.data.name,
