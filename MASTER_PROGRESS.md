@@ -68,6 +68,8 @@ b02198f RC: restore persisted dashboard state
 - RLS有効化は次フェーズ。`csv_uploads` の `company_id / workspace_id / uploaded_by / snapshot_date / checksum / status / excluded_at / excluded_by` backfill方針確定後に実施する。
 - `checksum` backfillは既存 `file_data` からSQLだけで安全に再現しにくいため、正規化ルールとアプリ側backfill script方針の確定が必要。
 - `snapshots / snapshot_rows` 移行は正式運用前の検討事項として継続。
+- Supabase環境ズレを確認。ローカル `.env.local` と実CSV 22件の保存先は `annvqxnupddnozyghqdw`。今後の正DB・手動SQL適用対象は `annvqxnupddnozyghqdw` とする。
+- `ivtaxvuysqqnzpnwndqt` はSQL Editorで誤って `01_add_columns.sql` が適用された別Projectとして扱い、現時点では追加操作せず放置する。必要になった場合のみ別途rollback/cleanup方針をレビューする。
 - ログイン後画面にログアウト導線を追加し、モックログイン状態をログイン前へ戻す操作を整理。
 - ログイン画面のパスワード再設定導線を、正式版のメール再設定フロー前提の「準備中」案内へ変更。
 - `/data-policy`、`/support`、`/legal`を追加し、ログイン画面とサイドバー下部の法務リンクを更新。
