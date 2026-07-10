@@ -11,7 +11,9 @@ type CsvUploadRecord = {
 };
 
 type StoredCsvUploadRecord = CsvUploadRecord & {
+  id: number;
   created_at: string | null;
+  uploaded_at?: string | null;
 };
 
 function formatDate(date: Date) {
@@ -48,19 +50,13 @@ export function buildCsvUploadRecords(snapshots: CsvSnapshot[]): CsvUploadRecord
 }
 
 export function buildStoredUploadSnapshots(records: StoredCsvUploadRecord[]) {
-  const latestByFileName = new Map<string, StoredCsvUploadRecord>();
-
-  records.forEach((record) => {
-    if (!latestByFileName.has(record.file_name)) {
-      latestByFileName.set(record.file_name, record);
-    }
-  });
-
-  const snapshots = Array.from(latestByFileName.values()).map((record): CsvSnapshot => {
+  const snapshots = records.map((record) => {
     const createdAt = record.created_at ? new Date(record.created_at) : new Date();
     const date = extractDataDate(record.file_name) ?? createdAt;
 
     return {
+      uploadHistoryId: `stored-${record.id}`,
+      uploadedAt: record.uploaded_at ?? record.created_at,
       fileName: record.file_name,
       date,
       dateKey: dateKey(date),

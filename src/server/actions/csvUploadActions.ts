@@ -37,6 +37,25 @@ type CsvUploadLoadActionResult = {
   };
 };
 
+type CsvUploadHistoryItem = {
+  id: number;
+  fileName: string;
+  rowCount: number;
+  uploadedAt: string | null;
+};
+
+type CsvUploadHistoryActionResult = {
+  ok: true;
+  data: CsvUploadHistoryItem[];
+  error: null;
+} | {
+  ok: false;
+  data: null;
+  error: {
+    message: string;
+  };
+};
+
 export async function loadRecentCsvUploadSnapshotsAction() {
   const result = await getRecentCsvUploadRecords();
 
@@ -57,6 +76,33 @@ export async function loadRecentCsvUploadSnapshotsAction() {
     data: buildStoredUploadSnapshots(result.data),
     error: null,
   } satisfies CsvUploadLoadActionResult;
+}
+
+export async function loadRecentCsvUploadHistoryAction() {
+  const result = await getRecentCsvUploadRecords();
+
+  if (!result.ok) {
+    console.error(result.error.cause);
+
+    return {
+      ok: false,
+      data: null,
+      error: {
+        message: "アップロード履歴の読み込みに失敗しました。",
+      },
+    } satisfies CsvUploadHistoryActionResult;
+  }
+
+  return {
+    ok: true,
+    data: result.data.map((record) => ({
+      id: record.id,
+      fileName: record.file_name,
+      rowCount: record.file_data.length,
+      uploadedAt: record.uploaded_at ?? record.created_at,
+    })),
+    error: null,
+  } satisfies CsvUploadHistoryActionResult;
 }
 
 export async function saveCsvUploadRecordsAction(records: CsvUploadRecord[]) {

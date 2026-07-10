@@ -1,6 +1,7 @@
 "use client";
 
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode } from "react";
+import Image from "next/image";
 import type { Session } from "@supabase/supabase-js";
 import { PAGE_TITLES } from "@/data/constants/pageTitles";
 import { NAVIGATION_GROUPS, SETTINGS_NAV_ITEM } from "@/data/navigation/navigation";
@@ -13,6 +14,7 @@ import {
   getCurrentWorkspaceContextAction,
 } from "@/src/server/actions/workspaceActions";
 import {
+  loadRecentCsvUploadHistoryAction,
   loadRecentCsvUploadSnapshotsAction,
   saveCsvUploadRecordsAction,
 } from "@/src/server/actions/csvUploadActions";
@@ -79,6 +81,30 @@ type TenantHeaderDisplay = {
   roleLabel: string;
 };
 
+type UploadHistoryStatus = "active" | "excluded";
+
+type UploadHistoryEntry = {
+  id: string;
+  fileName: string;
+  dateKey: string;
+  rowCount: number;
+  uploadedAt: string | null;
+  status: UploadHistoryStatus;
+  contentHash?: string;
+};
+
+type UploadHistoryMetadata = {
+  id: number;
+  fileName: string;
+  rowCount: number;
+  uploadedAt: string | null;
+};
+
+type UploadSnapshot = CsvSnapshot & {
+  uploadHistoryId?: string;
+  uploadedAt?: string | null;
+};
+
 const TENANT_HEADER_FALLBACK: TenantHeaderDisplay = {
   tenantName: "GUGUMO",
   roleLabel: "",
@@ -114,6 +140,92 @@ function formatNumber(value: number) {
 
 function formatMoney(value: number) {
   return `¥${Math.round(value).toLocaleString("ja-JP")}`;
+}
+
+function formatUploadDate(value: string | null) {
+  if (!value) return "日時不明";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "日時不明";
+
+  return new Intl.DateTimeFormat("ja-JP", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
+}
+
+function formatDataDate(dateKey: string) {
+  const [year, month, day] = dateKey.split("-");
+  if (!year || !month || !day) return "日付不明";
+
+  return `${year}/${month}/${day}`;
+}
+
+function buildSnapshotUploadKey(snapshot: CsvSnapshot) {
+  return `${snapshot.fileName}__${snapshot.dateKey}`;
+}
+
+function getSnapshotHistoryId(snapshot: CsvSnapshot) {
+  return (snapshot as UploadSnapshot).uploadHistoryId ?? buildSnapshotUploadKey(snapshot);
+}
+
+function normalizeCsvText(text: string) {
+  return text.replace(/^\uFEFF/, "").replace(/\r\n/g, "\n").replace(/\r/g, "\n").trimEnd();
+}
+
+async function readFileAsCsvText(file: File) {
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  let text = "";
+
+  try {
+    text = new TextDecoder("shift-jis").decode(bytes);
+    if (!text.includes("物件名")) text = new TextDecoder("utf-8").decode(bytes);
+  } catch {
+    text = new TextDecoder("utf-8").decode(bytes);
+  }
+
+  return normalizeCsvText(text);
+}
+
+async function buildCsvContentHash(file: File) {
+  const text = await readFileAsCsvText(file);
+  const bytes = new TextEncoder().encode(text);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", bytes);
+
+  return Array.from(new Uint8Array(hashBuffer))
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+function buildUploadHistoryFromSnapshots(
+  sourceSnapshots: UploadSnapshot[],
+  metadata: UploadHistoryMetadata[],
+  current: UploadHistoryEntry[],
+) {
+  const metadataById = new Map(metadata.map((item) => [`stored-${item.id}`, item]));
+  const metadataByFileName = new Map(metadata.map((item) => [item.fileName, item]));
+  const hashByFileName = new Map(
+    current
+      .filter((item) => item.contentHash)
+      .map((item) => [item.fileName, item.contentHash]),
+  );
+
+  return sourceSnapshots.map((snapshot): UploadHistoryEntry => {
+    const id = getSnapshotHistoryId(snapshot);
+    const stored = metadataById.get(id) ?? metadataByFileName.get(snapshot.fileName);
+
+    return {
+      id,
+      fileName: snapshot.fileName,
+      dateKey: snapshot.dateKey,
+      rowCount: stored?.rowCount ?? snapshot.rows.length,
+      uploadedAt: stored?.uploadedAt ?? snapshot.uploadedAt ?? null,
+      status: "active",
+      contentHash: hashByFileName.get(snapshot.fileName),
+    };
+  });
 }
 
 function deltaCell(current: number, previous?: number) {
@@ -246,7 +358,7 @@ function LoginScreen({
     <main className="login-page">
       <div className="login-shell">
         <section className="login-copy-card">
-          <div className="login-brand">GUGUMO<span>↑</span></div>
+          <Image className="login-brand-logo" src="/gugumo-logo.png" alt="GUGUMO" width={520} height={130} priority />
           <div className="login-kicker">SUUMO掲載最適化ツール</div>
           <h1>掲載運用の現在地と改善点がひと目でわかる</h1>
           <p>
@@ -489,7 +601,18 @@ export default function Page() {
   const [isCheckingSession, setIsCheckingSession] = useState(true);
   const [isSigningIn, setIsSigningIn] = useState(false);
   const [loginError, setLoginError] = useState("");
-  const [snapshots, setSnapshots] = useState<CsvSnapshot[]>([]);
+  const [snapshots, setSnapshots] = useState<UploadSnapshot[]>([]);
+  const [uploadHistory, setUploadHistory] = useState<UploadHistoryEntry[]>(() => {
+    if (typeof window === "undefined") return [];
+
+    try {
+      const raw = localStorage.getItem("gugumo_upload_history");
+      return raw ? JSON.parse(raw) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [excludedUploadIds, setExcludedUploadIds] = useState<string[]>([]);
   const [isRestoringCsv, setIsRestoringCsv] = useState(false);
   const [restoreError, setRestoreError] = useState("");
   const [isReadingCsv, setIsReadingCsv] = useState(false);
@@ -509,6 +632,7 @@ export default function Page() {
   const [openProperties, setOpenProperties] = useState<Record<string, boolean>>({});
   const [isDragOver, setIsDragOver] = useState(false);
   const [tenantHeader, setTenantHeader] = useState<TenantHeaderDisplay>(TENANT_HEADER_FALLBACK);
+  const [currentRole, setCurrentRole] = useState<WorkspaceRole | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const authUserId = session?.user.id ?? null;
   const authAccessToken = session?.access_token ?? null;
@@ -517,9 +641,12 @@ export default function Page() {
     setIsRestoringCsv(false);
     setRestoreError("");
     setSnapshots([]);
+    setUploadHistory([]);
+    setExcludedUploadIds([]);
     setCheckedState({});
     setActivePage("home");
     setTenantHeader(TENANT_HEADER_FALLBACK);
+    setCurrentRole(null);
   }, []);
 
   useEffect(() => {
@@ -583,6 +710,7 @@ export default function Page() {
 
         if (isMounted && result.ok) {
           setTenantHeader(buildTenantHeaderDisplay(result.data));
+          setCurrentRole(result.data?.role ?? null);
         }
         // TODO: tenant未紐付けユーザーの専用案内は本番Auth移行後に整理する。
       } catch (error) {
@@ -606,12 +734,21 @@ export default function Page() {
       setIsRestoringCsv(true);
 
       try {
-        const result = await loadRecentCsvUploadSnapshotsAction();
+        const [result, historyResult] = await Promise.all([
+          loadRecentCsvUploadSnapshotsAction(),
+          loadRecentCsvUploadHistoryAction(),
+        ]);
 
         if (!isMounted) return;
 
         if (result.ok) {
           setSnapshots(result.data);
+          setUploadHistory((current) => buildUploadHistoryFromSnapshots(
+            result.data,
+            historyResult.ok ? historyResult.data : [],
+            current,
+          ));
+          setExcludedUploadIds([]);
         } else {
           setRestoreError("保存済みデータを読み込めませんでした。時間をおいて再度お試しください。");
         }
@@ -643,10 +780,45 @@ export default function Page() {
     }
   }, [checkedState]);
 
-  const latestSnapshot = useMemo(() => getLatestSnapshot(snapshots), [snapshots]);
+  useEffect(() => {
+    try {
+      const persisted = uploadHistory
+        .filter((item) => item.contentHash && item.status !== "excluded")
+        .map((item) => ({
+          ...item,
+          status: "active" as const,
+        }));
+      localStorage.setItem("gugumo_upload_history", JSON.stringify(persisted));
+    } catch {
+      // ignore
+    }
+  }, [uploadHistory]);
+
+  const activeSnapshots = useMemo(() => {
+    const historyById = new Map(uploadHistory.map((entry) => [entry.id, entry]));
+    const selectedByDate = new Map<string, UploadSnapshot>();
+
+    snapshots.forEach((snapshot) => {
+      const historyId = getSnapshotHistoryId(snapshot);
+      const history = historyById.get(historyId);
+
+      if (excludedUploadIds.includes(historyId) || history?.status === "excluded") return;
+
+      const current = selectedByDate.get(snapshot.dateKey);
+      const snapshotUploadedAt = snapshot.uploadedAt ? new Date(snapshot.uploadedAt).getTime() : 0;
+      const currentUploadedAt = current?.uploadedAt ? new Date(current.uploadedAt).getTime() : 0;
+
+      if (!current || snapshotUploadedAt >= currentUploadedAt) {
+        selectedByDate.set(snapshot.dateKey, snapshot);
+      }
+    });
+
+    return Array.from(selectedByDate.values()).sort((a, b) => a.date.getTime() - b.date.getTime());
+  }, [snapshots, uploadHistory, excludedUploadIds]);
+  const latestSnapshot = useMemo(() => getLatestSnapshot(activeSnapshots), [activeSnapshots]);
   const latestRows = useMemo(() => latestSnapshot?.rows ?? [], [latestSnapshot]);
   const latestSummary = latestSnapshot?.summary;
-  const dayDiffs = useMemo(() => buildDayDiffs(snapshots), [snapshots]);
+  const dayDiffs = useMemo(() => buildDayDiffs(activeSnapshots), [activeSnapshots]);
   const weekly = useMemo(() => buildWeekly(dayDiffs), [dayDiffs]);
   const monthly = useMemo(() => buildMonthly(dayDiffs), [dayDiffs]);
   const propertyHistories = useMemo(() => buildPropertyHistories(dayDiffs), [dayDiffs]);
@@ -685,6 +857,36 @@ export default function Page() {
     setCheckedState({});
 
     try {
+      const csvFiles = Array.from(fileList).filter((file) => file.name.toLowerCase().endsWith(".csv"));
+      const hashItems = await Promise.all(csvFiles.map(async (file) => ({
+        fileName: file.name,
+        contentHash: await buildCsvContentHash(file),
+      })));
+      const duplicateItems = hashItems
+        .map((item) => {
+          const previous = uploadHistory.find((history) => history.contentHash === item.contentHash && history.status !== "excluded");
+          return previous ? { ...item, previous } : null;
+        })
+        .filter((item): item is { fileName: string; contentHash: string; previous: UploadHistoryEntry } => Boolean(item));
+
+      if (duplicateItems.length) {
+        const message = [
+          "このCSVは以前アップロードされています。",
+          "",
+          ...duplicateItems.flatMap((item) => [
+            `今回: ${item.fileName}`,
+            `前回アップロード日時: ${formatUploadDate(item.previous.uploadedAt)}`,
+            `前回ファイル名: ${item.previous.fileName}`,
+            "",
+          ]),
+          "保存する場合はOK、キャンセルする場合はキャンセルを押してください。",
+        ].join("\n");
+
+        if (!window.confirm(message)) {
+          return;
+        }
+      }
+
       const parsed = await buildUploadSnapshots(fileList);
       const saveResult = await saveCsvUploadRecordsAction(buildCsvUploadRecords(parsed));
 
@@ -694,7 +896,33 @@ export default function Page() {
         return;
       }
 
-      setSnapshots(parsed);
+      const uploadedAt = new Date().toISOString();
+      const hashByFileName = new Map(hashItems.map((item) => [item.fileName, item.contentHash]));
+      const parsedWithIds = parsed.map((snapshot, index): UploadSnapshot => {
+        const historyId = `session-${buildSnapshotUploadKey(snapshot)}-${uploadedAt}-${index}`;
+
+        return {
+          ...snapshot,
+          uploadHistoryId: historyId,
+          uploadedAt,
+        };
+      });
+      setSnapshots(parsedWithIds);
+      setUploadHistory((current) => [
+        ...parsedWithIds.map((snapshot): UploadHistoryEntry => {
+          return {
+            id: getSnapshotHistoryId(snapshot),
+            fileName: snapshot.fileName,
+            dateKey: snapshot.dateKey,
+            rowCount: snapshot.rows.length,
+            uploadedAt,
+            status: "active",
+            contentHash: hashByFileName.get(snapshot.fileName),
+          };
+        }),
+        ...current,
+      ]);
+      setExcludedUploadIds([]);
       setRestoreError("");
       goto("home");
       alert("CSVを読み込み、分析に反映しました。");
@@ -709,6 +937,28 @@ export default function Page() {
 
   const handleFileInput = (event: ChangeEvent<HTMLInputElement>) => {
     if (event.target.files?.length) loadFiles(event.target.files);
+  };
+
+  const excludeUpload = (entry: UploadHistoryEntry) => {
+    if (currentRole !== "owner" && currentRole !== "admin") return;
+    if (!window.confirm("このCSVを分析対象から除外しますか？\n同じファイル名の他のCSVには影響しません。")) return;
+
+    setExcludedUploadIds((current) => current.includes(entry.id) ? current : [...current, entry.id]);
+    setUploadHistory((current) => current.map((item) => item.id === entry.id ? {
+      ...item,
+      status: "excluded",
+    } : item));
+  };
+
+  const activateUpload = (entry: UploadHistoryEntry) => {
+    if (currentRole !== "owner" && currentRole !== "admin") return;
+    if (!window.confirm("このCSVを有効に戻しますか？\n最新データ日付でない場合、分析対象にはなりません。")) return;
+
+    setExcludedUploadIds((current) => current.filter((id) => id !== entry.id));
+    setUploadHistory((current) => current.map((item) => item.id === entry.id ? {
+      ...item,
+      status: "active",
+    } : item));
   };
 
   const saveSettings = () => {
@@ -756,11 +1006,18 @@ export default function Page() {
   const previousWeek = weekly.at(-2);
   const latestMonth = monthly.at(-1);
   const previousMonth = monthly.at(-2);
+  const canExcludeUploads = currentRole === "owner" || currentRole === "admin";
+  const analysisTargetUploadId = latestSnapshot ? getSnapshotHistoryId(latestSnapshot) : null;
+  const visibleUploadHistory = uploadHistory.map((entry) => ({
+    ...entry,
+    status: excludedUploadIds.includes(entry.id) ? "excluded" : entry.status,
+    isAnalysisTarget: entry.status !== "excluded" && !excludedUploadIds.includes(entry.id) && entry.id === analysisTargetUploadId,
+  }));
 
   const topbarStatus = isRestoringCsv
     ? "保存済みデータを確認中"
     : latestSnapshot
-      ? `${snapshots.length}ファイル読み込み済み / 最終更新 ${latestSnapshot.dateLabel}`
+      ? `${activeSnapshots.length}ファイル読み込み済み / 最終更新 ${latestSnapshot.dateLabel}`
       : "データ未読み込み";
 
   const handleLogin = async ({ email, password }: { email: string; password: string }) => {
@@ -810,25 +1067,10 @@ export default function Page() {
     <div className="shell">
       <aside className="sidebar">
         <div className="sidebar-header">
-          <div className="logo-row">
-            <svg width="30" height="30" viewBox="0 0 28 28" fill="none">
-              <ellipse cx="14" cy="17" rx="9" ry="8" fill="#3a3a4a" />
-              <ellipse cx="14" cy="16.5" rx="7.5" ry="6.5" fill="#4a4a5e" />
-              <circle cx="11.5" cy="14" r="1.5" fill="#fff" />
-              <circle cx="16.5" cy="14" r="1.5" fill="#fff" />
-              <circle cx="11.8" cy="13.7" r="0.5" fill="#1e1e2e" />
-              <circle cx="16.8" cy="13.7" r="0.5" fill="#1e1e2e" />
-              <path d="M12.5 16.5 Q14 17.5 15.5 16.5" stroke="#5DCAA5" strokeWidth="0.8" fill="none" strokeLinecap="round" />
-              <ellipse cx="9" cy="7.5" rx="2" ry="2.5" fill="#3a3a4a" />
-              <ellipse cx="19" cy="7.5" rx="2" ry="2.5" fill="#3a3a4a" />
-              <ellipse cx="9" cy="7.5" rx="1.2" ry="1.8" fill="#4a4a5e" />
-              <ellipse cx="19" cy="7.5" rx="1.2" ry="1.8" fill="#4a4a5e" />
-            </svg>
-            <div>
-              <div className="logo-text">GUGUMO<span className="up">↑</span></div>
-              <div className="logo-sub">SUUMO最適化</div>
-            </div>
-          </div>
+          <button type="button" className="logo-button" onClick={() => goto("home")} aria-label="GUGUMO ホームへ戻る">
+            <Image className="sidebar-logo" src="/gugumo-logo.png" alt="GUGUMO" width={272} height={68} />
+          </button>
+          <div className="logo-sub">SUUMO最適化</div>
         </div>
         <nav className="nav">
           {NAVIGATION_GROUPS.map((group) => (
@@ -1355,7 +1597,65 @@ export default function Page() {
                 )}
               </div>
               <input ref={fileInputRef} type="file" accept=".csv" multiple style={{ display: "none" }} onChange={handleFileInput} />
-              <div style={{ marginTop: 9 }}>{snapshots.map((snapshot) => <span className="chip" key={snapshot.fileName}>{snapshot.dateLabel} / {snapshot.rows.length}件</span>)}</div>
+              <div className="upload-history">
+                <div className="upload-history-head">
+                  <div>
+                    <div className="upload-history-title">アップロード履歴</div>
+                    <div className="upload-history-note">除外はこのブラウザ上だけの一時操作です。リロードすると元に戻ります。</div>
+                  </div>
+                </div>
+                {visibleUploadHistory.length ? (
+                  <div className="tbl-wrap">
+                    <table className="tbl upload-history-table">
+                      <thead>
+                        <tr>
+                          <th>アップロード日時</th>
+                          <th>データ日付</th>
+                          <th>ファイル名</th>
+                          <th className="num">件数</th>
+                          <th>状態</th>
+                          <th className="num">操作</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {visibleUploadHistory.map((entry) => {
+                          const statusLabel = entry.status === "excluded" ? "除外" : entry.isAnalysisTarget ? "有効（分析対象）" : "有効";
+                          const statusClass = entry.status === "excluded" ? "muted" : "success";
+
+                          return (
+                            <tr key={entry.id} className={entry.status === "excluded" ? "muted-row" : ""}>
+                              <td>{formatUploadDate(entry.uploadedAt)}</td>
+                              <td>{formatDataDate(entry.dateKey)}</td>
+                              <td className="nm">
+                                {entry.fileName}
+                              </td>
+                              <td className="num">{entry.rowCount.toLocaleString("ja-JP")}件</td>
+                              <td><span className={`upload-status ${statusClass}`}>{statusLabel}</span></td>
+                              <td className="num">
+                                {canExcludeUploads ? (
+                                  entry.status === "excluded" ? (
+                                    <button type="button" className="mini-action-btn" onClick={() => activateUpload(entry)}>
+                                      有効に戻す
+                                    </button>
+                                  ) : (
+                                    <button type="button" className="mini-action-btn" onClick={() => excludeUpload(entry)}>
+                                      除外
+                                    </button>
+                                  )
+                                ) : (
+                                  <span style={{ color: "var(--ink3)", fontSize: 10 }}>—</span>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <EmptyState title="アップロード履歴はまだありません" message="CSVを読み込むと、ファイル名・件数・状態をここで確認できます。" />
+                )}
+              </div>
               <StatusNotice tone="info" icon="ti-database" title="アップロード後の反映">
                 読み込んだCSVは、各レポートと分析画面に反映されます。
               </StatusNotice>

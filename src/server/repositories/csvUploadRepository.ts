@@ -11,7 +11,9 @@ export type CsvUploadRecord = {
 };
 
 export type StoredCsvUploadRecord = CsvUploadRecord & {
+  id: number;
   created_at: string | null;
+  uploaded_at: string | null;
 };
 
 type CsvUploadSaveError = {
@@ -29,7 +31,7 @@ type CsvUploadReadResult = ServerResult<StoredCsvUploadRecord[], CsvUploadReadEr
 export async function getRecentCsvUploadRecords(limit = 10) {
   const { data, error } = await supabase
     .from("csv_uploads")
-    .select("file_name, file_data, created_at")
+    .select("id, file_name, file_data, created_at, uploaded_at")
     .order("created_at", { ascending: false })
     .limit(limit)
     .returns<StoredCsvUploadRecord[]>();
