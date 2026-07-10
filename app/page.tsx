@@ -1,12 +1,14 @@
 "use client";
 
-import { Fragment, useEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode } from "react";
+import type { Session } from "@supabase/supabase-js";
 import { PAGE_TITLES } from "@/data/constants/pageTitles";
 import { NAVIGATION_GROUPS, SETTINGS_NAV_ITEM } from "@/data/navigation/navigation";
 import {
   LEGAL_LINKS,
   PRODUCT_META,
 } from "@/data/product/productMeta";
+import { supabase } from "@/lib/supabase";
 import {
   getCurrentWorkspaceContextAction,
 } from "@/src/server/actions/workspaceActions";
@@ -227,7 +229,17 @@ function LoadingState({ text = "読み込み中です..." }: { text?: string }) 
   );
 }
 
-function LoginScreen({ onLogin }: { onLogin: () => void }) {
+function LoginScreen({
+  onLogin,
+  isSubmitting = false,
+  errorMessage = "",
+}: {
+  onLogin: (credentials: { email: string; password: string }) => Promise<void> | void;
+  isSubmitting?: boolean;
+  errorMessage?: string;
+}) {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [resetMessage, setResetMessage] = useState("");
 
   return (
@@ -252,14 +264,36 @@ function LoginScreen({ onLogin }: { onLogin: () => void }) {
             <div className="login-form-title">ログイン</div>
             <div className="login-form-sub">店舗の掲載改善レポートを確認します。</div>
           </div>
-          <form className="login-form" onSubmit={(event) => { event.preventDefault(); onLogin(); }}>
+          <form
+            className="login-form"
+            onSubmit={async (event) => {
+              event.preventDefault();
+              await onLogin({ email, password });
+            }}
+          >
             <label>
               <span>メールアドレス</span>
-              <input type="email" placeholder="example@gugumo.jp" />
+              <input
+                type="email"
+                placeholder="example@gugumo.jp"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                autoComplete="email"
+                disabled={isSubmitting}
+                required
+              />
             </label>
             <label>
               <span>パスワード</span>
-              <input type="password" placeholder="パスワード" />
+              <input
+                type="password"
+                placeholder="パスワード"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                autoComplete="current-password"
+                disabled={isSubmitting}
+                required
+              />
             </label>
             <button
               type="button"
@@ -269,9 +303,27 @@ function LoginScreen({ onLogin }: { onLogin: () => void }) {
               パスワードをお忘れですか？
             </button>
             {resetMessage ? <div className="login-support-message">{resetMessage}</div> : null}
-            <button type="submit" className="login-submit">ログイン</button>
+            {errorMessage ? <div className="login-error-message">{errorMessage}</div> : null}
+            <button type="submit" className="login-submit" disabled={isSubmitting}>
+              {isSubmitting ? "ログイン中..." : "ログイン"}
+            </button>
           </form>
         </section>
+      </div>
+      <footer className="login-footer">
+        {LEGAL_LINKS.map((link) => (
+          <a key={link.href} href={link.href}>{link.label}</a>
+        ))}
+      </footer>
+    </main>
+  );
+}
+
+function SessionLoadingScreen() {
+  return (
+    <main className="login-page">
+      <div className="login-loading-card">
+        <LoadingState text="ログイン状態を確認しています..." />
       </div>
       <footer className="login-footer">
         {LEGAL_LINKS.map((link) => (
@@ -433,7 +485,10 @@ function useHydratedSettings() {
 
 export default function Page() {
   const [activePage, setActivePage] = useState<PageId>("home");
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [session, setSession] = useState<Session | null>(null);
+  const [isCheckingSession, setIsCheckingSession] = useState(true);
+  const [isSigningIn, setIsSigningIn] = useState(false);
+  const [loginError, setLoginError] = useState("");
   const [snapshots, setSnapshots] = useState<CsvSnapshot[]>([]);
   const [isRestoringCsv, setIsRestoringCsv] = useState(false);
   const [restoreError, setRestoreError] = useState("");
@@ -455,17 +510,81 @@ export default function Page() {
   const [isDragOver, setIsDragOver] = useState(false);
   const [tenantHeader, setTenantHeader] = useState<TenantHeaderDisplay>(TENANT_HEADER_FALLBACK);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const authUserId = session?.user.id ?? null;
+  const authAccessToken = session?.access_token ?? null;
+
+  const resetAuthenticatedState = useCallback(() => {
+    setIsRestoringCsv(false);
+    setRestoreError("");
+    setSnapshots([]);
+    setCheckedState({});
+    setActivePage("home");
+    setTenantHeader(TENANT_HEADER_FALLBACK);
+  }, []);
 
   useEffect(() => {
     let isMounted = true;
 
+    async function restoreSession() {
+      try {
+        const { data, error } = await supabase.auth.getSession();
+
+        if (!isMounted) return;
+
+        if (error) {
+          console.warn("Session restore failed", error);
+          setSession(null);
+          return;
+        }
+
+        setSession(data.session ?? null);
+      } catch (error) {
+        console.warn("Session restore failed", error);
+
+        if (isMounted) {
+          setSession(null);
+        }
+      } finally {
+        if (isMounted) {
+          setIsCheckingSession(false);
+        }
+      }
+    }
+
+    restoreSession();
+
+    const { data } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      setSession(nextSession);
+      setIsCheckingSession(false);
+
+      if (nextSession) {
+        setLoginError("");
+      } else {
+        resetAuthenticatedState();
+      }
+    });
+
+    return () => {
+      isMounted = false;
+      data.subscription.unsubscribe();
+    };
+  }, [resetAuthenticatedState]);
+
+  useEffect(() => {
+    if (!authUserId || !authAccessToken) {
+      return;
+    }
+
+    let isMounted = true;
+
     async function loadWorkspaceContext() {
       try {
-        const result = await getCurrentWorkspaceContextAction();
+        const result = await getCurrentWorkspaceContextAction(authAccessToken ?? undefined);
 
         if (isMounted && result.ok) {
           setTenantHeader(buildTenantHeaderDisplay(result.data));
         }
+        // TODO: tenant未紐付けユーザーの専用案内は本番Auth移行後に整理する。
       } catch (error) {
         console.error(error);
       }
@@ -476,14 +595,16 @@ export default function Page() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [authUserId, authAccessToken]);
 
   useEffect(() => {
-    if (!isLoggedIn) return;
+    if (!authUserId) return;
 
     let isMounted = true;
 
     async function restoreRecentCsv() {
+      setIsRestoringCsv(true);
+
       try {
         const result = await loadRecentCsvUploadSnapshotsAction();
 
@@ -512,7 +633,7 @@ export default function Page() {
     return () => {
       isMounted = false;
     };
-  }, [isLoggedIn]);
+  }, [authUserId]);
 
   useEffect(() => {
     try {
@@ -642,23 +763,47 @@ export default function Page() {
       ? `${snapshots.length}ファイル読み込み済み / 最終更新 ${latestSnapshot.dateLabel}`
       : "データ未読み込み";
 
-  const handleLogin = () => {
+  const handleLogin = async ({ email, password }: { email: string; password: string }) => {
+    setLoginError("");
     setRestoreError("");
-    setIsRestoringCsv(true);
-    setIsLoggedIn(true);
+    setIsSigningIn(true);
+
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error || !data.session) {
+        setLoginError("メールアドレスまたはパスワードをご確認ください。");
+        return;
+      }
+
+      setSession(data.session);
+    } catch {
+      setLoginError("メールアドレスまたはパスワードをご確認ください。");
+    } finally {
+      setIsSigningIn(false);
+    }
   };
 
-  const handleLogout = () => {
-    setIsLoggedIn(false);
-    setIsRestoringCsv(false);
-    setRestoreError("");
-    setSnapshots([]);
-    setCheckedState({});
-    setActivePage("home");
+  const handleLogout = async () => {
+    const { error } = await supabase.auth.signOut();
+
+    if (error) {
+      console.error(error);
+    }
+
+    setSession(null);
+    resetAuthenticatedState();
   };
 
-  if (!isLoggedIn) {
-    return <LoginScreen onLogin={handleLogin} />;
+  if (isCheckingSession) {
+    return <SessionLoadingScreen />;
+  }
+
+  if (!session) {
+    return <LoginScreen onLogin={handleLogin} isSubmitting={isSigningIn} errorMessage={loginError} />;
   }
 
   return (

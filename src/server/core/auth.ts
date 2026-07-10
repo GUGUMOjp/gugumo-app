@@ -20,8 +20,10 @@ function toAuthError(cause: unknown): AuthError {
   };
 }
 
-export async function getCurrentUser(): Promise<ServerResult<CurrentUser | null, AuthError>> {
-  const { data, error } = await supabase.auth.getUser();
+export async function getCurrentUser(accessToken?: string): Promise<ServerResult<CurrentUser | null, AuthError>> {
+  const { data, error } = accessToken
+    ? await supabase.auth.getUser(accessToken)
+    : await supabase.auth.getUser();
 
   if (error) {
     return err(toAuthError(error));

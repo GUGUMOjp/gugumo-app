@@ -41,8 +41,8 @@ function toWorkspaceRole(role: string | null): WorkspaceRole | null {
   return role as WorkspaceRole;
 }
 
-export async function getCurrentWorkspaceContext(): Promise<WorkspaceContextResult> {
-  const userResult = await getCurrentUser();
+export async function getCurrentWorkspaceContext(accessToken?: string): Promise<WorkspaceContextResult> {
+  const userResult = await getCurrentUser(accessToken);
 
   if (!userResult.ok) {
     return err({
