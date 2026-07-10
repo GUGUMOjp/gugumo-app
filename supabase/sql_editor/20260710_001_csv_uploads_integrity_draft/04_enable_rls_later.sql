@@ -1,0 +1,79 @@
+-- GUGUMO Beta Data Integrity Migration Draft
+-- 04_enable_rls_later
+--
+-- Review status:
+-- DESIGN NOTE ONLY. Do not execute in this phase.
+--
+-- RLS is intentionally not enabled in this draft because:
+-- - csv_uploads existing rows are not backfilled yet
+-- - Server Action / Repository must consistently use authenticated user context
+-- - policies must be tested with owner/admin/member/viewer roles
+-- - cross-workspace read blocking must be verified before customer use
+--
+-- Future policy direction:
+--
+-- select:
+--   users can read csv_uploads where workspace_id matches their profile.
+--
+-- insert:
+--   users can insert rows only for their own company/workspace and with
+--   uploaded_by = auth.uid().
+--
+-- update:
+--   owner/admin can update status/excluded_at/excluded_by for their workspace.
+--   member/viewer cannot update.
+--
+-- delete:
+--   no normal user delete policy. Physical deletion is prohibited.
+--
+-- Example skeleton for a later reviewed migration:
+--
+-- alter table public.csv_uploads enable row level security;
+--
+-- create policy "Users can select own workspace csv uploads"
+-- on public.csv_uploads
+-- for select
+-- using (
+--   workspace_id in (
+--     select workspace_id
+--     from public.profiles
+--     where id = auth.uid()
+--   )
+-- );
+--
+-- create policy "Users can insert own workspace csv uploads"
+-- on public.csv_uploads
+-- for insert
+-- with check (
+--   uploaded_by = auth.uid()
+--   and company_id in (
+--     select company_id
+--     from public.profiles
+--     where id = auth.uid()
+--   )
+--   and workspace_id in (
+--     select workspace_id
+--     from public.profiles
+--     where id = auth.uid()
+--   )
+-- );
+--
+-- create policy "Owners and admins can update own workspace csv uploads"
+-- on public.csv_uploads
+-- for update
+-- using (
+--   workspace_id in (
+--     select workspace_id
+--     from public.profiles
+--     where id = auth.uid()
+--       and role in ('owner', 'admin')
+--   )
+-- )
+-- with check (
+--   workspace_id in (
+--     select workspace_id
+--     from public.profiles
+--     where id = auth.uid()
+--       and role in ('owner', 'admin')
+--   )
+-- );
