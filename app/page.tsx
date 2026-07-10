@@ -1068,7 +1068,7 @@ export default function Page() {
       <aside className="sidebar">
         <div className="sidebar-header">
           <button type="button" className="logo-button" onClick={() => goto("home")} aria-label="GUGUMO ホームへ戻る">
-            <Image className="sidebar-logo" src="/gugumo-logo.png" alt="GUGUMO" width={272} height={68} />
+            <Image className="sidebar-logo" src="/gugumo-sidebar-logo.png" alt="GUGUMO" width={815} height={234} />
           </button>
           <div className="logo-sub">SUUMO最適化</div>
         </div>
