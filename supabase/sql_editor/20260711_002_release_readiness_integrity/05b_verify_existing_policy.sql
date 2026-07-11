@@ -1,0 +1,6 @@
+-- DO NOT RUN
+-- Legacy csv_uploads-only read-only policy inspection.
+-- The Release Readiness Critical scope now covers four tenant tables:
+-- public.companies, public.workspaces, public.profiles, public.csv_uploads.
+--
+-- Use 05a_preflight_four_table_rls.sql instead.

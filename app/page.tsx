@@ -52,6 +52,7 @@ import type {
 } from "@/src/server/types/csv";
 import type {
   CurrentWorkspaceContext,
+  WorkspaceContextErrorCode,
   WorkspaceRole,
 } from "@/src/server/core";
 import type { OptionKey } from "@/types/option";
@@ -127,6 +128,15 @@ const ROLE_LABELS = {
   member: "メンバー",
   viewer: "閲覧者",
 } satisfies Record<WorkspaceRole, string>;
+
+const ACCOUNT_SETUP_ERROR_CODES = new Set<WorkspaceContextErrorCode>([
+  "PROFILE_NOT_FOUND",
+  "COMPANY_NOT_FOUND",
+  "WORKSPACE_NOT_FOUND",
+]);
+
+const ACCOUNT_SETUP_INCOMPLETE_MESSAGE = "会社・店舗情報の紐付けが完了していません。";
+const ACCOUNT_CONTEXT_UNAVAILABLE_MESSAGE = "アカウント情報を取得できませんでした。再読み込みしても解消しない場合はサポートへお問い合わせください。";
 
 function buildTenantHeaderDisplay(context: CurrentWorkspaceContext | null): TenantHeaderDisplay {
   if (!context) return TENANT_HEADER_FALLBACK;
@@ -430,16 +440,20 @@ function LoadingState({ text = "読み込み中です..." }: { text?: string }) 
 
 function LoginScreen({
   onLogin,
+  onPasswordReset,
   isSubmitting = false,
   errorMessage = "",
 }: {
   onLogin: (credentials: { email: string; password: string }) => Promise<void> | void;
+  onPasswordReset: (email: string) => Promise<{ ok: boolean; message: string }>;
   isSubmitting?: boolean;
   errorMessage?: string;
 }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [resetMessage, setResetMessage] = useState("");
+  const [resetMode, setResetMode] = useState(false);
+  const [isResetSubmitting, setIsResetSubmitting] = useState(false);
 
   return (
     <main className="login-page">
@@ -467,6 +481,13 @@ function LoginScreen({
             className="login-form"
             onSubmit={async (event) => {
               event.preventDefault();
+              if (resetMode) {
+                setIsResetSubmitting(true);
+                const result = await onPasswordReset(email);
+                setResetMessage(result.message);
+                setIsResetSubmitting(false);
+                return;
+              }
               await onLogin({ email, password });
             }}
           >
@@ -482,29 +503,36 @@ function LoginScreen({
                 required
               />
             </label>
-            <label>
-              <span>パスワード</span>
-              <input
-                type="password"
-                placeholder="パスワード"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                autoComplete="current-password"
-                disabled={isSubmitting}
-                required
-              />
-            </label>
+            {!resetMode ? (
+              <label>
+                <span>パスワード</span>
+                <input
+                  type="password"
+                  placeholder="パスワード"
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  autoComplete="current-password"
+                  disabled={isSubmitting}
+                  required
+                />
+              </label>
+            ) : null}
             <button
               type="button"
               className="forgot-password-link"
-              onClick={() => setResetMessage("パスワード再設定（準備中）: 正式版では入力したメールアドレス宛に再設定メールを送信します。")}
+              onClick={() => {
+                setResetMode((current) => !current);
+                setResetMessage("");
+              }}
             >
-              パスワードをお忘れですか？
+              {resetMode ? "ログインに戻る" : "パスワードをお忘れですか？"}
             </button>
             {resetMessage ? <div className="login-support-message">{resetMessage}</div> : null}
             {errorMessage ? <div className="login-error-message">{errorMessage}</div> : null}
-            <button type="submit" className="login-submit" disabled={isSubmitting}>
-              {isSubmitting ? "ログイン中..." : "ログイン"}
+            <button type="submit" className="login-submit" disabled={isSubmitting || isResetSubmitting}>
+              {resetMode
+                ? isResetSubmitting ? "送信中..." : "再設定メールを送信"
+                : isSubmitting ? "ログイン中..." : "ログイン"}
             </button>
           </form>
         </section>
@@ -514,6 +542,91 @@ function LoginScreen({
           <a key={link.href} href={link.href}>{link.label}</a>
         ))}
       </footer>
+    </main>
+  );
+}
+
+function PasswordUpdateScreen({
+  onUpdatePassword,
+  onBackToLogin,
+  isSubmitting = false,
+}: {
+  onUpdatePassword: (password: string) => Promise<{ ok: boolean; message: string }>;
+  onBackToLogin: () => void;
+  isSubmitting?: boolean;
+}) {
+  const [password, setPassword] = useState("");
+  const [message, setMessage] = useState("");
+
+  return (
+    <main className="login-page">
+      <section className="login-form-card password-update-card">
+        <div>
+          <Image className="login-brand-logo compact" src="/gugumo-logo.png" alt="GUGUMO" width={360} height={90} priority />
+          <div className="login-form-title">新しいパスワードを設定</div>
+          <div className="login-form-sub">メールの案内から開いた場合のみ設定できます。</div>
+        </div>
+        <form
+          className="login-form"
+          onSubmit={async (event) => {
+            event.preventDefault();
+            const result = await onUpdatePassword(password);
+            setMessage(result.message);
+          }}
+        >
+          <label>
+            <span>新しいパスワード</span>
+            <input
+              type="password"
+              placeholder="新しいパスワード"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              autoComplete="new-password"
+              disabled={isSubmitting}
+              minLength={8}
+              required
+            />
+          </label>
+          {message ? <div className={message.includes("完了") ? "login-support-message" : "login-error-message"}>{message}</div> : null}
+          <button type="submit" className="login-submit" disabled={isSubmitting}>
+            {isSubmitting ? "保存中..." : "パスワードを更新"}
+          </button>
+          <button type="button" className="forgot-password-link" onClick={onBackToLogin}>
+            ログイン画面へ戻る
+          </button>
+        </form>
+      </section>
+    </main>
+  );
+}
+
+function AccountSetupIncompleteScreen({
+  message,
+  onLogout,
+}: {
+  message: string;
+  onLogout: () => Promise<void> | void;
+}) {
+  const isAccountSetupIncomplete = message === ACCOUNT_SETUP_INCOMPLETE_MESSAGE;
+
+  return (
+    <main className="login-page">
+      <section className="login-form-card account-setup-card">
+        <div>
+          <Image className="login-brand-logo compact" src="/gugumo-logo.png" alt="GUGUMO" width={360} height={90} priority />
+          <div className="login-form-title">{isAccountSetupIncomplete ? "アカウント設定未完了" : "アカウント情報を取得できません"}</div>
+          <div className="login-form-sub">{message}</div>
+        </div>
+        <div className="login-support-message">
+          {isAccountSetupIncomplete
+            ? "ご利用開始には会社・店舗情報の紐付けが必要です。お手数ですが、サポートへお問い合わせください。"
+            : "再読み込みしても解消しない場合は、サポートへお問い合わせください。"}
+        </div>
+        <div className="account-setup-actions">
+          <a className="topbar-btn" href="/support">サポートを見る</a>
+          <button type="button" className="topbar-btn primary" onClick={onLogout}>ログアウト</button>
+        </div>
+      </section>
     </main>
   );
 }
@@ -687,6 +800,8 @@ export default function Page() {
   const [session, setSession] = useState<Session | null>(null);
   const [isCheckingSession, setIsCheckingSession] = useState(true);
   const [isSigningIn, setIsSigningIn] = useState(false);
+  const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
+  const [isPasswordRecovery, setIsPasswordRecovery] = useState(false);
   const [loginError, setLoginError] = useState("");
   const [snapshots, setSnapshots] = useState<UploadSnapshot[]>([]);
   const [uploadHistory, setUploadHistory] = useState<UploadHistoryEntry[]>(() => {
@@ -721,6 +836,8 @@ export default function Page() {
   const [tenantHeader, setTenantHeader] = useState<TenantHeaderDisplay>(TENANT_HEADER_FALLBACK);
   const [currentRole, setCurrentRole] = useState<WorkspaceRole | null>(null);
   const [currentWorkspaceContext, setCurrentWorkspaceContext] = useState<CurrentWorkspaceContext | null>(null);
+  const [isLoadingWorkspaceContext, setIsLoadingWorkspaceContext] = useState(false);
+  const [accountSetupMessage, setAccountSetupMessage] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const authUserId = session?.user.id ?? null;
   const authAccessToken = session?.access_token ?? null;
@@ -736,6 +853,8 @@ export default function Page() {
     setTenantHeader(TENANT_HEADER_FALLBACK);
     setCurrentRole(null);
     setCurrentWorkspaceContext(null);
+    setIsLoadingWorkspaceContext(false);
+    setAccountSetupMessage("");
   }, []);
 
   useEffect(() => {
@@ -743,6 +862,10 @@ export default function Page() {
 
     async function restoreSession() {
       try {
+        if (typeof window !== "undefined") {
+          setIsPasswordRecovery(new URLSearchParams(window.location.search).get("reset-password") === "1");
+        }
+
         const { data, error } = await supabase.auth.getSession();
 
         if (!isMounted) return;
@@ -769,7 +892,11 @@ export default function Page() {
 
     restoreSession();
 
-    const { data } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+    const { data } = supabase.auth.onAuthStateChange((event, nextSession) => {
+      if (event === "PASSWORD_RECOVERY") {
+        setIsPasswordRecovery(true);
+      }
+
       setSession(nextSession);
       setIsCheckingSession(false);
 
@@ -794,17 +921,39 @@ export default function Page() {
     let isMounted = true;
 
     async function loadWorkspaceContext() {
+      setIsLoadingWorkspaceContext(true);
+
       try {
         const result = await getCurrentWorkspaceContextAction(authAccessToken ?? undefined);
 
-        if (isMounted && result.ok) {
+        if (isMounted && result.ok && result.data) {
           setTenantHeader(buildTenantHeaderDisplay(result.data));
-          setCurrentRole(result.data?.role ?? null);
+          setCurrentRole(result.data.role);
           setCurrentWorkspaceContext(result.data);
+          setAccountSetupMessage("");
+        } else if (isMounted) {
+          setTenantHeader(TENANT_HEADER_FALLBACK);
+          setCurrentRole(null);
+          setCurrentWorkspaceContext(null);
+          setAccountSetupMessage(
+            !result.ok && ACCOUNT_SETUP_ERROR_CODES.has(result.error.code)
+              ? ACCOUNT_SETUP_INCOMPLETE_MESSAGE
+              : ACCOUNT_CONTEXT_UNAVAILABLE_MESSAGE,
+          );
         }
-        // TODO: tenant未紐付けユーザーの専用案内は本番Auth移行後に整理する。
       } catch (error) {
         console.error(error);
+
+        if (isMounted) {
+          setTenantHeader(TENANT_HEADER_FALLBACK);
+          setCurrentRole(null);
+          setCurrentWorkspaceContext(null);
+          setAccountSetupMessage(ACCOUNT_CONTEXT_UNAVAILABLE_MESSAGE);
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoadingWorkspaceContext(false);
+        }
       }
     }
 
@@ -1178,6 +1327,82 @@ export default function Page() {
     }
   };
 
+  const handlePasswordReset = async (email: string) => {
+    const trimmedEmail = email.trim();
+
+    if (!trimmedEmail) {
+      return {
+        ok: false,
+        message: "メールアドレスを入力してください。",
+      };
+    }
+
+    try {
+      const redirectTo = typeof window !== "undefined"
+        ? `${window.location.origin}/?reset-password=1`
+        : undefined;
+      const { error } = await supabase.auth.resetPasswordForEmail(trimmedEmail, {
+        redirectTo,
+      });
+
+      if (error) {
+        console.error(error);
+        return {
+          ok: false,
+          message: "再設定メールを送信できませんでした。時間をおいて再度お試しください。",
+        };
+      }
+
+      return {
+        ok: true,
+        message: "パスワード再設定メールを送信しました。メールの案内に沿って設定してください。",
+      };
+    } catch (error) {
+      console.error(error);
+      return {
+        ok: false,
+        message: "再設定メールを送信できませんでした。時間をおいて再度お試しください。",
+      };
+    }
+  };
+
+  const handlePasswordUpdate = async (password: string) => {
+    setIsUpdatingPassword(true);
+
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password,
+      });
+
+      if (error) {
+        console.error(error);
+        return {
+          ok: false,
+          message: "パスワードを更新できませんでした。メールの有効期限をご確認ください。",
+        };
+      }
+
+      setIsPasswordRecovery(false);
+
+      if (typeof window !== "undefined") {
+        window.history.replaceState(null, "", window.location.pathname);
+      }
+
+      return {
+        ok: true,
+        message: "パスワード更新が完了しました。ログインしてご利用ください。",
+      };
+    } catch (error) {
+      console.error(error);
+      return {
+        ok: false,
+        message: "パスワードを更新できませんでした。時間をおいて再度お試しください。",
+      };
+    } finally {
+      setIsUpdatingPassword(false);
+    }
+  };
+
   const handleLogout = async () => {
     const { error } = await supabase.auth.signOut();
 
@@ -1193,8 +1418,45 @@ export default function Page() {
     return <SessionLoadingScreen />;
   }
 
+  if (isPasswordRecovery) {
+    return (
+      <PasswordUpdateScreen
+        isSubmitting={isUpdatingPassword}
+        onUpdatePassword={handlePasswordUpdate}
+        onBackToLogin={async () => {
+          setIsPasswordRecovery(false);
+          await handleLogout();
+          if (typeof window !== "undefined") {
+            window.history.replaceState(null, "", window.location.pathname);
+          }
+        }}
+      />
+    );
+  }
+
   if (!session) {
-    return <LoginScreen onLogin={handleLogin} isSubmitting={isSigningIn} errorMessage={loginError} />;
+    return (
+      <LoginScreen
+        onLogin={handleLogin}
+        onPasswordReset={handlePasswordReset}
+        isSubmitting={isSigningIn}
+        errorMessage={loginError}
+      />
+    );
+  }
+
+  if (accountSetupMessage) {
+    return <AccountSetupIncompleteScreen message={accountSetupMessage} onLogout={handleLogout} />;
+  }
+
+  if (isLoadingWorkspaceContext || !currentWorkspaceContext) {
+    return (
+      <main className="login-page">
+        <div className="login-loading-card">
+          <LoadingState text="アカウント情報を確認しています..." />
+        </div>
+      </main>
+    );
   }
 
   const [sidebarCompanyName, sidebarWorkspaceName = ""] = tenantHeader.tenantName.split("　");

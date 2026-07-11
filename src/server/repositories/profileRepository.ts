@@ -4,6 +4,9 @@ import {
   ok,
   type ServerResult,
 } from "@/src/server/shared";
+import type {
+  SupabaseUserClient,
+} from "@/src/server/core/supabaseUserClient";
 
 export type ProfileRecord = {
   id: string;
@@ -22,8 +25,8 @@ type TenantRepositoryError = {
 
 type ProfileResult = ServerResult<ProfileRecord | null, TenantRepositoryError>;
 
-export async function getProfileByUserId(userId: string) {
-  const { data, error } = await supabase
+export async function getProfileByUserId(userId: string, client: SupabaseUserClient = supabase) {
+  const { data, error } = await client
     .from("profiles")
     .select("id, company_id, workspace_id, email, name, role, created_at")
     .eq("id", userId)

@@ -1,0 +1,16 @@
+-- DO NOT RUN
+-- This legacy csv_uploads-only draft is obsolete.
+-- The Release Readiness Critical scope now covers four tenant tables:
+-- public.companies, public.workspaces, public.profiles, public.csv_uploads.
+--
+-- Use the four-table package instead:
+-- 05a_preflight_four_table_rls.sql
+-- 05b_apply_four_table_rls.sql
+-- 05c_verify_four_table_rls.sql
+-- 06_verify_after_apply.sql
+--
+-- Reason:
+-- The previous csv_uploads-only approach does not protect companies,
+-- workspaces, or profiles, all of which were confirmed anonymously readable.
+--
+-- Use README.md for the reviewed execution order.

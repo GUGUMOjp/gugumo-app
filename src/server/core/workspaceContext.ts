@@ -11,6 +11,9 @@ import {
 import {
   getCurrentUser,
 } from "./auth";
+import {
+  createAuthenticatedSupabaseClient,
+} from "./supabaseUserClient";
 
 export type WorkspaceRole = "owner" | "admin" | "member" | "viewer";
 
@@ -26,7 +29,17 @@ export type CurrentWorkspaceContext = {
   role: WorkspaceRole;
 };
 
+export type WorkspaceContextErrorCode =
+  | "AUTH_ERROR"
+  | "PROFILE_NOT_FOUND"
+  | "PROFILE_QUERY_ERROR"
+  | "COMPANY_NOT_FOUND"
+  | "COMPANY_QUERY_ERROR"
+  | "WORKSPACE_NOT_FOUND"
+  | "WORKSPACE_QUERY_ERROR";
+
 type WorkspaceContextError = {
+  code: WorkspaceContextErrorCode;
   message: string;
 };
 
@@ -47,6 +60,7 @@ export async function getCurrentWorkspaceContext(accessToken?: string): Promise<
 
   if (!userResult.ok) {
     return err({
+      code: "AUTH_ERROR",
       message: "ログイン中ユーザーの取得に失敗しました。",
     }) satisfies WorkspaceContextResult;
   }
@@ -55,18 +69,35 @@ export async function getCurrentWorkspaceContext(accessToken?: string): Promise<
     return ok(null) satisfies WorkspaceContextResult;
   }
 
-  const profileResult = await getProfileByUserId(userResult.data.id);
+  if (!accessToken) {
+    return err({
+      code: "AUTH_ERROR",
+      message: "ログイン状態を確認できませんでした。",
+    }) satisfies WorkspaceContextResult;
+  }
+
+  const supabase = createAuthenticatedSupabaseClient(accessToken);
+  const profileResult = await getProfileByUserId(userResult.data.id, supabase);
 
   if (!profileResult.ok) {
     return err({
+      code: "PROFILE_QUERY_ERROR",
       message: "Profileの取得に失敗しました。",
     }) satisfies WorkspaceContextResult;
   }
 
   const profile = profileResult.data;
 
+  if (!profile) {
+    return err({
+      code: "PROFILE_NOT_FOUND",
+      message: "Profileが見つかりません。",
+    }) satisfies WorkspaceContextResult;
+  }
+
   if (!profile?.company_id || !profile.workspace_id) {
     return err({
+      code: "PROFILE_NOT_FOUND",
       message: "ProfileにCompanyまたはWorkspaceが紐付いていません。",
     }) satisfies WorkspaceContextResult;
   }
@@ -75,40 +106,46 @@ export async function getCurrentWorkspaceContext(accessToken?: string): Promise<
 
   if (!role) {
     return err({
+      code: "PROFILE_NOT_FOUND",
       message: "ProfileのRoleが不正です。",
     }) satisfies WorkspaceContextResult;
   }
 
-  const companyResult = await getCompanyById(profile.company_id);
+  const companyResult = await getCompanyById(profile.company_id, supabase);
 
   if (!companyResult.ok) {
     return err({
+      code: "COMPANY_QUERY_ERROR",
       message: "Companyの取得に失敗しました。",
     }) satisfies WorkspaceContextResult;
   }
 
   if (!companyResult.data) {
     return err({
+      code: "COMPANY_NOT_FOUND",
       message: "Companyが見つかりません。",
     }) satisfies WorkspaceContextResult;
   }
 
-  const workspaceResult = await getWorkspaceById(profile.workspace_id);
+  const workspaceResult = await getWorkspaceById(profile.workspace_id, supabase);
 
   if (!workspaceResult.ok) {
     return err({
+      code: "WORKSPACE_QUERY_ERROR",
       message: "Workspaceの取得に失敗しました。",
     }) satisfies WorkspaceContextResult;
   }
 
   if (!workspaceResult.data) {
     return err({
+      code: "WORKSPACE_NOT_FOUND",
       message: "Workspaceが見つかりません。",
     }) satisfies WorkspaceContextResult;
   }
 
   if (workspaceResult.data.company_id !== companyResult.data.id) {
     return err({
+      code: "WORKSPACE_NOT_FOUND",
       message: "WorkspaceとCompanyの紐付けが一致しません。",
     }) satisfies WorkspaceContextResult;
   }

@@ -85,6 +85,12 @@ b02198f RC: restore persisted dashboard state
 - オプション管理の正式4分類は「全オプションを外す（スマピク以外）」「第2基準まで落とす」「第2基準に上げる」「第3基準に上げる」。`removeAllRows / lowerToSecondRows / raiseToSecondRows / raiseToThirdRows` の対応を変更しない。「第1基準に上げる」は存在しない。
 - 週次・月次レポートの途中期間は平均予測方式を使う。週次は `1日平均 × 7日`、月次は `1日平均 × 当月日数` とし、途中期間では「予測前週比 / 予測前月比」、完了期間では「前週比 / 前月比」と表示する。実績累計と予測値を混同しない。
 - 週次・月次の途中予測は `実績累計 ÷ 経過暦日数 × 期間日数` で算出する。ただし現在のデータ構造ではCSV未取得日と実績が本当に0だった日を完全には区別できない可能性があるため、CSV未取得日を経過暦日数へ含めるケースでは1日平均および週次・月次予測が実態より低く算出される可能性がある。暦日ベース予測の既知制約として、リリース前総合QAで日付欠損がある期間、CSV未取得日の扱い、実績0日との区別、欠損時の予測表示、顧客向け補足表示の必要性を確認する。
+- Release Readiness Critical Phaseとして、Password Reset正式フロー、tenant未紐付けユーザー向け安全画面、現在分析対象1件取得用Repository/Action境界、RLS/DB Integrity SQL Editor draft、権限表、Upload部分失敗設計、法務Inventory、β運用Runbook類を追加。SQL実行・Migration適用・DB変更・Service Role使用は行っていない。
+- Release Readiness Critical RLS修復として、正DB `annvqxnupddnozyghqdw` の `companies / workspaces / profiles / csv_uploads` 4テーブルRLS適用、Policy 6件、anon/PUBLIC table/column privilegeなし、`csv_uploads_id_seq` は authenticated `USAGE` only を手動確認済み。anonymous RESTは `companies / workspaces / profiles / csv_uploads / csv_uploads?select=file_data` の5経路で遮断確認済み。
+- RLS適用直後に authenticated JWT がRepository DB queryへ伝播せず共有anon clientで実行されるdefectが判明。SQL/RLS/GRANTを弱めず、user-scoped authenticated Supabase clientとRepository client injectionで修復。Service Role、global mutable session、singleton `setSession()` は使用していない。
+- 修復後Owner E2Eは、Home、company/workspace/role表示、CSV履歴、Dashboard、Weekly、Monthly、Replace、OptionがPASS。最新既存SUUMO CSV再アップロードでchecksum duplicate warning後に保存継続し、csv_uploads INSERT、tenant条件、uploaded_by条件、identity sequence採番、authenticated sequence USAGE、保存後画面反映を確認済み。
+- CSV logical exclusion UPDATE E2Eは、再アップロード対象CSVの除外操作成功とリロード後の通常画面からの除外を確認済み。DB上の `status='excluded'` 直接SQL確認は未実施のため、現時点の証跡は画面挙動によるE2E確認。
+- Post-RLS/JWT修復の `npm run lint` と `npm run build` はPASS。未完了は admin/member/viewer 実アカウントE2E、tenant越境実データE2E、snapshot系を将来使用する場合の authenticated client propagation、excluded statusのDB直接確認。
 - ログイン後画面にログアウト導線を追加し、モックログイン状態をログイン前へ戻す操作を整理。
 - ログイン画面のパスワード再設定導線を、正式版のメール再設定フロー前提の「準備中」案内へ変更。
 - `/data-policy`、`/support`、`/legal`を追加し、ログイン画面とサイドバー下部の法務リンクを更新。

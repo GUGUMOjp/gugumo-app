@@ -1,0 +1,6 @@
+-- DO NOT RUN
+-- Legacy supplemental profile/helper inspection.
+-- Helper functions were confirmed absent for the current four-table design,
+-- and profile checks are now included in 05a_preflight_four_table_rls.sql.
+--
+-- Use 05a_preflight_four_table_rls.sql instead.

@@ -2,7 +2,9 @@
 
 import {
   getAnalysisCsvUploadRecords,
+  getCsvUploadFileDataById,
   getCsvUploadRecordsByChecksum,
+  getCurrentAnalysisCsvUploadMetadata,
   getRecentCsvUploadRecords,
   saveCsvUploadRecords,
   updateCsvUploadRecordStatus,
@@ -11,6 +13,10 @@ import {
 import {
   getCurrentWorkspaceContext,
 } from "@/src/server/core";
+import {
+  createAuthenticatedSupabaseClient,
+  type SupabaseUserClient,
+} from "@/src/server/core/supabaseUserClient";
 import {
   buildStoredUploadSnapshots,
 } from "@/src/server/services/upload";
@@ -105,23 +111,64 @@ type CsvUploadDuplicateCheckActionResult = {
   };
 };
 
+type CsvUploadWorkspaceContext = {
+  context: NonNullable<Awaited<ReturnType<typeof getCurrentWorkspaceContext>>["data"]>;
+  client: SupabaseUserClient;
+};
+
+type CsvUploadWorkspaceContextResult = {
+  ok: true;
+  data: CsvUploadWorkspaceContext;
+  error: null;
+} | {
+  ok: false;
+  data: null;
+  error: {
+    message: string;
+  };
+};
+
 async function getWorkspaceContextForCsvUploads(accessToken?: string) {
+  if (!accessToken) {
+    return {
+      ok: false as const,
+      data: null,
+      error: {
+        message: "ログイン状態を確認できませんでした。",
+      },
+    } satisfies CsvUploadWorkspaceContextResult;
+  }
+
   const contextResult = await getCurrentWorkspaceContext(accessToken);
 
   if (!contextResult.ok) {
-    return contextResult;
+    return {
+      ok: false as const,
+      data: null,
+      error: {
+        message: contextResult.error.message,
+      },
+    } satisfies CsvUploadWorkspaceContextResult;
   }
 
   if (!contextResult.data) {
     return {
       ok: false as const,
+      data: null,
       error: {
         message: "ログイン状態を確認できませんでした。",
       },
-    };
+    } satisfies CsvUploadWorkspaceContextResult;
   }
 
-  return contextResult;
+  return {
+    ok: true as const,
+    data: {
+      context: contextResult.data,
+      client: createAuthenticatedSupabaseClient(accessToken),
+    },
+    error: null,
+  } satisfies CsvUploadWorkspaceContextResult;
 }
 
 export async function loadRecentCsvUploadSnapshotsAction(accessToken?: string) {
@@ -137,20 +184,11 @@ export async function loadRecentCsvUploadSnapshotsAction(accessToken?: string) {
     } satisfies CsvUploadLoadActionResult;
   }
 
-  const context = contextResult.data;
-
-  if (!context) {
-    return {
-      ok: false,
-      data: null,
-      error: {
-        message: "保存済みデータの読み込みに失敗しました。",
-      },
-    } satisfies CsvUploadLoadActionResult;
-  }
+  const { context, client } = contextResult.data;
 
   const result = await getAnalysisCsvUploadRecords({
     workspaceId: context.workspaceId,
+    client,
   });
 
   if (!result.ok) {
@@ -172,6 +210,79 @@ export async function loadRecentCsvUploadSnapshotsAction(accessToken?: string) {
   } satisfies CsvUploadLoadActionResult;
 }
 
+export async function loadCurrentAnalysisCsvUploadSnapshotAction(accessToken?: string) {
+  const contextResult = await getWorkspaceContextForCsvUploads(accessToken);
+
+  if (!contextResult.ok) {
+    return {
+      ok: false,
+      data: null,
+      error: {
+        message: "保存済みデータの読み込みに失敗しました。",
+      },
+    } satisfies CsvUploadLoadActionResult;
+  }
+
+  const { context, client } = contextResult.data;
+
+  const metadataResult = await getCurrentAnalysisCsvUploadMetadata({
+    workspaceId: context.workspaceId,
+    client,
+  });
+
+  if (!metadataResult.ok) {
+    console.error(metadataResult.error.cause);
+
+    return {
+      ok: false,
+      data: null,
+      error: {
+        message: "保存済みデータの読み込みに失敗しました。",
+      },
+    } satisfies CsvUploadLoadActionResult;
+  }
+
+  if (!metadataResult.data) {
+    return {
+      ok: true,
+      data: [],
+      error: null,
+    } satisfies CsvUploadLoadActionResult;
+  }
+
+  const fileDataResult = await getCsvUploadFileDataById({
+    uploadId: metadataResult.data.id,
+    workspaceId: context.workspaceId,
+    client,
+  });
+
+  if (!fileDataResult.ok) {
+    console.error(fileDataResult.error.cause);
+
+    return {
+      ok: false,
+      data: null,
+      error: {
+        message: "保存済みデータの読み込みに失敗しました。",
+      },
+    } satisfies CsvUploadLoadActionResult;
+  }
+
+  if (!fileDataResult.data) {
+    return {
+      ok: true,
+      data: [],
+      error: null,
+    } satisfies CsvUploadLoadActionResult;
+  }
+
+  return {
+    ok: true,
+    data: buildStoredUploadSnapshots([fileDataResult.data]),
+    error: null,
+  } satisfies CsvUploadLoadActionResult;
+}
+
 export async function loadRecentCsvUploadHistoryAction(accessToken?: string) {
   const contextResult = await getWorkspaceContextForCsvUploads(accessToken);
 
@@ -185,20 +296,11 @@ export async function loadRecentCsvUploadHistoryAction(accessToken?: string) {
     } satisfies CsvUploadHistoryActionResult;
   }
 
-  const context = contextResult.data;
-
-  if (!context) {
-    return {
-      ok: false,
-      data: null,
-      error: {
-        message: "アップロード履歴の読み込みに失敗しました。",
-      },
-    } satisfies CsvUploadHistoryActionResult;
-  }
+  const { context, client } = contextResult.data;
 
   const result = await getRecentCsvUploadRecords({
     workspaceId: context.workspaceId,
+    client,
   });
 
   if (!result.ok) {
@@ -247,18 +349,7 @@ export async function saveCsvUploadRecordsAction(records: CsvUploadRecord[], acc
     } satisfies CsvUploadSaveActionResult;
   }
 
-  const context = contextResult.data;
-
-  if (!context) {
-    return {
-      ok: false,
-      data: null,
-      error: {
-        failedFileName: records[0]?.file_name ?? "CSV",
-        message: "CSVの保存に失敗しました。",
-      },
-    } satisfies CsvUploadSaveActionResult;
-  }
+  const { context, client } = contextResult.data;
   const recordsWithTenant = records.map((record) => ({
     ...record,
     company_id: context.companyId,
@@ -268,7 +359,7 @@ export async function saveCsvUploadRecordsAction(records: CsvUploadRecord[], acc
     excluded_at: null,
     excluded_by: null,
   }));
-  const result = await saveCsvUploadRecords(recordsWithTenant);
+  const result = await saveCsvUploadRecords(recordsWithTenant, client);
 
   if (!result.ok) {
     console.error(result.error.cause);
@@ -311,17 +402,7 @@ export async function updateCsvUploadStatusAction({
     } satisfies CsvUploadStatusActionResult;
   }
 
-  const context = contextResult.data;
-
-  if (!context) {
-    return {
-      ok: false,
-      data: null,
-      error: {
-        message: "アップロード履歴の更新に失敗しました。",
-      },
-    } satisfies CsvUploadStatusActionResult;
-  }
+  const { context, client } = contextResult.data;
 
   if (context.role !== "owner" && context.role !== "admin") {
     return {
@@ -347,6 +428,7 @@ export async function updateCsvUploadStatusAction({
           excluded_at: null,
           excluded_by: null,
         },
+    client,
   });
 
   if (!result.ok || !result.data) {
@@ -384,7 +466,7 @@ export async function checkDuplicateCsvUploadChecksumsAction({
 }) {
   const contextResult = await getWorkspaceContextForCsvUploads(accessToken);
 
-  if (!contextResult.ok || !contextResult.data) {
+  if (!contextResult.ok) {
     return {
       ok: false,
       data: null,
@@ -395,8 +477,9 @@ export async function checkDuplicateCsvUploadChecksumsAction({
   }
 
   const result = await getCsvUploadRecordsByChecksum({
-    workspaceId: contextResult.data.workspaceId,
+    workspaceId: contextResult.data.context.workspaceId,
     checksums,
+    client: contextResult.data.client,
   });
 
   if (!result.ok) {

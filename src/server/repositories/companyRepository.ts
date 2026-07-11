@@ -4,6 +4,9 @@ import {
   ok,
   type ServerResult,
 } from "@/src/server/shared";
+import type {
+  SupabaseUserClient,
+} from "@/src/server/core/supabaseUserClient";
 
 export type CompanyRecord = {
   id: string;
@@ -20,8 +23,8 @@ type TenantRepositoryError = {
 
 type CompanyResult = ServerResult<CompanyRecord | null, TenantRepositoryError>;
 
-export async function getCompanyById(companyId: string) {
-  const { data, error } = await supabase
+export async function getCompanyById(companyId: string, client: SupabaseUserClient = supabase) {
+  const { data, error } = await client
     .from("companies")
     .select("id, name, status, plan, created_at")
     .eq("id", companyId)

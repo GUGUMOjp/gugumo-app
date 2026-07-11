@@ -1,0 +1,9 @@
+-- DO NOT RUN
+-- Legacy csv_uploads-only write SQL.
+-- It is intentionally disabled because companies, workspaces, profiles,
+-- and csv_uploads must be repaired as one four-table tenant package.
+--
+-- Use:
+-- 05a_preflight_four_table_rls.sql
+-- 05b_apply_four_table_rls.sql
+-- 05c_verify_four_table_rls.sql

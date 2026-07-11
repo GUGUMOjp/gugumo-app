@@ -1,0 +1,5 @@
+-- DO NOT RUN
+-- Legacy csv_uploads-only verification.
+-- The four-table verification is now:
+-- 05c_verify_four_table_rls.sql
+-- 06_verify_after_apply.sql

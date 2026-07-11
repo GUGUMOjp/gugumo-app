@@ -87,6 +87,10 @@ body {
   object-fit: contain;
 }
 
+.login-brand-logo.compact {
+  width: min(210px, 100%);
+}
+
 .login-kicker {
   margin-top: 8px;
   color: var(--ink3);
@@ -245,6 +249,18 @@ body {
   padding: 9px 10px;
   font-size: 11.5px;
   line-height: 1.6;
+}
+
+.password-update-card,
+.account-setup-card {
+  width: min(440px, calc(100vw - 32px));
+  margin: auto;
+}
+
+.account-setup-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .login-error-message {

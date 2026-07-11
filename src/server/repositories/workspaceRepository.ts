@@ -4,6 +4,9 @@ import {
   ok,
   type ServerResult,
 } from "@/src/server/shared";
+import type {
+  SupabaseUserClient,
+} from "@/src/server/core/supabaseUserClient";
 
 export type WorkspaceRecord = {
   id: string;
@@ -21,8 +24,8 @@ type TenantRepositoryError = {
 type WorkspaceResult = ServerResult<WorkspaceRecord | null, TenantRepositoryError>;
 type WorkspacesResult = ServerResult<WorkspaceRecord[], TenantRepositoryError>;
 
-export async function getWorkspaceById(workspaceId: string) {
-  const { data, error } = await supabase
+export async function getWorkspaceById(workspaceId: string, client: SupabaseUserClient = supabase) {
+  const { data, error } = await client
     .from("workspaces")
     .select("id, company_id, name, status, created_at")
     .eq("id", workspaceId)
@@ -38,8 +41,8 @@ export async function getWorkspaceById(workspaceId: string) {
   return ok(data) satisfies WorkspaceResult;
 }
 
-export async function getWorkspacesByCompanyId(companyId: string) {
-  const { data, error } = await supabase
+export async function getWorkspacesByCompanyId(companyId: string, client: SupabaseUserClient = supabase) {
+  const { data, error } = await client
     .from("workspaces")
     .select("id, company_id, name, status, created_at")
     .eq("company_id", companyId)

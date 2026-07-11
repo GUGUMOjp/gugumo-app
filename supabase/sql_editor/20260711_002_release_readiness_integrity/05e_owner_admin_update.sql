@@ -1,0 +1,3 @@
+-- DO NOT RUN
+-- Legacy csv_uploads-only UPDATE policy SQL.
+-- Use 05b_apply_four_table_rls.sql instead.

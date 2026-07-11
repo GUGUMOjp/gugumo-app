@@ -10,5 +10,6 @@ export {
 } from "./workspaceContext";
 export type {
   CurrentWorkspaceContext,
+  WorkspaceContextErrorCode,
   WorkspaceRole,
 } from "./workspaceContext";
