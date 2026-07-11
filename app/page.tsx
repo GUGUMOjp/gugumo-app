@@ -246,6 +246,83 @@ function deltaCell(current: number, previous?: number) {
   return <span style={{ color: "var(--ink3)" }}>±0%</span>;
 }
 
+type PeriodReport = ReturnType<typeof buildWeekly>[number];
+type ForecastMetric = "listPV" | "detailPV" | "inquiry";
+
+function periodForecastValue(period: PeriodReport | undefined, metric: ForecastMetric) {
+  return period?.forecast?.[metric];
+}
+
+function periodMetricCell(period: PeriodReport, metric: ForecastMetric, forecastLabel: string) {
+  const forecastValue = periodForecastValue(period, metric);
+
+  return (
+    <>
+      {formatNumber(period[metric])}
+      {!period.isComplete && forecastValue !== undefined ? (
+        <div className="metric-note">{forecastLabel} {formatNumber(forecastValue)}</div>
+      ) : null}
+    </>
+  );
+}
+
+function periodTrendCell(
+  period: PeriodReport,
+  previous: PeriodReport | undefined,
+  metric: ForecastMetric,
+  forecastComparisonLabel: string,
+  actualComparisonLabel: string,
+) {
+  const forecastValue = periodForecastValue(period, metric);
+  const comparisonValue = !period.isComplete && forecastValue !== undefined ? forecastValue : period[metric];
+  const label = !period.isComplete && forecastValue !== undefined ? forecastComparisonLabel : actualComparisonLabel;
+
+  return (
+    <div className="trend-cell">
+      <span className="trend-label">{label}</span>
+      {deltaCell(comparisonValue, previous?.[metric])}
+    </div>
+  );
+}
+
+function periodKpiSub(
+  period: PeriodReport | undefined,
+  previous: PeriodReport | undefined,
+  metric: ForecastMetric,
+  forecastLabel: string,
+  forecastComparisonLabel: string,
+  actualComparisonLabel: string,
+) {
+  if (!period) return null;
+
+  const forecastValue = periodForecastValue(period, metric);
+  if (!period.isComplete && forecastValue !== undefined) {
+    return (
+      <div className="forecast-sub">
+        <span>{forecastLabel} {formatNumber(forecastValue)}</span>
+        <span>{forecastComparisonLabel} {deltaCell(forecastValue, previous?.[metric])}</span>
+        <span>{formatDataDate(period.latestDateKey)}時点</span>
+      </div>
+    );
+  }
+
+  return (
+    <span>{actualComparisonLabel} {deltaCell(period[metric], previous?.[metric])}</span>
+  );
+}
+
+function averageCompetitionSub(
+  period: PeriodReport | undefined,
+  previous: PeriodReport | undefined,
+  comparisonLabel: string,
+) {
+  if (!period) return null;
+
+  return (
+    <span>{period.isComplete ? comparisonLabel : `現在平均${comparisonLabel}`} {deltaCell(period.avgCompetition, previous?.avgCompetition)}</span>
+  );
+}
+
 function maxValue(values: number[]) {
   return Math.max(...values, 1);
 }
@@ -1324,10 +1401,10 @@ export default function Page() {
             ) : (
               <>
                 <div className="metrics">
-                  <KpiCard label="一覧PV" value={latestWeek ? formatNumber(latestWeek.listPV) : "—"} sub={deltaCell(latestWeek?.listPV ?? 0, previousWeek?.listPV)} />
-                  <KpiCard label="詳細PV" value={latestWeek ? formatNumber(latestWeek.detailPV) : "—"} sub={deltaCell(latestWeek?.detailPV ?? 0, previousWeek?.detailPV)} />
-                  <KpiCard label="問い合わせ" value={latestWeek ? formatNumber(latestWeek.inquiry) : "—"} unit="件" sub={deltaCell(latestWeek?.inquiry ?? 0, previousWeek?.inquiry)} />
-                  <KpiCard label="平均競合数" value={latestWeek ? latestWeek.avgCompetition.toFixed(1) : "—"} unit="件" />
+                  <KpiCard label="一覧PV" value={latestWeek ? formatNumber(latestWeek.listPV) : "—"} sub={periodKpiSub(latestWeek, previousWeek, "listPV", "週次予測", "予測前週比", "前週比")} />
+                  <KpiCard label="詳細PV" value={latestWeek ? formatNumber(latestWeek.detailPV) : "—"} sub={periodKpiSub(latestWeek, previousWeek, "detailPV", "週次予測", "予測前週比", "前週比")} />
+                  <KpiCard label="問い合わせ" value={latestWeek ? formatNumber(latestWeek.inquiry) : "—"} unit="件" sub={periodKpiSub(latestWeek, previousWeek, "inquiry", "週次予測", "予測前週比", "前週比")} />
+                  <KpiCard label="平均競合数" value={latestWeek ? latestWeek.avgCompetition.toFixed(1) : "—"} unit="件" sub={averageCompetitionSub(latestWeek, previousWeek, "前週比")} />
                 </div>
                 <div className="row2">
                   <div className="card">
@@ -1337,6 +1414,7 @@ export default function Page() {
                     <div><b>一覧PV</b><span>{formatNumber(latestWeek!.listPV)} PV</span></div>
                     <div><b>問い合わせ</b><span>{formatNumber(latestWeek!.inquiry)} 件</span></div>
                     <div><b>平均競合数</b><span>{latestWeek!.avgCompetition.toFixed(1)} 件</span></div>
+                    {!latestWeek!.isComplete && latestWeek!.forecast ? <div><b>予測</b><span>週次予測 {formatNumber(latestWeek!.forecast.listPV)} PV / {formatDataDate(latestWeek!.latestDateKey)}時点</span></div> : null}
                   </div>
                   </div>
                   <div className="card">
@@ -1348,7 +1426,7 @@ export default function Page() {
                   </div>
                 </div>
                 <div className="card"><div className="card-head"><div className="card-title"><i className="ti ti-chart-bar" />週次PV推移（木〜水締め）</div></div><div className="chart-wrap tall"><MiniBarChart data={weekly.map((week) => ({ label: week.label, value: week.listPV }))} /></div></div>
-                <div className="card"><div className="tbl-wrap"><table className="tbl"><thead><tr><th>週</th><th>期間</th><th>一覧PV</th><th>前週比</th><th>詳細PV</th><th>前週比</th><th>問合せ</th><th>前週比</th><th>平均競合数</th></tr></thead><tbody>{weekly.map((week, index) => { const prev = weekly[index - 1]; return <tr key={week.key}><td>{index === weekly.length - 1 ? "直近週" : `第${index + 1}週`}</td><td style={{ color: "var(--ink3)", fontSize: 10 }}>{week.label}</td><td className="num">{formatNumber(week.listPV)}</td><td>{deltaCell(week.listPV, prev?.listPV)}</td><td className="num">{formatNumber(week.detailPV)}</td><td>{deltaCell(week.detailPV, prev?.detailPV)}</td><td className="num">{formatNumber(week.inquiry)}</td><td>{deltaCell(week.inquiry, prev?.inquiry)}</td><td className="num">{week.avgCompetition.toFixed(1)}</td></tr>; })}</tbody></table></div></div>
+                <div className="card"><div className="tbl-wrap"><table className="tbl"><thead><tr><th>週</th><th>期間</th><th>一覧PV</th><th>比較</th><th>詳細PV</th><th>比較</th><th>問合せ</th><th>比較</th><th>平均競合数</th></tr></thead><tbody>{weekly.map((week, index) => { const prev = weekly[index - 1]; return <tr key={week.key}><td>{index === weekly.length - 1 ? "直近週" : `第${index + 1}週`}</td><td style={{ color: "var(--ink3)", fontSize: 10 }}>{week.label}</td><td className="num">{periodMetricCell(week, "listPV", "週次予測")}</td><td>{periodTrendCell(week, prev, "listPV", "予測前週比", "前週比")}</td><td className="num">{periodMetricCell(week, "detailPV", "週次予測")}</td><td>{periodTrendCell(week, prev, "detailPV", "予測前週比", "前週比")}</td><td className="num">{periodMetricCell(week, "inquiry", "週次予測")}</td><td>{periodTrendCell(week, prev, "inquiry", "予測前週比", "前週比")}</td><td className="num">{week.avgCompetition.toFixed(1)}</td></tr>; })}</tbody></table></div></div>
               </>
             )}
           </div>
@@ -1375,10 +1453,10 @@ export default function Page() {
             ) : (
               <>
                 <div className="metrics">
-                  <KpiCard label="一覧PV" value={latestMonth ? formatNumber(latestMonth.listPV) : "—"} sub={deltaCell(latestMonth?.listPV ?? 0, previousMonth?.listPV)} />
-                  <KpiCard label="詳細PV" value={latestMonth ? formatNumber(latestMonth.detailPV) : "—"} sub={deltaCell(latestMonth?.detailPV ?? 0, previousMonth?.detailPV)} />
-                  <KpiCard label="問い合わせ" value={latestMonth ? formatNumber(latestMonth.inquiry) : "—"} unit="件" sub={deltaCell(latestMonth?.inquiry ?? 0, previousMonth?.inquiry)} />
-                  <KpiCard label="平均競合数" value={latestMonth ? latestMonth.avgCompetition.toFixed(1) : "—"} unit="件" />
+                  <KpiCard label="一覧PV" value={latestMonth ? formatNumber(latestMonth.listPV) : "—"} sub={periodKpiSub(latestMonth, previousMonth, "listPV", "月間予測", "予測前月比", "前月比")} />
+                  <KpiCard label="詳細PV" value={latestMonth ? formatNumber(latestMonth.detailPV) : "—"} sub={periodKpiSub(latestMonth, previousMonth, "detailPV", "月間予測", "予測前月比", "前月比")} />
+                  <KpiCard label="問い合わせ" value={latestMonth ? formatNumber(latestMonth.inquiry) : "—"} unit="件" sub={periodKpiSub(latestMonth, previousMonth, "inquiry", "月間予測", "予測前月比", "前月比")} />
+                  <KpiCard label="平均競合数" value={latestMonth ? latestMonth.avgCompetition.toFixed(1) : "—"} unit="件" sub={averageCompetitionSub(latestMonth, previousMonth, "前月比")} />
                 </div>
                 <div className="row2">
                   <div className="card">
@@ -1388,6 +1466,7 @@ export default function Page() {
                     <div><b>一覧PV</b><span>{formatNumber(latestMonth!.listPV)} PV</span></div>
                     <div><b>問い合わせ</b><span>{formatNumber(latestMonth!.inquiry)} 件</span></div>
                     <div><b>平均競合数</b><span>{latestMonth!.avgCompetition.toFixed(1)} 件</span></div>
+                    {!latestMonth!.isComplete && latestMonth!.forecast ? <div><b>予測</b><span>月間予測 {formatNumber(latestMonth!.forecast.listPV)} PV / {formatDataDate(latestMonth!.latestDateKey)}時点</span></div> : null}
                   </div>
                   </div>
                   <div className="card">
@@ -1399,7 +1478,7 @@ export default function Page() {
                   </div>
                 </div>
                 <div className="card"><div className="card-head"><div className="card-title"><i className="ti ti-chart-bar" />月次推移</div></div><div className="chart-wrap tall"><MiniBarChart data={monthly.map((month) => ({ label: month.label, value: month.listPV }))} /></div></div>
-                <div className="card"><div className="tbl-wrap"><table className="tbl"><thead><tr><th>月</th><th>一覧PV</th><th>前月比</th><th>詳細PV</th><th>前月比</th><th>問合せ</th><th>前月比</th><th>平均競合数</th></tr></thead><tbody>{monthly.map((month, index) => { const prev = monthly[index - 1]; return <tr key={month.key}><td>{month.label}</td><td className="num">{formatNumber(month.listPV)}</td><td>{deltaCell(month.listPV, prev?.listPV)}</td><td className="num">{formatNumber(month.detailPV)}</td><td>{deltaCell(month.detailPV, prev?.detailPV)}</td><td className="num">{formatNumber(month.inquiry)}</td><td>{deltaCell(month.inquiry, prev?.inquiry)}</td><td className="num">{month.avgCompetition.toFixed(1)}</td></tr>; })}</tbody></table></div></div>
+                <div className="card"><div className="tbl-wrap"><table className="tbl"><thead><tr><th>月</th><th>一覧PV</th><th>比較</th><th>詳細PV</th><th>比較</th><th>問合せ</th><th>比較</th><th>平均競合数</th></tr></thead><tbody>{monthly.map((month, index) => { const prev = monthly[index - 1]; return <tr key={month.key}><td>{month.label}</td><td className="num">{periodMetricCell(month, "listPV", "月間予測")}</td><td>{periodTrendCell(month, prev, "listPV", "予測前月比", "前月比")}</td><td className="num">{periodMetricCell(month, "detailPV", "月間予測")}</td><td>{periodTrendCell(month, prev, "detailPV", "予測前月比", "前月比")}</td><td className="num">{periodMetricCell(month, "inquiry", "月間予測")}</td><td>{periodTrendCell(month, prev, "inquiry", "予測前月比", "前月比")}</td><td className="num">{month.avgCompetition.toFixed(1)}</td></tr>; })}</tbody></table></div></div>
               </>
             )}
           </div>

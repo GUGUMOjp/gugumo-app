@@ -791,6 +791,12 @@ body {
   min-height: 14px;
 }
 
+.forecast-sub {
+  display: grid;
+  gap: 2px;
+  line-height: 1.35;
+}
+
 .kpi-card.danger .kpi-label,
 .kpi-card.danger .kpi-value {
   color: var(--red);
@@ -1025,6 +1031,25 @@ table.tbl {
 .tbl td.num {
   font-variant-numeric: tabular-nums;
   text-align: right;
+}
+
+.metric-note {
+  margin-top: 2px;
+  color: var(--ink3);
+  font-size: 9.5px;
+  line-height: 1.25;
+}
+
+.trend-cell {
+  display: grid;
+  gap: 2px;
+  min-width: 68px;
+}
+
+.trend-label {
+  color: var(--ink3);
+  font-size: 9.5px;
+  line-height: 1.2;
 }
 
 .property-history-table {
