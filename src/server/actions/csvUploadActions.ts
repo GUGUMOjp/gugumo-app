@@ -1,6 +1,8 @@
 "use server";
 
 import {
+  getAnalysisCsvUploadRecords,
+  getCsvUploadRecordsByChecksum,
   getRecentCsvUploadRecords,
   saveCsvUploadRecords,
   updateCsvUploadRecordStatus,
@@ -85,6 +87,24 @@ type CsvUploadStatusActionResult = {
   };
 };
 
+type CsvUploadDuplicateItem = {
+  checksum: string;
+  fileName: string;
+  uploadedAt: string | null;
+};
+
+type CsvUploadDuplicateCheckActionResult = {
+  ok: true;
+  data: CsvUploadDuplicateItem[];
+  error: null;
+} | {
+  ok: false;
+  data: null;
+  error: {
+    message: string;
+  };
+};
+
 async function getWorkspaceContextForCsvUploads(accessToken?: string) {
   const contextResult = await getCurrentWorkspaceContext(accessToken);
 
@@ -129,7 +149,7 @@ export async function loadRecentCsvUploadSnapshotsAction(accessToken?: string) {
     } satisfies CsvUploadLoadActionResult;
   }
 
-  const result = await getRecentCsvUploadRecords({
+  const result = await getAnalysisCsvUploadRecords({
     workspaceId: context.workspaceId,
   });
 
@@ -353,4 +373,53 @@ export async function updateCsvUploadStatusAction({
     },
     error: null,
   } satisfies CsvUploadStatusActionResult;
+}
+
+export async function checkDuplicateCsvUploadChecksumsAction({
+  checksums,
+  accessToken,
+}: {
+  checksums: string[];
+  accessToken?: string;
+}) {
+  const contextResult = await getWorkspaceContextForCsvUploads(accessToken);
+
+  if (!contextResult.ok || !contextResult.data) {
+    return {
+      ok: false,
+      data: null,
+      error: {
+        message: "アップロード履歴の確認に失敗しました。",
+      },
+    } satisfies CsvUploadDuplicateCheckActionResult;
+  }
+
+  const result = await getCsvUploadRecordsByChecksum({
+    workspaceId: contextResult.data.workspaceId,
+    checksums,
+  });
+
+  if (!result.ok) {
+    console.error(result.error.cause);
+
+    return {
+      ok: false,
+      data: null,
+      error: {
+        message: "アップロード履歴の確認に失敗しました。",
+      },
+    } satisfies CsvUploadDuplicateCheckActionResult;
+  }
+
+  return {
+    ok: true,
+    data: result.data
+      .filter((record) => Boolean(record.checksum))
+      .map((record) => ({
+        checksum: record.checksum as string,
+        fileName: record.file_name,
+        uploadedAt: record.uploaded_at ?? record.created_at,
+      })),
+    error: null,
+  } satisfies CsvUploadDuplicateCheckActionResult;
 }

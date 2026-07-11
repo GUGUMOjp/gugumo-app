@@ -78,6 +78,11 @@ b02198f RC: restore persisted dashboard state
 - 分析対象候補はDB `status` を反映した履歴状態で絞り込み、同一データ日付ではアップロード日時が新しいCSVを採用する。古い `snapshot_date` の後追いUploadは最新分析対象にならない。
 - 既存checksum NULL行は重複判定対象外。DB保存済み行の `contentHash` はDB `checksum` のみを使い、localStorage hash fallbackはDB保存済み行へ適用しない。
 - `getRecentCsvUploadRecords` は暫定で `limit=100`。Upload履歴が増えた場合に分析対象候補が漏れる可能性があるため、将来的には「履歴表示」と「現在分析対象取得」をRepositoryで分ける。
+- Data Integrity Phase2として、重複CSV検知をDB `workspace_id + checksum` 基準へ移行。既存checksum NULL行は対象外のまま維持し、初回はwarning表示のみで保存は継続可能とする。
+- 分析用CSV取得を履歴表示用取得から分離。履歴表示はrecent limitを維持し、分析用snapshot取得はactive行を対象にする。
+- β版Release Readiness台帳を `docs/release-readiness.md` に追加。Password Reset、RLS、招待フロー、Runbook、バックアップ、監査ログ、Go/No-Go基準を継続管理する。
+- 分析カテゴリ名、基準名、判定名、推奨アクション名、SUUMO由来項目名はUI文言ではなく業務仕様として扱う。UX改善、自然な日本語化、抽象化、短文化を理由に、ユーザー明示承認なしで変更しない。
+- オプション管理の正式4分類は「全オプションを外す（スマピク以外）」「第2基準まで落とす」「第2基準に上げる」「第3基準に上げる」。`removeAllRows / lowerToSecondRows / raiseToSecondRows / raiseToThirdRows` の対応を変更しない。「第1基準に上げる」は存在しない。
 - ログイン後画面にログアウト導線を追加し、モックログイン状態をログイン前へ戻す操作を整理。
 - ログイン画面のパスワード再設定導線を、正式版のメール再設定フロー前提の「準備中」案内へ変更。
 - `/data-policy`、`/support`、`/legal`を追加し、ログイン画面とサイドバー下部の法務リンクを更新。

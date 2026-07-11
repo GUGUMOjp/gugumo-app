@@ -14,6 +14,7 @@ import {
   getCurrentWorkspaceContextAction,
 } from "@/src/server/actions/workspaceActions";
 import {
+  checkDuplicateCsvUploadChecksumsAction,
   loadRecentCsvUploadHistoryAction,
   loadRecentCsvUploadSnapshotsAction,
   saveCsvUploadRecordsAction,
@@ -150,6 +151,10 @@ function formatNumber(value: number) {
 
 function formatMoney(value: number) {
   return `¥${Math.round(value).toLocaleString("ja-JP")}`;
+}
+
+function formatOptionBalanceDisplayCount(rawCount: number) {
+  return Math.floor(rawCount / 50) * 50;
 }
 
 function formatUploadDate(value: string | null) {
@@ -875,16 +880,21 @@ export default function Page() {
         contentHash: await buildCsvContentHash(file),
       })));
       const hashByFileName = new Map(hashItems.map((item) => [item.fileName, item.contentHash]));
-      const duplicateItems = hashItems
-        .map((item) => {
-          const previous = uploadHistory.find((history) => history.contentHash === item.contentHash && history.status !== "excluded");
-          return previous ? { ...item, previous } : null;
-        })
-        .filter((item): item is { fileName: string; contentHash: string; previous: UploadHistoryEntry } => Boolean(item));
+      const duplicateResult = await checkDuplicateCsvUploadChecksumsAction({
+        checksums: hashItems.map((item) => item.contentHash),
+        accessToken: authAccessToken,
+      });
 
-      if (duplicateItems.length) {
+      if (duplicateResult.ok && duplicateResult.data.length) {
+        const previousByChecksum = new Map(duplicateResult.data.map((item) => [item.checksum, item]));
+        const duplicateItems = hashItems
+          .map((item) => {
+            const previous = previousByChecksum.get(item.contentHash);
+            return previous ? { ...item, previous } : null;
+          })
+          .filter((item): item is { fileName: string; contentHash: string; previous: { checksum: string; fileName: string; uploadedAt: string | null } } => Boolean(item));
         const message = [
-          "このCSVは以前アップロードされています。",
+          "同じ内容のCSVが既にアップロードされています。",
           "",
           ...duplicateItems.flatMap((item) => [
             `今回: ${item.fileName}`,
@@ -892,12 +902,12 @@ export default function Page() {
             `前回ファイル名: ${item.previous.fileName}`,
             "",
           ]),
-          "保存する場合はOK、キャンセルする場合はキャンセルを押してください。",
+          "今回は保存を続行します。必要に応じてアップロード履歴で除外してください。",
         ].join("\n");
 
-        if (!window.confirm(message)) {
-          return;
-        }
+        alert(message);
+      } else if (!duplicateResult.ok) {
+        console.error(duplicateResult.error);
       }
 
       const parsed = await buildUploadSnapshots(fileList);
@@ -1427,7 +1437,7 @@ export default function Page() {
                       <i className="ti ti-chevron-down" style={{ fontSize: 12, color: "var(--ink3)", marginLeft: 4 }} />
                     </div>
                     <div className={`prop-body${open ? " open" : ""}`}>
-                      <table className="tbl"><thead><tr><th>日付</th><th>一覧PV</th><th>詳細PV</th><th>問合せ</th><th>競合数</th><th>変化</th></tr></thead><tbody>{property.entries.map((entry) => <tr key={`${property.key}-${entry.dateLabel}`}><td>{entry.dateLabel}</td><td className="num">{entry.dListPV}</td><td className="num">{entry.dDetailPV}</td><td className="num">{entry.dInquiry}</td><td className="num">{entry.competition}{entry.competitionDelta !== 0 ? <span style={{ fontSize: 9, marginLeft: 3, color: entry.competitionDelta > 0 ? "#A32D2D" : "#3B6D11" }}>{entry.competitionDelta > 0 ? "▲" : "▼"}{Math.abs(entry.competitionDelta)}</span> : null}</td><td>{entry.smapicChanged ? <span className="tag tag-amber">スマピク{entry.smapicNow ? "付与" : "削除"}</span> : null}</td></tr>)}</tbody></table>
+                      <table className="tbl property-history-table"><thead><tr><th>日付</th><th className="num">一覧PV</th><th className="num">詳細PV</th><th className="num">問い合わせ</th><th className="num">競合数</th><th>変化</th></tr></thead><tbody>{property.entries.map((entry) => <tr key={`${property.key}-${entry.dateLabel}`}><td>{entry.dateLabel}</td><td className="num">{formatNumber(entry.dListPV)}</td><td className="num">{formatNumber(entry.dDetailPV)}</td><td className="num">{formatNumber(entry.dInquiry)}</td><td className="num">{formatNumber(entry.competition)}{entry.competitionDelta !== 0 ? <span className={`competition-delta ${entry.competitionDelta > 0 ? "up" : "down"}`}>{entry.competitionDelta > 0 ? "▲" : "▼"}{Math.abs(entry.competitionDelta)}</span> : null}</td><td className="change-cell">{entry.smapicChanged ? <span className="tag tag-amber">スマピク{entry.smapicNow ? "付与" : "削除"}</span> : <span className="no-change">—</span>}</td></tr>)}</tbody></table>
                     </div>
                   </div>
                 );
@@ -1440,7 +1450,7 @@ export default function Page() {
           <div className={pageClass(activePage, "opt")}>
             <PageIntro
               title="オプション運用"
-              description="掲載状況に対して、外す候補・付ける候補を同じ基準で確認できます。"
+              description="掲載状況に対して、正式な4分類でオプション運用の対象を確認できます。"
             >
               <button type="button" className="topbar-btn" onClick={() => goto("optbal")}>収支分析を見る</button>
             </PageIntro>
@@ -1451,22 +1461,22 @@ export default function Page() {
               <EmptyActionPanel
                 icon="ti-adjustments"
                 title="見直し候補はまだありません"
-                message="CSVを読み込むと、外す候補・付ける候補がある場合だけ一覧で表示します。"
+                message="CSVを読み込むと、正式な4分類の対象がある場合だけ一覧で表示します。"
                 onAction={() => goto("upload")}
               />
             ) : (
               <>
                 <div className="opt-group remove">
                   <div className="opt-group-label"><i className="ti ti-circle-minus" />オプションを外す系</div>
-                  {removeAllPropertyRows.length ? <div className="card"><div className="card-head"><div className="card-title">外す候補（スマピク以外）</div><ProgressActions tableId="t1" total={analysis.removeAllRows.length} checkedState={checkedState} onClear={clearChecks} /></div><div className="tbl-wrap"><table className="tbl"><thead><tr><th className="col-check" /><th>物件名</th><th>部屋番号</th><th>競合数</th></tr></thead><tbody>{removeAllPropertyRows.slice(0, 200).map((row) => <CheckableRow key={row.key} tableId="t1" itemKey={row.key} checked={isChecked("t1", row.key)} onChange={toggleCheck}><td className="nm">{row.name}</td><td>{row.room}</td><td className="num">{row.total}</td></CheckableRow>)}</tbody></table></div></div> : null}
-                  {lowerToSecondPropertyRows.length ? <div className="card"><div className="card-head"><div className="card-title">掲載を抑える候補</div><ProgressActions tableId="t2" total={analysis.lowerToSecondRows.length} checkedState={checkedState} onClear={clearChecks} /></div><div className="tbl-wrap"><table className="tbl"><thead><tr><th className="col-check" /><th>物件名</th><th>部屋番号</th><th>競合数</th></tr></thead><tbody>{lowerToSecondPropertyRows.slice(0, 200).map((row) => <CheckableRow key={row.key} tableId="t2" itemKey={row.key} checked={isChecked("t2", row.key)} onChange={toggleCheck}><td className="nm">{row.name}</td><td>{row.room}</td><td className="num">{row.total}</td></CheckableRow>)}</tbody></table></div></div> : null}
-                  {!removeAllPropertyRows.length && !lowerToSecondPropertyRows.length ? <EmptyState title="外す候補はありません" message="現在、外す候補として表示する物件はありません。" /> : null}
+                  {removeAllPropertyRows.length ? <div className="card"><div className="card-head"><div className="card-title">全オプションを外す（スマピク以外）</div><ProgressActions tableId="t1" total={analysis.removeAllRows.length} checkedState={checkedState} onClear={clearChecks} /></div><div className="tbl-wrap"><table className="tbl"><thead><tr><th className="col-check" /><th>物件名</th><th>部屋番号</th><th>競合数</th></tr></thead><tbody>{removeAllPropertyRows.slice(0, 200).map((row) => <CheckableRow key={row.key} tableId="t1" itemKey={row.key} checked={isChecked("t1", row.key)} onChange={toggleCheck}><td className="nm">{row.name}</td><td>{row.room}</td><td className="num">{row.total}</td></CheckableRow>)}</tbody></table></div></div> : null}
+                  {lowerToSecondPropertyRows.length ? <div className="card"><div className="card-head"><div className="card-title">第2基準まで落とす</div><ProgressActions tableId="t2" total={analysis.lowerToSecondRows.length} checkedState={checkedState} onClear={clearChecks} /></div><div className="tbl-wrap"><table className="tbl"><thead><tr><th className="col-check" /><th>物件名</th><th>部屋番号</th><th>競合数</th></tr></thead><tbody>{lowerToSecondPropertyRows.slice(0, 200).map((row) => <CheckableRow key={row.key} tableId="t2" itemKey={row.key} checked={isChecked("t2", row.key)} onChange={toggleCheck}><td className="nm">{row.name}</td><td>{row.room}</td><td className="num">{row.total}</td></CheckableRow>)}</tbody></table></div></div> : null}
+                  {!removeAllPropertyRows.length && !lowerToSecondPropertyRows.length ? <EmptyState title="オプションを外す系はありません" message="現在、オプションを外す系として表示する物件はありません。" /> : null}
                 </div>
                 <div className="opt-group add">
                   <div className="opt-group-label"><i className="ti ti-circle-plus" />オプションを付ける系</div>
-                  {raiseToSecondPropertyRows.length ? <div className="card"><div className="card-head"><div className="card-title">付ける候補</div><ProgressActions tableId="t3" total={analysis.raiseToSecondRows.length} checkedState={checkedState} onClear={clearChecks} /></div><div className="tbl-wrap"><table className="tbl"><thead><tr><th className="col-check" /><th>物件名</th><th>部屋番号</th><th>競合数</th></tr></thead><tbody>{raiseToSecondPropertyRows.slice(0, 200).map((row) => <CheckableRow key={row.key} tableId="t3" itemKey={row.key} checked={isChecked("t3", row.key)} onChange={toggleCheck}><td className="nm">{row.name}</td><td>{row.room}</td><td className="num">{row.total}</td></CheckableRow>)}</tbody></table></div></div> : null}
-                  {raiseToThirdPropertyRows.length ? <div className="card"><div className="card-head"><div className="card-title">優先的に強める候補</div><ProgressActions tableId="t4" total={analysis.raiseToThirdRows.length} checkedState={checkedState} onClear={clearChecks} /></div><div className="tbl-wrap"><table className="tbl"><thead><tr><th className="col-check" /><th>物件名</th><th>部屋番号</th><th>競合数</th></tr></thead><tbody>{raiseToThirdPropertyRows.slice(0, 200).map((row) => <CheckableRow key={row.key} tableId="t4" itemKey={row.key} checked={isChecked("t4", row.key)} onChange={toggleCheck}><td className="nm">{row.name}</td><td>{row.room}</td><td className="num">{row.total}</td></CheckableRow>)}</tbody></table></div></div> : null}
-                  {!raiseToSecondPropertyRows.length && !raiseToThirdPropertyRows.length ? <EmptyState title="付ける候補はありません" message="現在、追加候補として表示する物件はありません。" /> : null}
+                  {raiseToSecondPropertyRows.length ? <div className="card"><div className="card-head"><div className="card-title">第2基準に上げる</div><ProgressActions tableId="t3" total={analysis.raiseToSecondRows.length} checkedState={checkedState} onClear={clearChecks} /></div><div className="tbl-wrap"><table className="tbl"><thead><tr><th className="col-check" /><th>物件名</th><th>部屋番号</th><th>競合数</th></tr></thead><tbody>{raiseToSecondPropertyRows.slice(0, 200).map((row) => <CheckableRow key={row.key} tableId="t3" itemKey={row.key} checked={isChecked("t3", row.key)} onChange={toggleCheck}><td className="nm">{row.name}</td><td>{row.room}</td><td className="num">{row.total}</td></CheckableRow>)}</tbody></table></div></div> : null}
+                  {raiseToThirdPropertyRows.length ? <div className="card"><div className="card-head"><div className="card-title">第3基準に上げる</div><ProgressActions tableId="t4" total={analysis.raiseToThirdRows.length} checkedState={checkedState} onClear={clearChecks} /></div><div className="tbl-wrap"><table className="tbl"><thead><tr><th className="col-check" /><th>物件名</th><th>部屋番号</th><th>競合数</th></tr></thead><tbody>{raiseToThirdPropertyRows.slice(0, 200).map((row) => <CheckableRow key={row.key} tableId="t4" itemKey={row.key} checked={isChecked("t4", row.key)} onChange={toggleCheck}><td className="nm">{row.name}</td><td>{row.room}</td><td className="num">{row.total}</td></CheckableRow>)}</tbody></table></div></div> : null}
+                  {!raiseToSecondPropertyRows.length && !raiseToThirdPropertyRows.length ? <EmptyState title="オプションを付ける系はありません" message="現在、オプションを付ける系として表示する物件はありません。" /> : null}
                 </div>
               </>
             )}
@@ -1539,8 +1549,8 @@ export default function Page() {
               />
             ) : (
               <>
-                <div className="savings-banner" style={{ marginBottom: 14 }}><div className="savings-main"><div className="savings-label"><i className="ti ti-coin" /> 月額オプション節約効果</div><div className="savings-amount">{formatMoney(analysis.optionBalance.totalSaving)}<small>/月</small></div><div className="savings-sub">最適化による無駄オプションの削減額</div></div><div className="savings-detail"><div className="savings-stat"><div className="savings-stat-val">{analysis.optionBalance.totalWaste}</div><div className="savings-stat-lbl">無駄オプション計</div></div><div className="savings-stat"><div className="savings-stat-val">{formatMoney(analysis.optionBalance.totalSaving * 12)}</div><div className="savings-stat-lbl">年間削減</div></div></div></div>
-                <div className="card"><div className="card-head"><div className="card-title"><i className="ti ti-scale" />オプション収支分析（現在と見直し後）</div></div><div className="optbal-grid">{analysis.optionBalance.cards.map((card) => <div className="optbal-card" key={card.key}><div className="optbal-name"><i className={`ti ${card.icon}`} style={{ color: "var(--green)" }} />{card.name}</div><div className="optbal-row"><span>現在の付与</span><b>{card.current}件</b></div><div className="optbal-row"><span>見直し候補</span><b style={{ color: "var(--red)" }}>{card.waste}件</b></div><div className="optbal-row"><span>見直し後</span><b>{Math.max(0, card.current - card.waste)}件</b></div><div className="optbal-row"><span>単価</span><b>{formatMoney(card.price)}</b></div><div className={`optbal-verdict ${card.waste > 0 ? "verdict-cut" : "verdict-ok"}`}>{card.waste > 0 ? <>▼ {card.waste}件 削減推奨<br /><span style={{ fontSize: 10, fontWeight: 400, color: "var(--ink3)" }}>月 {formatMoney(card.saving)} 節約</span></> : "適正"}</div></div>)}</div><div style={{ fontSize: 11, color: "var(--ink3)", marginTop: 6 }}>※現在の掲載・競合状況から、必要なオプション件数を確認したものです。単価は設定画面で変更できます。</div></div>
+                <div className="savings-banner" style={{ marginBottom: 14 }}><div className="savings-main"><div className="savings-label"><i className="ti ti-coin" /> 月額オプション節約効果</div><div className="savings-amount">{formatMoney(analysis.optionBalance.totalSaving)}<small>/月</small></div><div className="savings-sub">最適化による無駄オプションの削減額</div></div><div className="savings-detail"><div className="savings-stat"><div className="savings-stat-val">{formatOptionBalanceDisplayCount(analysis.optionBalance.totalWaste)}</div><div className="savings-stat-lbl">無駄オプション計</div></div><div className="savings-stat"><div className="savings-stat-val">{formatMoney(analysis.optionBalance.totalSaving * 12)}</div><div className="savings-stat-lbl">年間削減</div></div></div></div>
+                <div className="card"><div className="card-head"><div className="card-title"><i className="ti ti-scale" />オプション収支分析（現在と見直し後）</div></div><div className="optbal-grid">{analysis.optionBalance.cards.map((card) => <div className="optbal-card" key={card.key}><div className="optbal-name"><i className={`ti ${card.icon}`} style={{ color: "var(--green)" }} />{card.name}</div><div className="optbal-row"><span>現在の付与</span><b>{formatOptionBalanceDisplayCount(card.current)}件</b></div><div className="optbal-row"><span>見直し候補</span><b style={{ color: "var(--red)" }}>{formatOptionBalanceDisplayCount(card.waste)}件</b></div><div className="optbal-row"><span>見直し後</span><b>{formatOptionBalanceDisplayCount(Math.max(0, card.current - card.waste))}件</b></div><div className="optbal-row"><span>単価</span><b>{formatMoney(card.price)}</b></div><div className={`optbal-verdict ${card.waste > 0 ? "verdict-cut" : "verdict-ok"}`}>{card.waste > 0 ? <>▼ {formatOptionBalanceDisplayCount(card.waste)}件 削減推奨<br /><span style={{ fontSize: 10, fontWeight: 400, color: "var(--ink3)" }}>月 {formatMoney(card.saving)} 節約</span></> : "適正"}</div></div>)}</div><div style={{ fontSize: 11, color: "var(--ink3)", marginTop: 6 }}>※現在の掲載・競合状況から、必要なオプション件数を確認したものです。単価は設定画面で変更できます。</div></div>
               </>
             )}
           </div>

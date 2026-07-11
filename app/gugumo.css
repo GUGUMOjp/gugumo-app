@@ -1027,6 +1027,59 @@ table.tbl {
   text-align: right;
 }
 
+.property-history-table {
+  min-width: 620px;
+  table-layout: fixed;
+}
+
+.property-history-table th:nth-child(1),
+.property-history-table td:nth-child(1) {
+  width: 118px;
+  text-align: left;
+}
+
+.property-history-table th:nth-child(2),
+.property-history-table th:nth-child(3),
+.property-history-table th:nth-child(4),
+.property-history-table th:nth-child(5),
+.property-history-table td:nth-child(2),
+.property-history-table td:nth-child(3),
+.property-history-table td:nth-child(4),
+.property-history-table td:nth-child(5) {
+  width: 92px;
+  text-align: right;
+}
+
+.property-history-table th:nth-child(6),
+.property-history-table td:nth-child(6) {
+  width: 150px;
+  text-align: center;
+}
+
+.competition-delta {
+  display: inline-block;
+  min-width: 28px;
+  margin-left: 5px;
+  font-size: 9px;
+  text-align: left;
+}
+
+.competition-delta.up {
+  color: #a32d2d;
+}
+
+.competition-delta.down {
+  color: #3b6d11;
+}
+
+.change-cell {
+  text-align: center;
+}
+
+.no-change {
+  color: var(--ink3);
+}
+
 .chk {
   appearance: none;
   width: 15px;
