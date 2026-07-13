@@ -53,19 +53,20 @@ Sprint開始時点はclean。Production Auth Gate Closeoutとして、Password R
 - Password Reset code path implemented and redirects to `/?reset-password=1`.
 - Password Reset Production E2E passed on 2026-07-13: Custom SMTP/Resend email delivery, production callback, password update, Home bootstrap, company/workspace/owner role display, and existing analysis display.
 - Supabase Site URL and Redirect URLs are configured for `https://app.gugumo.jp`, `https://app.gugumo.jp/?reset-password=1`, `http://localhost:3000`, and `http://localhost:3000/?reset-password=1`.
+- Production Auth manual settings confirmed: Signup OFF, anonymous sign-in OFF, email/password only, password minimum length 8, Reset Password email localized, Resend Custom SMTP active.
 - Vercel Production must keep `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` as a matched pair from GUGUMOjp's Project `annvqxnupddnozyghqdw`; a 2026-07-13 preflight failure was caused by an old, incorrect Supabase project connection.
 - Authenticated app data access must use user JWT. Service Role remains prohibited for app/E2E.
 
 ## Current Blocker
 
-- External beta remains blocked until remaining Dashboard Auth settings, legal finalization, customer onboarding rehearsal, and final diff review are complete.
+- External beta remains blocked until legal finalization, customer onboarding rehearsal, and final diff review are complete.
 - Technical beta READY: yes for the current uncommitted implementation after final diff review. Role/Tenant Security Gate, JWT auth transport regression, CSV lifecycle, option analysis, permanent DELETE Gate, test cleanup, lint, and build have passed.
 - Paid beta READY: no.
 
 ## Current Next Action
 
 - Close out Production Auth docs and customer-facing login copy, then review/commit the closeout diff.
-- User still needs to change Signup OFF, set password minimum 8, localize email templates, decide CAPTCHA, complete legal/support final confirmation, and rehearse customer onboarding before broad external beta.
+- User still needs to decide CAPTCHA, complete legal/support final confirmation, and rehearse customer onboarding before broad external beta.
 
 ## Latest Implementation Note
 

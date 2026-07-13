@@ -9,12 +9,12 @@ Target Supabase project: GUGUMOjp's Project / `annvqxnupddnozyghqdw`.
 3. Confirm the formal Supabase project ID is `annvqxnupddnozyghqdw`.
 4. GUGUMO creates company.
 5. GUGUMO creates workspace under that company.
-6. GUGUMO creates or invites owner user from Supabase Dashboard.
+6. GUGUMO invites the owner user from Supabase Dashboard. Use `Create user` only as a reviewed fallback.
 7. GUGUMO confirms email confirmation or invite status.
 8. GUGUMO creates profile linking `profiles.id` to the Auth user UUID.
 9. GUGUMO sets `company_id`, `workspace_id`, and `role`.
 10. GUGUMO verifies company/workspace/profile consistency.
-11. Customer sets password from invite email.
+11. Customer sets password from invite email or reviewed Password Reset fallback.
 12. Customer logs in.
 13. GUGUMO confirms Home bootstrap shows the expected company/workspace/role.
 14. Customer uploads SUUMO CSV.
@@ -37,6 +37,7 @@ Target Supabase project: GUGUMOjp's Project / `annvqxnupddnozyghqdw`.
 - Role/Tenant Manual E2E passed on 2026-07-12. Re-run it before beta only if RLS policies, grants, tenant bootstrap, upload actions, or role handling change.
 - Password Reset Production E2E passed on 2026-07-13 for `https://app.gugumo.jp` after Vercel Production was confirmed to use the formal Supabase project.
 - Before customer onboarding, confirm Vercel Production `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` are copied from the same formal Supabase project. Do not store env values in docs.
+- Use [Customer Onboarding Rehearsal](./onboarding-rehearsal.md) before creating the first real customer tenant.
 - Technical beta readiness still depends on legal/support and onboarding rehearsal. Server Action arguments must remain free of raw bearer tokens.
 
 ## Customer Tasks
@@ -67,3 +68,4 @@ Target Supabase project: GUGUMOjp's Project / `annvqxnupddnozyghqdw`.
 - Invalid role.
 - Company/workspace mismatch.
 - RLS or anonymous REST regression failure.
+- Customer sees another tenant's company, workspace, or CSV data.

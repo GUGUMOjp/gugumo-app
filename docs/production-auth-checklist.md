@@ -75,7 +75,6 @@ Remaining manual checks:
 - Logout before opening reset callback does not expose tenant data.
 - Invite link opens the expected production URL.
 - Invited user can set password, log in, and bootstrap tenant context.
-- Password reset email template is localized to customer-facing Japanese.
 
 ## Token Handling Gate
 
@@ -100,10 +99,8 @@ Remaining manual checks:
 
 ## Remaining Dashboard TODO
 
-- Change Allow new users to sign up from ON to OFF after confirming Dashboard Create user and Invite user behavior.
-- Change password minimum length from 6 to 8.
-- Localize the Password Reset email template.
-- Rehearse Create user / Invite user customer onboarding flow on Production.
+- Rehearse Invite user customer onboarding flow on Production.
+- Confirm Dashboard Create user behavior only as a fallback path.
 - Make final CAPTCHA decision.
 
 ## Password Reset Email Template Draft
