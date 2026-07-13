@@ -18,7 +18,7 @@
 
 ## 認証・Tenant
 
-- [ ] Password Reset正式実装: 現在の導線をSupabase Authのメール再設定フローへ接続する。
+- [x] Password Reset正式実装: Supabase Authのメール再設定フローへ接続し、2026-07-13にProduction E2E PASS。
 - [ ] RLS最終確認: `csv_uploads`、tenant tables、将来のsnapshot tablesが現在workspaceのみ参照できることを確認する。
 - [ ] 初期顧客招待フロー: company/workspace/profile作成者と招待メール送信者を明確にする。
 - [ ] 初回オンボーディング手順: 初回ログインから初回CSVアップロードまでの案内を準備する。
@@ -31,7 +31,7 @@
 
 ## β版 Go/No-Go
 
-- [ ] 招待、ログイン、Session復元、Password Reset、ログアウトが通る。
+- [ ] 招待、ログイン、Session復元、Password Reset、ログアウトが通る。Password Reset Production E2Eは2026-07-13 PASS。招待/onboarding rehearsalは継続確認。
 - [ ] β用workspaceでtenant分離が確認できている。
 - [ ] 実SUUMO CSVで、アップロード、復元、重複警告、除外、有効化、現在分析対象選定が通る。
 - [ ] 主要画面に顧客向けではない内部用語が残っていない。

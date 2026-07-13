@@ -2,7 +2,9 @@
 
 Target Supabase project: GUGUMOjp's Project / `annvqxnupddnozyghqdw`.
 
-Production URL is not confirmed from the repository. Fill it manually as `要入力`.
+Production URL: `https://app.gugumo.jp`.
+
+Production Auth Gate status: Password Reset Production E2E passed on 2026-07-13.
 
 ## Dashboard Path
 
@@ -18,8 +20,8 @@ Production URL is not confirmed from the repository. Fill it manually as `要入
 
 | Item | Expected |
 | --- | --- |
-| Site URL | `要入力` production URL |
-| Redirect URLs | production URL, production `/?reset-password=1`, `http://localhost:3000`, `http://localhost:3000/?reset-password=1` |
+| Site URL | `https://app.gugumo.jp` |
+| Redirect URLs | `https://app.gugumo.jp`, `https://app.gugumo.jp/?reset-password=1`, `http://localhost:3000`, `http://localhost:3000/?reset-password=1` |
 | Password Reset redirect | `/?reset-password=1` on the same origin |
 | Invite redirect | production URL unless a reviewed invite-specific URL is configured |
 
@@ -27,12 +29,27 @@ The code calls password reset with `${window.location.origin}/?reset-password=1`
 
 ## Email Settings
 
-- Email Provider configured and verified.
+- Custom SMTP is configured through Resend.
+- Resend domain `gugumo.jp` is verified.
+- Sender name: `GUGUMO`.
+- SMTP host: `smtp.resend.com`.
+- SMTP port: `587`.
+- SMTP username: `resend`.
+- Do not store the SMTP secret, API key, anon key, JWT, or token values in the repository or docs.
 - Confirm email policy matches beta operation.
 - Allow new users setting matches manual invite policy.
 - Password reset email template points users back to the configured redirect URL.
 - Invite email template explains password setup without exposing internal project details.
 - Token/session expiry values are acceptable for customer support flow.
+
+## Production Connection Guard
+
+- Vercel Production must use `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` from the same formal Supabase project: GUGUMOjp's Project / `annvqxnupddnozyghqdw`.
+- On 2026-07-13, a password reset preflight failure was traced to Vercel Production pointing at an old, incorrect Supabase project. Do not record that old project ref in docs.
+- Do not change only `NEXT_PUBLIC_SUPABASE_URL` or only `NEXT_PUBLIC_SUPABASE_ANON_KEY`; always treat the URL and anon key as a matched pair.
+- After any Vercel environment variable change, redeploy Production before testing.
+- Safe manual check: confirm the Supabase URL hostname contains the formal project ref, and confirm the anon key was copied from the same Supabase Dashboard project without pasting the key into docs or logs.
+- Service Role keys are never required for the app runtime, Vercel env vars, Auth E2E, or customer onboarding.
 
 ## E2E Checks
 
@@ -40,15 +57,25 @@ Role/Tenant Manual E2E passed separately on 2026-07-12 using one dedicated test 
 
 Permanent DELETE Gate E2E also passed after DELETE authorization application. Owner/admin excluded own-tenant DELETE succeeded; active rows, member, viewer, cross-tenant, and anonymous DELETE remained denied; dedicated test data cleanup completed; and the DELETE Gate test Auth user was manually deleted.
 
-1. Password reset request for existing user sends an email.
-2. Reset link opens `/?reset-password=1`.
-3. Expired reset link shows a safe failure and allows returning to login.
-4. Wrong email does not reveal whether an account exists.
-5. Logout before opening reset callback does not expose tenant data.
-6. Password update succeeds from a valid recovery session.
-7. User can log in again with the new password.
-8. Invite link opens the expected production URL.
-9. Invited user can set password, log in, and bootstrap tenant context.
+Production Password Reset E2E passed on 2026-07-13:
+
+1. `/auth/v1/recover` preflight returned 200.
+2. `/auth/v1/recover` request returned 200.
+3. Password reset email was received.
+4. Email link opened `https://app.gugumo.jp/?reset-password=1`.
+5. New password screen displayed.
+6. Password update succeeded.
+7. Home displayed after update.
+8. Company, workspace, owner role, and existing analysis data displayed.
+
+Remaining manual checks:
+
+- Expired or reused reset link shows a safe failure and allows returning to login.
+- Wrong email does not reveal whether an account exists.
+- Logout before opening reset callback does not expose tenant data.
+- Invite link opens the expected production URL.
+- Invited user can set password, log in, and bootstrap tenant context.
+- Password reset email template is localized to customer-facing Japanese.
 
 ## Token Handling Gate
 
@@ -63,9 +90,40 @@ Permanent DELETE Gate E2E also passed after DELETE authorization application. Ow
 ## Stop Conditions
 
 - Dashboard project is not `annvqxnupddnozyghqdw`.
-- Production URL is unknown.
+- Production URL is not `https://app.gugumo.jp`.
 - Redirect allow-list misses production or localhost reset URLs.
 - Email provider is not configured.
 - Invite or reset template points to the wrong project or old environment.
+- Vercel Production Supabase URL and anon key are not from the same formal Supabase project.
 - Reset callback logs raw auth errors to customer-facing UI.
 - Raw access or refresh tokens appear in browser/server logs or Server Action diagnostics.
+
+## Remaining Dashboard TODO
+
+- Change Allow new users to sign up from ON to OFF after confirming Dashboard Create user and Invite user behavior.
+- Change password minimum length from 6 to 8.
+- Localize the Password Reset email template.
+- Rehearse Create user / Invite user customer onboarding flow on Production.
+- Make final CAPTCHA decision.
+
+## Password Reset Email Template Draft
+
+Subject:
+
+GUGUMOのパスワード再設定
+
+Body:
+
+GUGUMOのパスワード再設定を受け付けました。以下のボタンから新しいパスワードを設定してください。
+
+CTA:
+
+パスワードを再設定する
+
+Link:
+
+Keep the Supabase reset-link variable unchanged in the template. Do not replace it with a fixed URL.
+
+Security note:
+
+このメールに心当たりがない場合は、操作せずにこのメールを破棄してください。GUGUMOがお客様のパスワードをお聞きすることはありません。

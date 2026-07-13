@@ -114,7 +114,12 @@ For future reruns of the permanent-delete gate, use `supabase/sql_editor/2026071
 
 - Customer uses the password reset link on the login screen.
 - Code redirects to `/?reset-password=1`.
-- Dashboard Site URL, Redirect URLs, Email Provider, and Email Templates must be confirmed before beta.
+- Production URL is `https://app.gugumo.jp`.
+- Dashboard Site URL and Redirect URLs are configured for Production and localhost callbacks.
+- Custom SMTP uses Resend with the verified `gugumo.jp` domain.
+- Password Reset Production E2E passed on 2026-07-13: reset request, received email, production callback, password update, Home bootstrap, company/workspace/role display, and existing analysis display.
+- If password reset fails after a Vercel env change, confirm that `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` are copied from the same formal Supabase project and redeploy Production.
+- Password reset email template still needs customer-facing Japanese finalization before broad external beta.
 - If email does not arrive, check Supabase Auth email settings manually.
 
 ### Tenant Not Linked

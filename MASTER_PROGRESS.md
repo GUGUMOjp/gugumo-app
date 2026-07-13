@@ -10,18 +10,11 @@ Beta Release Gate: CSV guardrails, sidebar UX, onboarding and authorization veri
 
 ## Latest Completed Commit
 
-e20825a Beta: harden RLS auth and CSV upload workflow
+31f69e0 Technical Beta: secure auth, CSV lifecycle, option optimization, and delete gate
 
 ## Current Uncommitted Changes
 
-Sprint開始時点はclean。今回Sprintでは以下を変更中:
-
-- app/page.tsx
-- app/gugumo.css
-- src/server/actions/csvUploadActions.ts
-- MASTER_PROGRESS.md
-- docs
-- supabase/sql_editor/20260711_003_beta_release_gate_role_tenant/
+Sprint開始時点はclean。Production Auth Gate Closeoutとして、Password Reset Production E2E記録、顧客向けログイン文言、環境混同防止docsを更新中。
 
 ## Build Status
 
@@ -56,21 +49,23 @@ Sprint開始時点はclean。今回Sprintでは以下を変更中:
 
 ## Auth Status
 
+- Production URL: `https://app.gugumo.jp`.
 - Password Reset code path implemented and redirects to `/?reset-password=1`.
-- Supabase Dashboard production Auth settings and password reset E2E are still pending manual Release Gate verification.
+- Password Reset Production E2E passed on 2026-07-13: Custom SMTP/Resend email delivery, production callback, password update, Home bootstrap, company/workspace/owner role display, and existing analysis display.
+- Supabase Site URL and Redirect URLs are configured for `https://app.gugumo.jp`, `https://app.gugumo.jp/?reset-password=1`, `http://localhost:3000`, and `http://localhost:3000/?reset-password=1`.
+- Vercel Production must keep `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` as a matched pair from GUGUMOjp's Project `annvqxnupddnozyghqdw`; a 2026-07-13 preflight failure was caused by an old, incorrect Supabase project connection.
 - Authenticated app data access must use user JWT. Service Role remains prohibited for app/E2E.
 
 ## Current Blocker
 
-- External beta remains blocked until production Auth checklist, legal finalization, customer onboarding rehearsal, and final uncommitted diff review are complete.
+- External beta remains blocked until remaining Dashboard Auth settings, legal finalization, customer onboarding rehearsal, and final diff review are complete.
 - Technical beta READY: yes for the current uncommitted implementation after final diff review. Role/Tenant Security Gate, JWT auth transport regression, CSV lifecycle, option analysis, permanent DELETE Gate, test cleanup, lint, and build have passed.
 - Paid beta READY: no.
 
 ## Current Next Action
 
-- Complete final review of the uncommitted Beta Release Gate / permanent delete diff, then decide commit readiness.
-- User still needs to complete production Auth checklist, legal/support final confirmation, and customer onboarding rehearsal before external beta.
-- Before external beta, verify production Auth settings, support/legal readiness, and first-customer onboarding rehearsal.
+- Close out Production Auth docs and customer-facing login copy, then review/commit the closeout diff.
+- User still needs to change Signup OFF, set password minimum 8, localize email templates, decide CAPTCHA, complete legal/support final confirmation, and rehearse customer onboarding before broad external beta.
 
 ## Latest Implementation Note
 

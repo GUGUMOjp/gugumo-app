@@ -35,7 +35,9 @@ Target Supabase project: GUGUMOjp's Project / `annvqxnupddnozyghqdw`.
 - Anonymous REST regression.
 - Role/tenant E2E before external beta using one dedicated test Auth user and profile role switching.
 - Role/Tenant Manual E2E passed on 2026-07-12. Re-run it before beta only if RLS policies, grants, tenant bootstrap, upload actions, or role handling change.
-- Technical beta readiness still depends on production Auth, legal/support, onboarding rehearsal, post-auth-transport regression, and final uncommitted diff review. Server Action arguments must remain free of raw bearer tokens.
+- Password Reset Production E2E passed on 2026-07-13 for `https://app.gugumo.jp` after Vercel Production was confirmed to use the formal Supabase project.
+- Before customer onboarding, confirm Vercel Production `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` are copied from the same formal Supabase project. Do not store env values in docs.
+- Technical beta readiness still depends on legal/support and onboarding rehearsal. Server Action arguments must remain free of raw bearer tokens.
 
 ## Customer Tasks
 

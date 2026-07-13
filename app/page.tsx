@@ -627,7 +627,7 @@ function LoginScreen({
           <div className="login-kicker">SUUMO掲載最適化ツール</div>
           <h1>掲載運用の現在地と改善点がひと目でわかる</h1>
           <p>
-            SUUMOのCSVを読み込むだけで、反響の変化、入替候補、オプション見直しを営業説明に使いやすい形で整理します。
+            SUUMOのCSVを読み込むだけで、掲載状況を分析し、反響の変化や入替候補、オプションの見直しポイントをわかりやすく整理します。
           </p>
           <div className="login-value-list">
             <div><i className="ti ti-chart-bar" />反響の変化を週次・月次で確認</div>
