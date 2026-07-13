@@ -56,6 +56,8 @@ Invite email status:
 - The user is already linked to another tenant.
 - RLS or policy verification reports FAIL.
 - Anonymous REST regression returns data.
+- Public signup or anonymous sign-in is enabled unexpectedly.
+- Failed login, password reset, or email delivery abuse spikes enough to indicate bot or credential-stuffing activity.
 
 ## First Use
 
@@ -142,6 +144,14 @@ For future reruns of the permanent-delete gate, use `supabase/sql_editor/2026071
 - Password Reset Production E2E passed on 2026-07-13: reset request, received email, production callback, password update, Home bootstrap, company/workspace/role display, and existing analysis display.
 - If password reset fails after a Vercel env change, confirm that `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` are copied from the same formal Supabase project and redeploy Production.
 - If email does not arrive, check Supabase Auth email settings manually.
+
+### Auth Abuse / CAPTCHA Gate
+
+- Current Technical Beta decision: `CAPTCHA_DEFER_WITH_GATES`.
+- Do not introduce CAPTCHA during the first limited, manually supported customer onboarding unless abuse signals appear.
+- Keep public signup OFF and anonymous sign-in OFF.
+- During early beta, manually review Supabase Auth logs, failed login patterns, password reset request volume, customer reports of unexpected reset email, Vercel logs, and Resend sending anomalies.
+- Re-open CAPTCHA implementation if credential stuffing, reset abuse, Auth rate-limit hits, bot traffic, public signup, or broad/paid beta expansion changes the current attack surface.
 
 ### Tenant Not Linked
 

@@ -10,11 +10,11 @@ Beta Release Gate: CSV guardrails, sidebar UX, onboarding and authorization veri
 
 ## Latest Completed Commit
 
-0ed1253 Close onboarding rehearsal and refine pending account UX
+72e3300 Finalize legal and support readiness for technical beta
 
 ## Current Uncommitted Changes
 
-Sprint開始時点はclean。Legal / Support final acceptanceとして、Production-facing法務・サポート表示とTechnical Beta readiness docsを監査・最小修正中。
+Sprint開始時点はclean。Technical Beta P1 `CAPTCHA final decision` として、Production Auth attack surface、Signup OFF、Password Reset公開導線、Invite運用、手動監視Gateを監査・docs反映中。
 
 ## Build Status
 
@@ -65,7 +65,7 @@ Sprint開始時点はclean。Legal / Support final acceptanceとして、Product
 
 - Technical Beta GO for limited, manually supported customer onboarding after final review of this closeout diff.
 - No open P0 blocker is identified for limited Technical Beta.
-- Remaining P1 before first real customer invite: run one Japanese Invite email delivery/link/spam check after localization and make the final CAPTCHA decision. Paid/broad beta remains blocked until formal legal review, monitoring/backup posture, and formal customer terms are resolved.
+- CAPTCHA final decision completed: `CAPTCHA_DEFER_WITH_GATES`. Public signup and anonymous sign-in remain OFF, Technical Beta is limited/manual, and no CAPTCHA provider or env change is required before the first customer. Remaining P1 before first real customer invite: run one Japanese Invite email delivery/link/spam check after localization. Paid/broad beta remains blocked until formal legal review, monitoring/backup posture, and formal customer terms are resolved.
 
 ## Current Next Action
 

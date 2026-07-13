@@ -112,7 +112,16 @@ For real customer onboarding, create company/workspace before invitation, create
 
 - Confirm Dashboard Create user behavior only as a fallback path.
 - Run one Japanese Invite email delivery/link/spam check after template localization and before the first real customer invite.
-- Make final CAPTCHA decision.
+
+## CAPTCHA Decision
+
+- Final decision for limited Technical Beta: `CAPTCHA_DEFER_WITH_GATES`.
+- Do not add CAPTCHA provider secrets, Supabase CAPTCHA settings, or Vercel env vars before the first customer under the current limited/manual beta scope.
+- Public signup and anonymous sign-in must remain OFF.
+- Dashboard rate limits are not read from the repository. On 2026-07-13, a human Dashboard check observed Sign-ups / Sign-ins `30 requests / 5 min / IP`, Token refreshes `150 requests / 5 min / IP`, Token verifications `30 requests / 5 min / IP`, and Anonymous sign-in OFF. Re-check these values if Auth settings change.
+- The previously observed `2 emails / hour` limit was for Supabase standard email before Custom SMTP. Do not treat it as the current Resend Custom SMTP sending limit.
+- Manually watch Supabase Auth logs, failed login/reset patterns, customer reports of unexpected reset email, and Resend sending anomalies during early beta.
+- Re-open CAPTCHA implementation if public signup is enabled, login/reset abuse appears, Auth rate limits are reached, bot traffic increases, or the beta expands toward broad/paid usage.
 
 ## Password Reset Email Template Draft
 

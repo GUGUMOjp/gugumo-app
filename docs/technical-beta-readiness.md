@@ -14,7 +14,7 @@ Technical Beta means a limited customer onboarding with manual operator support,
 
 | Gate | Status | Evidence |
 | --- | --- | --- |
-| Repository | PASS | `main` at `0ed1253`, clean and synced before this legal/support review; no package/lockfile drift. |
+| Repository | PASS | `main` at `72e3300`, clean and synced before this CAPTCHA review; no package/lockfile drift. |
 | Production deploy | PASS | `https://app.gugumo.jp` deployed and connected to the formal Supabase project. |
 | Production Auth | PASS | Password Reset Production E2E passed; Signup OFF; anonymous sign-in OFF; password minimum 8; email/password only; Resend Custom SMTP active. |
 | Invite onboarding | PASS with P1 post-localization delivery check | Production Invite user flow passed with Signup OFF. Invite user template localization and Dashboard save are done; post-localization Japanese delivery/link/spam check is not yet verified. |
@@ -22,6 +22,7 @@ Technical Beta means a limited customer onboarding with manual operator support,
 | CSV lifecycle | PASS | Upload, save, Home analysis reflection, exclude, restore, duplicate warning, and cancel duplicate save passed in Production rehearsal. |
 | Cleanup | PASS by human Dashboard operation | Rehearsal `csv_uploads`, `profiles`, `workspaces`, `companies`, and Auth user were manually removed on 2026-07-13. Repository did not query the DB. |
 | Security | PASS for Technical Beta | RLS/JWT transport, anonymous REST denial, role/tenant E2E, DELETE Gate, and token transport audits passed. |
+| CAPTCHA | DEFERRED WITH GATES | Public signup and anonymous sign-in are OFF, beta is invite-only and manually supported, and no CAPTCHA provider/env/settings change is required before the first customer. |
 | Legal/customer-facing | PASS for limited Technical Beta | Customer-facing legal/support pages avoid visible provisional labels and defer formal contract, pricing, contact, retention, and cancellation details to individual agreement/onboarding terms. |
 
 ## Production Onboarding Rehearsal Record
@@ -107,15 +108,19 @@ No open P0 items are currently identified from repository state and known Produc
 - Estimate: S.
 - Blocks beta: No for internal/manual readiness; required as an operational gate before the first real customer invite.
 
+## Closed / Deferred Security Decisions
+
 ### CAPTCHA final decision
 
-- Current state: Signup OFF and anonymous sign-in OFF reduce exposure.
-- Why remaining: CAPTCHA setting is a risk decision for Auth endpoints.
-- Risk: Credential stuffing or bot reset requests if abused.
-- Response: Decide whether to enable CAPTCHA based on beta traffic and Supabase Auth logs.
-- Code change: Maybe, depending provider.
-- Dashboard/DNS/ops change: Dashboard/Auth provider configuration.
-- Estimate: S-M.
+- Final selection: `CAPTCHA_DEFER_WITH_GATES`.
+- Technical Beta decision: Do not add CAPTCHA before the first limited, manually supported customer.
+- Security reason: The public Auth attack surface is limited to login and password reset request forms. Public signup and anonymous sign-in are OFF, Invite issuance is operator-only through Supabase Dashboard, password update requires a recovery session, and tenant data remains protected by authenticated user JWT plus RLS.
+- UX reason: CAPTCHA would add friction to invited owner login/reset during a small manual beta, while not materially reducing tenant-data exposure under the current signup-off posture.
+- Implementation reason: CAPTCHA would require provider setup, secret management, Supabase/Vercel configuration, and additional E2E coverage. That cost is better reserved for abuse signals or broader exposure.
+- Supabase dependency: The app currently relies on Supabase Auth protections and manual log review for login/reset abuse. Repository code cannot read current Dashboard rate-limit values. A human Dashboard check on 2026-07-13 observed Sign-ups / Sign-ins `30 requests / 5 min / IP`, Token refreshes `150 requests / 5 min / IP`, Token verifications `30 requests / 5 min / IP`, and Anonymous sign-in OFF; re-check these if Auth settings change. The previously observed `2 emails / hour` limit applied to Supabase standard email before Custom SMTP and is not treated as the current Resend sending limit.
+- Future trigger conditions: Re-open CAPTCHA if public signup is enabled, failed login or password reset attempts spike, customers report unexpected reset emails, Supabase Auth rate limits are hit, bot traffic increases, or GUGUMO moves toward broad/paid beta.
+- Code change: No.
+- Dashboard/DNS/ops change now: No.
 - Blocks beta: No for limited manual beta.
 
 ## P2: Address During Technical Beta
@@ -161,6 +166,16 @@ No open P0 items are currently identified from repository state and known Produc
 - Estimate: S-M.
 - Blocks beta: No, but important.
 
+### Auth abuse monitoring
+
+- Current state: No CAPTCHA is implemented. Public signup and anonymous sign-in are OFF; login and password reset request remain public Auth forms.
+- Risk: Credential stuffing, login brute force, password reset abuse, or email sending anomalies.
+- Response: During early beta, manually review Supabase Auth logs, failed login patterns, reset request volume, Vercel logs, Resend sending volume, and customer reports of unexpected reset email.
+- Code change: No until trigger conditions are met.
+- Dashboard/DNS/ops change: Manual dashboard/log review.
+- Estimate: S.
+- Blocks beta: No for limited manual beta; re-open before broad/paid beta or if abuse appears.
+
 ### Error tracking and monitoring
 
 - Current state: Manual E2E and console checks passed; no dedicated production error tracking integration is recorded.
@@ -204,6 +219,7 @@ Conditions:
 - Confirm project and env before any customer operation.
 - Create company/workspace before invitation, create the profile as soon as the Auth user UUID is available, and contact the customer after integrity verification.
 - Before the first real customer invite, run one Japanese Invite delivery/link/spam check after localization.
+- Keep CAPTCHA deferred with gates: public signup and anonymous sign-in OFF, and manually watch login/reset abuse signals during early beta.
 - Keep invite/reset delivery under observation during early beta.
 - Keep legal/support/customer expectations explicit in onboarding and individual agreement terms.
 - Do not delete the named leftover test Auth account or Demo tenant until DB relationships are verified.
