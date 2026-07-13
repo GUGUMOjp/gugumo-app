@@ -14,6 +14,7 @@ import type { CsvRow } from "@/src/server/types/csv";
 type OptionKey = "smapic" | "misepic" | "panorama" | "area" | "movie";
 
 type AnalysisSettings = {
+  slots: number;
   smapicLimit: number;
   prices: Record<OptionKey, number>;
 };
@@ -44,7 +45,14 @@ export function analyzeRows(rows: CsvRow[], settings: AnalysisSettings): Analysi
 
   const { smapicAdd, smapicRemove } = buildRecommendations(rows, settings.smapicLimit);
 
-  const optionBalance = buildOptionBalance(rows, settings, removeAllRows, smapicRemove);
+  const optionBalance = buildOptionBalance(rows, settings, {
+    removeAllRows,
+    lowerToSecondRows,
+    raiseToSecondRows,
+    raiseToThirdRows,
+    smapicAdd,
+    smapicRemove,
+  });
 
   return {
     listedRows,

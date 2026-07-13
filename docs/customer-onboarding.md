@@ -1,27 +1,41 @@
 # Customer Onboarding
 
+Target Supabase project: GUGUMOjp's Project / `annvqxnupddnozyghqdw`.
+
 ## Flow
 
 1. Contract or beta approval.
 2. Confirm initial fee/monthly terms outside the app.
-3. GUGUMO creates company.
-4. GUGUMO creates workspace.
-5. GUGUMO invites owner user.
-6. GUGUMO creates profile linking `company_id`, `workspace_id`, and `role`.
-7. Customer sets password from invite email.
-8. Customer logs in.
-9. Customer uploads SUUMO CSV.
-10. Customer reviews first dashboard.
-11. Customer starts recurring upload operation.
+3. Confirm the formal Supabase project ID is `annvqxnupddnozyghqdw`.
+4. GUGUMO creates company.
+5. GUGUMO creates workspace under that company.
+6. GUGUMO creates or invites owner user from Supabase Dashboard.
+7. GUGUMO confirms email confirmation or invite status.
+8. GUGUMO creates profile linking `profiles.id` to the Auth user UUID.
+9. GUGUMO sets `company_id`, `workspace_id`, and `role`.
+10. GUGUMO verifies company/workspace/profile consistency.
+11. Customer sets password from invite email.
+12. Customer logs in.
+13. GUGUMO confirms Home bootstrap shows the expected company/workspace/role.
+14. Customer uploads SUUMO CSV.
+15. Customer reviews first dashboard.
+16. Customer logs out and logs in again.
+17. GUGUMO runs anonymous REST regression.
+18. Customer starts recurring upload operation.
 
 ## Manual Beta Operations
 
 - Company creation.
 - Workspace creation.
 - Auth invitation.
+- Email confirmation status check.
 - Profile linking.
 - Role changes.
 - Data deletion requests.
+- Anonymous REST regression.
+- Role/tenant E2E before external beta using one dedicated test Auth user and profile role switching.
+- Role/Tenant Manual E2E passed on 2026-07-12. Re-run it before beta only if RLS policies, grants, tenant bootstrap, upload actions, or role handling change.
+- Technical beta readiness still depends on production Auth, legal/support, onboarding rehearsal, post-auth-transport regression, and final uncommitted diff review. Server Action arguments must remain free of raw bearer tokens.
 
 ## Customer Tasks
 
@@ -29,6 +43,9 @@
 - Set password.
 - Upload SUUMO CSV.
 - Contact support if account setup incomplete appears.
+- Retry only failed CSV files when multi-file upload partially succeeds.
+- Choose whether to cancel or continue when the app reports an exact duplicate CSV checksum.
+- Reload the screen if CSV save succeeded but upload history refresh failed.
 
 ## Do Not Promise Yet
 
@@ -36,4 +53,15 @@
 - Customer-side user management.
 - Automatic SUUMO CSV acquisition.
 - CSV conversion/generation.
+- Legal text finalization before the external paid beta approval is complete.
+- Support for quoted newline fields inside CSV cells without prior parser review.
 
+## Stop Conditions
+
+- Wrong Supabase project.
+- Auth user UUID and `profiles.id` mismatch.
+- Duplicate profile for the same Auth user.
+- User already linked to another tenant.
+- Invalid role.
+- Company/workspace mismatch.
+- RLS or anonymous REST regression failure.

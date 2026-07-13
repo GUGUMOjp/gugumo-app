@@ -6,6 +6,19 @@
 
 参照禁止環境: `/Users/tanakajunichi/Projects/gugumo-app` は参照・変更していない。
 
+## 2026-07-13 Status Addendum
+
+This document preserves the 2026-07-11 audit findings below as historical context. Current release-readiness state has moved forward:
+
+- Four-table RLS is applied to the formal Supabase project `annvqxnupddnozyghqdw`.
+- Server Actions no longer accept raw Supabase access tokens as arguments; authenticated repository queries use request-scoped server clients backed by the user session.
+- Role/Tenant Manual E2E passed with one dedicated test Auth user; cleanup completed and the test Auth user was manually deleted.
+- Permanent delete authorization is applied and verified. DELETE Gate E2E passed: owner/admin excluded own-tenant DELETE is allowed, while active rows, member, viewer, cross-tenant, and anonymous DELETE remain denied.
+- DELETE Gate dedicated Tenant B/C cleanup completed, with no marker residue reported and the test Auth user manually deleted.
+- Service Role was not used for the app or E2E gates.
+
+Remaining non-technical-beta release work should be read from current runbooks and checklists, especially production Auth settings, legal/support finalization, and customer onboarding rehearsal.
+
 ## 1. Executive Summary
 
 現在のGUGUMOは、営業デモと初期顧客βに近いUI・Auth・Upload lifecycleを備えている。一方で、初期顧客へ実運用として出すには、tenant分離、DB制約、法務文面、Password Reset、運用Runbookの未完了が残る。
@@ -89,7 +102,7 @@ Go/No-Go:
 
 ### H-04 RepositoryがServer User Client化されていない
 
-- 事実: Repositoryは `lib/supabase.ts` の共有clientを直接importしている。Auth確認にはaccessTokenを使うが、DB query自体にユーザーsession clientを渡していない。
+- 当時の事実: Repositoryは `lib/supabase.ts` の共有clientを直接importしていた。Auth確認にはaccessTokenを使うが、DB query自体にユーザーsession clientを渡していなかった。
 - 根拠ファイル・該当箇所: `lib/supabase.ts:1-8`, `src/server/core/auth.ts:27-35`, `src/server/repositories/csvUploadRepository.ts:1`, `docs/19_ServerSupabaseClientDesign.md:48-51`, `docs/19_ServerSupabaseClientDesign.md:156-163`
 - 影響: RLS有効化時に `auth.uid()` が成立しない、またはRepository read/writeが拒否されるリスクがある。
 - 推奨対応: Server ActionからServer User Clientを生成し、Repositoryに渡すかRepository内部で取得する設計に移行する。
@@ -290,4 +303,3 @@ Go/No-Go:
 - デモ用workspaceとデータで実施する。
 - β前未完了事項を営業説明で過度に約束しない。
 - 実顧客データを扱う場合は、RLS/法務/削除方針が整うまで範囲を限定する。
-

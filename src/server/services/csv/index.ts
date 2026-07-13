@@ -1,5 +1,6 @@
 export {
   C,
+  isOptionOn,
   isOn,
   normalizeId,
   toNumber,

@@ -15,6 +15,20 @@ export type SmartItem = {
 export type OptionBalance = {
   totalSaving: number;
   totalWaste: number;
+  baseRecommendedCount: number;
+  optimization: {
+    capacitySavingsAmount: number;
+    capacityReductionCount: number;
+    removalOptimizationAmount: number;
+    removalOptimizationCount: number;
+    additionOptimizationAmount: number;
+    additionOptimizationCount: number;
+    replacementOptimizationAmount: number;
+    replacementOptimizationCount: number;
+    conflictCount: number;
+    conflictsByOption: Record<OptionKey, number>;
+    totalImprovementAmount: number;
+  };
   waste: Record<OptionKey, number>;
   current: Record<OptionKey, number>;
   cards: Array<{
@@ -23,6 +37,7 @@ export type OptionBalance = {
     icon: string;
     price: number;
     current: number;
+    recommended: number;
     waste: number;
     saving: number;
   }>;

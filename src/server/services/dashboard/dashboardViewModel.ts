@@ -15,11 +15,20 @@ type DashboardAnalysis = {
   optionBalance: {
     totalSaving: number;
     totalWaste: number;
-    waste: {
-      smapic: number;
-      panorama: number;
-      misepic: number;
+    optimization: {
+      capacitySavingsAmount: number;
+      replacementOptimizationAmount: number;
+      totalImprovementAmount: number;
+      removalOptimizationAmount: number;
+      removalOptimizationCount: number;
+      additionOptimizationAmount: number;
+      additionOptimizationCount: number;
     };
+    cards: Array<{
+      key: string;
+      name: string;
+      waste: number;
+    }>;
   };
 };
 
@@ -53,9 +62,12 @@ export function buildDashboardViewModel(
       totalSaving: analysis.optionBalance.totalSaving,
       totalWaste: analysis.optionBalance.totalWaste,
       annualSaving: analysis.optionBalance.totalSaving * 12,
-      wasteSmapic: analysis.optionBalance.waste.smapic,
-      wastePanorama: analysis.optionBalance.waste.panorama,
-      wasteMisepic: analysis.optionBalance.waste.misepic,
+      optimization: analysis.optionBalance.optimization,
+      cards: analysis.optionBalance.cards.map((card) => ({
+        key: card.key,
+        name: card.name,
+        waste: card.waste,
+      })),
     },
     alerts: {
       lowPvRows: analysis.lowPvRows.length,

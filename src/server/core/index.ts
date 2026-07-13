@@ -8,6 +8,9 @@ export type {
 export {
   getCurrentWorkspaceContext,
 } from "./workspaceContext";
+export {
+  createRequestSupabaseClient,
+} from "./supabaseServerClient";
 export type {
   CurrentWorkspaceContext,
   WorkspaceContextErrorCode,

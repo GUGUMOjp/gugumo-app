@@ -22,6 +22,10 @@ export function isOn(value: string | undefined | null) {
   return String(value ?? "").trim() !== "";
 }
 
+export function isOptionOn(value: string | undefined | null) {
+  return String(value ?? "").trim() === "○";
+}
+
 export const C = {
   listed: (row: CsvRow) => isOn(row["物件掲載"]),
   score: (row: CsvRow) => toNumber(row["住戸名寄せ点数"]),
@@ -35,11 +39,11 @@ export const C = {
   detailPV: (row: CsvRow) => toNumber(row["合計詳細PV(合計)"]),
   detailPvPerDay: (row: CsvRow) => toNumber(row["物件詳細PV(一日当たり)"]),
   days: (row: CsvRow) => toNumber(row["掲載日数(日)(合計)"]),
-  smapic: (row: CsvRow) => isOn(row["スマピク掲載"]),
-  panorama: (row: CsvRow) => isOn(row["パノラマ掲載"]),
-  movie: (row: CsvRow) => isOn(row["動画掲載"]),
-  area: (row: CsvRow) => isOn(row["得意なエリア枠掲載"]),
-  misepic: (row: CsvRow) => isOn(row["店舗案内ピックアップ掲載"]),
+  smapic: (row: CsvRow) => isOptionOn(row["スマピク掲載"]),
+  panorama: (row: CsvRow) => isOptionOn(row["パノラマ掲載"]),
+  movie: (row: CsvRow) => isOptionOn(row["動画掲載"]),
+  area: (row: CsvRow) => isOptionOn(row["得意なエリア枠掲載"]),
+  misepic: (row: CsvRow) => isOptionOn(row["店舗案内ピックアップ掲載"]),
   address: (row: CsvRow) => row["物件所在地"] || "",
   name: (row: CsvRow) => row["物件名"] || "",
   room: (row: CsvRow) => row["部屋番号"] || "",

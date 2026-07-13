@@ -2,6 +2,8 @@
 
 This document inventories current legal-facing pages and decisions needed before formal release. It does not establish final legal text.
 
+Current legal pages are provisional. They must be finalized before any external paid beta starts.
+
 ## Current Pages
 
 | Page | Current status | Provisional points | Required decision |
@@ -25,6 +27,13 @@ This document inventories current legal-facing pages and decisions needed before
 - How SUUMO and other third-party service relationships are described.
 - Provider inventory: Supabase, Vercel, Google Workspace.
 - Disclaimer that反響増加 is not guaranteed.
+- Formal問い合わせ先.
+- Data retention and deletion policy after contract end.
+- Whether temporary beta wording should be shown in-app or kept in contract/onboarding documents.
+
+## Public UI Decision
+
+Do not add a visible "暫定" label inside customer-facing legal pages until the publication and paid-beta policy is decided. Showing provisional status to customers can reduce trust and does not replace legal review. Keep the repository inventory explicit and finalize the page text before external paid beta.
 
 ## Legal Expert Review Recommended
 
@@ -32,4 +41,3 @@ This document inventories current legal-facing pages and decisions needed before
 - 特定商取引法 applicability.
 - Data processing and security responsibility split.
 - Cancellation and data deletion clauses.
-

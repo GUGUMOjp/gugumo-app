@@ -15,6 +15,7 @@ import {
 } from "@/src/server/actions/workspaceActions";
 import {
   checkDuplicateCsvUploadChecksumsAction,
+  deleteExcludedCsvUploadAction,
   loadRecentCsvUploadHistoryAction,
   loadRecentCsvUploadSnapshotsAction,
   saveCsvUploadRecordsAction,
@@ -42,10 +43,19 @@ import {
   buildPropertyViewModels,
 } from "@/src/server/services/property";
 import {
+  parseCsv,
+  splitCsvLine,
+} from "@/src/server/services/csv";
+import {
   buildCsvUploadRecords,
   buildUploadSnapshots,
+  canShowCsvUploadActivateAction,
+  canShowCsvUploadExcludeAction,
+  canShowCsvUploadPermanentDeleteAction,
+  getCsvUploadDuplicateDisplayKind,
   getLatestSnapshot,
-  hasCsvUploadFiles,
+  mergeCsvUploadHistoryEntries,
+  type CsvUploadDuplicateMetadata,
 } from "@/src/server/services/upload";
 import type {
   CsvSnapshot,
@@ -95,7 +105,13 @@ type UploadHistoryEntry = {
   uploadedAt: string | null;
   status: UploadHistoryStatus;
   contentHash?: string;
+  duplicateMetadata: CsvUploadDuplicateMetadata;
 };
+
+type PermanentDeleteDialogState = {
+  entry: UploadHistoryEntry;
+  errorMessage: string;
+} | null;
 
 type UploadHistoryMetadata = {
   id: number;
@@ -110,11 +126,18 @@ type UploadHistoryMetadata = {
   status: UploadHistoryStatus | null;
   excludedAt: string | null;
   excludedBy: string | null;
+  duplicateMetadata: CsvUploadDuplicateMetadata;
 };
 
 type UploadSnapshot = CsvSnapshot & {
   uploadHistoryId?: string;
   uploadedAt?: string | null;
+};
+
+const EMPTY_DUPLICATE_METADATA: CsvUploadDuplicateMetadata = {
+  identicalContentCount: 0,
+  sameFileNameCount: 1,
+  hasSameNameDifferentContent: false,
 };
 
 const TENANT_HEADER_FALLBACK: TenantHeaderDisplay = {
@@ -129,6 +152,20 @@ const ROLE_LABELS = {
   viewer: "閲覧者",
 } satisfies Record<WorkspaceRole, string>;
 
+const PAGE_DESCRIPTIONS = {
+  home: "最新の分析結果と、次に確認する画面をまとめて確認できます。",
+  weekly: "木曜から水曜までの反響変化を確認します。",
+  monthly: "月ごとの推移を営業報告で使いやすく整理します。",
+  props: "物件ごとのPV・問い合わせ・競合変化を確認します。",
+  opt: "掲載状況に対するオプション運用候補を確認します。",
+  smapic: "スマピクを付ける・外す候補を確認します。",
+  lowpv: "反響が弱い物件の優先確認先を整理します。",
+  optbal: "見直し候補と削減余地を確認します。",
+  area: "所属区を基準に掲載バランスを確認します。",
+  upload: "SUUMOのCSVを読み込み、分析に反映します。",
+  settings: "契約枠・所属区・オプション単価を調整します。",
+} satisfies Record<PageId, string>;
+
 const ACCOUNT_SETUP_ERROR_CODES = new Set<WorkspaceContextErrorCode>([
   "PROFILE_NOT_FOUND",
   "COMPANY_NOT_FOUND",
@@ -137,6 +174,13 @@ const ACCOUNT_SETUP_ERROR_CODES = new Set<WorkspaceContextErrorCode>([
 
 const ACCOUNT_SETUP_INCOMPLETE_MESSAGE = "会社・店舗情報の紐付けが完了していません。";
 const ACCOUNT_CONTEXT_UNAVAILABLE_MESSAGE = "アカウント情報を取得できませんでした。再読み込みしても解消しない場合はサポートへお問い合わせください。";
+const MAX_SINGLE_CSV_FILE_BYTES = 6 * 1024 * 1024;
+const MAX_TOTAL_CSV_FILE_BYTES = 8 * 1024 * 1024;
+const CSV_REQUIRED_HEADERS = [
+  "物件コード",
+  "物件名",
+  "物件掲載",
+] as const;
 
 function buildTenantHeaderDisplay(context: CurrentWorkspaceContext | null): TenantHeaderDisplay {
   if (!context) return TENANT_HEADER_FALLBACK;
@@ -164,7 +208,7 @@ function formatMoney(value: number) {
 }
 
 function formatOptionBalanceDisplayCount(rawCount: number) {
-  return Math.floor(rawCount / 50) * 50;
+  return Math.max(0, Math.round(rawCount));
 }
 
 function formatUploadDate(value: string | null) {
@@ -200,6 +244,105 @@ function normalizeCsvText(text: string) {
   return text.replace(/^\uFEFF/, "").replace(/\r\n/g, "\n").replace(/\r/g, "\n").trimEnd();
 }
 
+function formatFileSize(bytes: number) {
+  if (bytes >= 1024 * 1024) {
+    return `${(bytes / 1024 / 1024).toFixed(1)}MB`;
+  }
+
+  return `${Math.ceil(bytes / 1024)}KB`;
+}
+
+function validateCsvSelection(fileList: FileList | File[]) {
+  const files = Array.from(fileList);
+
+  if (!files.length) {
+    return {
+      ok: false as const,
+      message: "CSVファイルを選択してください。",
+    };
+  }
+
+  const unsupportedFiles = files.filter((file) => !file.name.toLowerCase().endsWith(".csv"));
+  if (unsupportedFiles.length) {
+    return {
+      ok: false as const,
+      message: "CSVファイルのみアップロードできます。SUUMOから出力したCSVをご確認ください。",
+    };
+  }
+
+  const emptyFile = files.find((file) => file.size <= 0);
+  if (emptyFile) {
+    return {
+      ok: false as const,
+      message: `空のCSVファイルは読み込めません。ファイルをご確認ください。\n対象: ${emptyFile.name}`,
+    };
+  }
+
+  const oversizedFile = files.find((file) => file.size > MAX_SINGLE_CSV_FILE_BYTES);
+  if (oversizedFile) {
+    return {
+      ok: false as const,
+      message: `ファイルサイズが大きすぎます。対象期間を分けてアップロードしてください。\n対象: ${oversizedFile.name}（${formatFileSize(oversizedFile.size)}）`,
+    };
+  }
+
+  const totalBytes = files.reduce((sum, file) => sum + file.size, 0);
+  if (totalBytes > MAX_TOTAL_CSV_FILE_BYTES) {
+    return {
+      ok: false as const,
+      message: `複数ファイルの合計サイズが大きすぎます。回数を分けてアップロードしてください。\n合計: ${formatFileSize(totalBytes)}`,
+    };
+  }
+
+  return {
+    ok: true as const,
+    files,
+  };
+}
+
+async function validateCsvFile(file: File) {
+  const text = await readFileAsCsvText(file);
+  const lines = text.split("\n").filter((line) => line.trim().length > 0);
+
+  if (lines.length < 2) {
+    return {
+      ok: false as const,
+      message: `CSVに有効なデータ行がありません。\n対象: ${file.name}`,
+    };
+  }
+
+  const headers = splitCsvLine(lines[0]).map((header) => header.trim());
+  const missingHeaders = CSV_REQUIRED_HEADERS.filter((header) => !headers.includes(header));
+
+  if (missingHeaders.length) {
+    return {
+      ok: false as const,
+      message: `必要な項目が確認できないため、SUUMOから出力したCSVかご確認ください。\n対象: ${file.name}`,
+    };
+  }
+
+  let rows;
+  try {
+    rows = parseCsv(text);
+  } catch {
+    return {
+      ok: false as const,
+      message: `CSVを読み込めませんでした。ファイル形式をご確認ください。\n対象: ${file.name}`,
+    };
+  }
+
+  if (!rows.length) {
+    return {
+      ok: false as const,
+      message: `CSVに有効なデータ行がありません。\n対象: ${file.name}`,
+    };
+  }
+
+  return {
+    ok: true as const,
+  };
+}
+
 async function readFileAsCsvText(file: File) {
   const bytes = new Uint8Array(await file.arrayBuffer());
   let text = "";
@@ -228,24 +371,45 @@ function buildUploadHistoryFromSnapshots(
   sourceSnapshots: UploadSnapshot[],
   metadata: UploadHistoryMetadata[],
 ) {
-  const metadataById = new Map(metadata.map((item) => [`stored-${item.id}`, item]));
-  const metadataByFileName = new Map(metadata.map((item) => [item.fileName, item]));
-
-  return sourceSnapshots.map((snapshot): UploadHistoryEntry => {
-    const id = getSnapshotHistoryId(snapshot);
-    const stored = metadataById.get(id) ?? metadataByFileName.get(snapshot.fileName);
-
-    return {
-      id,
-      databaseId: stored?.id,
+  return mergeCsvUploadHistoryEntries({
+    snapshots: sourceSnapshots.map((snapshot) => ({
+      id: getSnapshotHistoryId(snapshot),
       fileName: snapshot.fileName,
       dateKey: snapshot.dateKey,
-      rowCount: stored?.rowCount ?? snapshot.rows.length,
-      uploadedAt: stored?.uploadedAt ?? snapshot.uploadedAt ?? null,
-      status: stored?.status ?? "active",
-      contentHash: stored?.checksum ?? undefined,
-    };
+      rowCount: snapshot.rows.length,
+      uploadedAt: snapshot.uploadedAt ?? null,
+    })),
+    metadata,
+    emptyDuplicateMetadata: EMPTY_DUPLICATE_METADATA,
   });
+}
+
+function duplicateBadgeLabel(metadata: CsvUploadDuplicateMetadata) {
+  const kind = getCsvUploadDuplicateDisplayKind(metadata);
+
+  if (kind === "identical") {
+    return `同一内容 ${metadata.identicalContentCount}件`;
+  }
+
+  if (kind === "same-name") {
+    return "同名ファイルあり";
+  }
+
+  return null;
+}
+
+function duplicateDialogText(metadata: CsvUploadDuplicateMetadata) {
+  const kind = getCsvUploadDuplicateDisplayKind(metadata);
+
+  if (kind === "identical") {
+    return `同じ内容のCSVがほかに${metadata.identicalContentCount - 1}件保存されています。`;
+  }
+
+  if (kind === "same-name") {
+    return "同じファイル名のCSVがほかにも保存されています。内容や日付が異なる可能性があります。";
+  }
+
+  return null;
 }
 
 function deltaCell(current: number, previous?: number) {
@@ -809,7 +973,13 @@ export default function Page() {
 
     try {
       const raw = localStorage.getItem("gugumo_upload_history");
-      return raw ? JSON.parse(raw) : [];
+      const parsed = raw ? JSON.parse(raw) : [];
+      if (!Array.isArray(parsed)) return [];
+
+      return parsed.map((item) => ({
+        ...item,
+        duplicateMetadata: item.duplicateMetadata ?? EMPTY_DUPLICATE_METADATA,
+      }));
     } catch {
       return [];
     }
@@ -838,9 +1008,10 @@ export default function Page() {
   const [currentWorkspaceContext, setCurrentWorkspaceContext] = useState<CurrentWorkspaceContext | null>(null);
   const [isLoadingWorkspaceContext, setIsLoadingWorkspaceContext] = useState(false);
   const [accountSetupMessage, setAccountSetupMessage] = useState("");
+  const [permanentDeleteDialog, setPermanentDeleteDialog] = useState<PermanentDeleteDialogState>(null);
+  const [deletingUploadId, setDeletingUploadId] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const authUserId = session?.user.id ?? null;
-  const authAccessToken = session?.access_token ?? null;
 
   const resetAuthenticatedState = useCallback(() => {
     setIsRestoringCsv(false);
@@ -855,6 +1026,8 @@ export default function Page() {
     setCurrentWorkspaceContext(null);
     setIsLoadingWorkspaceContext(false);
     setAccountSetupMessage("");
+    setPermanentDeleteDialog(null);
+    setDeletingUploadId(null);
   }, []);
 
   useEffect(() => {
@@ -914,7 +1087,7 @@ export default function Page() {
   }, [resetAuthenticatedState]);
 
   useEffect(() => {
-    if (!authUserId || !authAccessToken) {
+    if (!authUserId) {
       return;
     }
 
@@ -924,7 +1097,7 @@ export default function Page() {
       setIsLoadingWorkspaceContext(true);
 
       try {
-        const result = await getCurrentWorkspaceContextAction(authAccessToken ?? undefined);
+        const result = await getCurrentWorkspaceContextAction();
 
         if (isMounted && result.ok && result.data) {
           setTenantHeader(buildTenantHeaderDisplay(result.data));
@@ -962,21 +1135,20 @@ export default function Page() {
     return () => {
       isMounted = false;
     };
-  }, [authUserId, authAccessToken]);
+  }, [authUserId]);
 
   useEffect(() => {
-    if (!authUserId || !authAccessToken || !currentWorkspaceContext) return;
+    if (!authUserId || !currentWorkspaceContext) return;
 
     let isMounted = true;
-    const accessToken = authAccessToken;
 
     async function restoreRecentCsv() {
       setIsRestoringCsv(true);
 
       try {
         const [result, historyResult] = await Promise.all([
-          loadRecentCsvUploadSnapshotsAction(accessToken),
-          loadRecentCsvUploadHistoryAction(accessToken),
+          loadRecentCsvUploadSnapshotsAction(),
+          loadRecentCsvUploadHistoryAction(),
         ]);
 
         if (!isMounted) return;
@@ -1009,7 +1181,28 @@ export default function Page() {
     return () => {
       isMounted = false;
     };
-  }, [authUserId, authAccessToken, currentWorkspaceContext]);
+  }, [authUserId, currentWorkspaceContext]);
+
+  const refreshStoredCsvState = async () => {
+    const [snapshotsResult, historyResult] = await Promise.all([
+      loadRecentCsvUploadSnapshotsAction(),
+      loadRecentCsvUploadHistoryAction(),
+    ]);
+
+    if (!snapshotsResult.ok) {
+      return false;
+    }
+
+    setSnapshots(snapshotsResult.data);
+    setUploadHistory(() => buildUploadHistoryFromSnapshots(
+      snapshotsResult.data,
+      historyResult.ok ? historyResult.data : [],
+    ));
+    setExcludedUploadIds([]);
+    setRestoreError("");
+
+    return true;
+  };
 
   useEffect(() => {
     try {
@@ -1018,6 +1211,20 @@ export default function Page() {
       // ignore
     }
   }, [checkedState]);
+
+  useEffect(() => {
+    if (!permanentDeleteDialog) return;
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && deletingUploadId === null) {
+        setPermanentDeleteDialog(null);
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [permanentDeleteDialog, deletingUploadId]);
 
   useEffect(() => {
     try {
@@ -1090,8 +1297,7 @@ export default function Page() {
   };
 
   const loadFiles = async (fileList: FileList | File[]) => {
-    if (!hasCsvUploadFiles(fileList)) return;
-    if (!authAccessToken || !currentWorkspaceContext) {
+    if (!authUserId || !currentWorkspaceContext) {
       alert("ログイン状態を確認してから、もう一度お試しください。");
       return;
     }
@@ -1100,7 +1306,22 @@ export default function Page() {
     setCheckedState({});
 
     try {
-      const csvFiles = Array.from(fileList).filter((file) => file.name.toLowerCase().endsWith(".csv"));
+      const selection = validateCsvSelection(fileList);
+      if (!selection.ok) {
+        alert(selection.message);
+        return;
+      }
+
+      const csvFiles = selection.files;
+
+      for (const file of csvFiles) {
+        const validation = await validateCsvFile(file);
+        if (!validation.ok) {
+          alert(validation.message);
+          return;
+        }
+      }
+
       const hashItems = await Promise.all(csvFiles.map(async (file) => ({
         fileName: file.name,
         contentHash: await buildCsvContentHash(file),
@@ -1108,7 +1329,6 @@ export default function Page() {
       const hashByFileName = new Map(hashItems.map((item) => [item.fileName, item.contentHash]));
       const duplicateResult = await checkDuplicateCsvUploadChecksumsAction({
         checksums: hashItems.map((item) => item.contentHash),
-        accessToken: authAccessToken,
       });
 
       if (duplicateResult.ok && duplicateResult.data.length) {
@@ -1128,30 +1348,61 @@ export default function Page() {
             `前回ファイル名: ${item.previous.fileName}`,
             "",
           ]),
-          "今回は保存を続行します。必要に応じてアップロード履歴で除外してください。",
+          "今回選択したCSVをまとめて保存しますか？",
+          "キャンセルすると、このバッチ全体を保存せずに終了します。",
         ].join("\n");
 
-        alert(message);
+        if (!window.confirm(message)) {
+          alert("重複が確認されたため、今回選択したCSVは保存していません。");
+          return;
+        }
       } else if (!duplicateResult.ok) {
         console.error(duplicateResult.error);
       }
 
-      const parsed = await buildUploadSnapshots(fileList);
+      const parsed = await buildUploadSnapshots(csvFiles);
+      if (parsed.length !== csvFiles.length || parsed.some((snapshot) => snapshot.rows.length === 0)) {
+        alert("CSVに有効なデータ行がありません。ファイルをご確認ください。");
+        return;
+      }
+
       const uploadRecords = buildCsvUploadRecords(parsed).map((record) => ({
         ...record,
         checksum: hashByFileName.get(record.file_name) ?? null,
       }));
-      const saveResult = await saveCsvUploadRecordsAction(uploadRecords, authAccessToken);
+      const saveResult = await saveCsvUploadRecordsAction(uploadRecords);
 
       if (!saveResult.ok) {
         console.error(saveResult.error);
-        alert("CSVの保存に失敗しました。時間をおいて再度お試しください。");
+        const [restoredResult, restoredHistoryResult] = await Promise.all([
+          loadRecentCsvUploadSnapshotsAction(),
+          loadRecentCsvUploadHistoryAction(),
+        ]);
+
+        if (restoredResult.ok) {
+          setSnapshots(restoredResult.data);
+          setUploadHistory(() => buildUploadHistoryFromSnapshots(
+            restoredResult.data,
+            restoredHistoryResult.ok ? restoredHistoryResult.data : [],
+          ));
+          setExcludedUploadIds([]);
+          setRestoreError("");
+        }
+
+        const savedNames = saveResult.data.savedFileNames;
+        const failedNames = saveResult.error.failedFileNames;
+        alert([
+          savedNames.length ? "一部のCSVを保存できませんでした。保存済みのCSVは履歴に反映しています。" : "CSVの保存に失敗しました。",
+          savedNames.length ? `保存済み: ${savedNames.join("、")}` : "",
+          `失敗: ${failedNames.join("、")}`,
+          "失敗したCSVだけ、時間をおいて再度お試しください。",
+        ].filter(Boolean).join("\n"));
         return;
       }
 
       const [restoredResult, restoredHistoryResult] = await Promise.all([
-        loadRecentCsvUploadSnapshotsAction(authAccessToken),
-        loadRecentCsvUploadHistoryAction(authAccessToken),
+        loadRecentCsvUploadSnapshotsAction(),
+        loadRecentCsvUploadHistoryAction(),
       ]);
 
       if (restoredResult.ok) {
@@ -1172,15 +1423,20 @@ export default function Page() {
               uploadedAt: new Date().toISOString(),
               status: "active",
               contentHash: hashByFileName.get(snapshot.fileName),
+              duplicateMetadata: EMPTY_DUPLICATE_METADATA,
             };
           }),
           ...current,
         ]);
+        setExcludedUploadIds([]);
+        setRestoreError("");
+        alert("CSVは保存済みですが、履歴の再取得に失敗しました。画面を再読み込みしてください。");
+        return;
       }
       setExcludedUploadIds([]);
       setRestoreError("");
       goto("home");
-      alert("CSVを読み込み、分析に反映しました。");
+      alert(`CSVを読み込み、分析に反映しました。\n保存済み: ${saveResult.data.savedFileNames.join("、")}`);
     } catch (error) {
       console.error(error);
       alert("CSVの読み込みに失敗しました。ファイル形式を確認してください。");
@@ -1196,7 +1452,7 @@ export default function Page() {
 
   const excludeUpload = async (entry: UploadHistoryEntry) => {
     if (currentRole !== "owner" && currentRole !== "admin") return;
-    if (!entry.databaseId || !authAccessToken) {
+    if (!entry.databaseId || !authUserId) {
       alert("保存済みCSVを確認できませんでした。画面を再読み込みしてから再度お試しください。");
       return;
     }
@@ -1205,7 +1461,6 @@ export default function Page() {
     const result = await updateCsvUploadStatusAction({
       uploadId: entry.databaseId,
       status: "excluded",
-      accessToken: authAccessToken,
     });
 
     if (!result.ok) {
@@ -1221,7 +1476,7 @@ export default function Page() {
 
   const activateUpload = async (entry: UploadHistoryEntry) => {
     if (currentRole !== "owner" && currentRole !== "admin") return;
-    if (!entry.databaseId || !authAccessToken) {
+    if (!entry.databaseId || !authUserId) {
       alert("保存済みCSVを確認できませんでした。画面を再読み込みしてから再度お試しください。");
       return;
     }
@@ -1230,7 +1485,6 @@ export default function Page() {
     const result = await updateCsvUploadStatusAction({
       uploadId: entry.databaseId,
       status: "active",
-      accessToken: authAccessToken,
     });
 
     if (!result.ok) {
@@ -1242,6 +1496,74 @@ export default function Page() {
       ...item,
       status: "active",
     } : item));
+  };
+
+  const openPermanentDeleteDialog = (entry: UploadHistoryEntry) => {
+    if (!canShowCsvUploadPermanentDeleteAction({
+      role: currentRole,
+      status: entry.status,
+      hasDatabaseId: Boolean(entry.databaseId),
+    })) return;
+
+    setPermanentDeleteDialog({
+      entry,
+      errorMessage: "",
+    });
+  };
+
+  const closePermanentDeleteDialog = () => {
+    if (deletingUploadId !== null) return;
+    setPermanentDeleteDialog(null);
+  };
+
+  const permanentlyDeleteUpload = async () => {
+    const entry = permanentDeleteDialog?.entry;
+    if (!entry || !entry.databaseId || !authUserId) {
+      setPermanentDeleteDialog((current) => current ? {
+        ...current,
+        errorMessage: "保存済みCSVを確認できませんでした。画面を再読み込みしてから再度お試しください。",
+      } : current);
+      return;
+    }
+
+    setDeletingUploadId(entry.databaseId);
+    setPermanentDeleteDialog((current) => current ? {
+      ...current,
+      errorMessage: "",
+    } : current);
+
+    try {
+      const result = await deleteExcludedCsvUploadAction({
+        uploadId: entry.databaseId,
+      });
+
+      if (!result.ok) {
+        setDeletingUploadId(null);
+        setPermanentDeleteDialog((current) => current ? {
+          ...current,
+          errorMessage: result.error.message,
+        } : current);
+        return;
+      }
+
+      const refreshed = await refreshStoredCsvState();
+
+      if (!refreshed) {
+        setSnapshots((current) => current.filter((snapshot) => getSnapshotHistoryId(snapshot) !== entry.id));
+        setUploadHistory((current) => current.filter((item) => item.id !== entry.id));
+        setExcludedUploadIds((current) => current.filter((id) => id !== entry.id));
+        setRestoreError("CSVは完全削除しましたが、履歴の再取得に失敗しました。画面を再読み込みしてください。");
+      }
+
+      setDeletingUploadId(null);
+      setPermanentDeleteDialog(null);
+    } catch {
+      setDeletingUploadId(null);
+      setPermanentDeleteDialog((current) => current ? {
+        ...current,
+        errorMessage: "CSVの完全削除に失敗しました。",
+      } : current);
+    }
   };
 
   const saveSettings = () => {
@@ -1289,7 +1611,6 @@ export default function Page() {
   const previousWeek = weekly.at(-2);
   const latestMonth = monthly.at(-1);
   const previousMonth = monthly.at(-2);
-  const canExcludeUploads = currentRole === "owner" || currentRole === "admin";
   const analysisTargetUploadId = latestSnapshot ? getSnapshotHistoryId(latestSnapshot) : null;
   const visibleUploadHistory = uploadHistory.map((entry) => ({
     ...entry,
@@ -1302,6 +1623,9 @@ export default function Page() {
     : latestSnapshot
       ? `${activeSnapshots.length}ファイル読み込み済み / 最終更新 ${latestSnapshot.dateLabel}`
       : "データ未読み込み";
+  const permanentDeleteDuplicateMessage = permanentDeleteDialog
+    ? duplicateDialogText(permanentDeleteDialog.entry.duplicateMetadata)
+    : null;
 
   const handleLogin = async ({ email, password }: { email: string; password: string }) => {
     setLoginError("");
@@ -1460,6 +1784,7 @@ export default function Page() {
   }
 
   const [sidebarCompanyName, sidebarWorkspaceName = ""] = tenantHeader.tenantName.split("　");
+  const pageDescription = PAGE_DESCRIPTIONS[activePage];
 
   return (
     <div className="shell">
@@ -1468,7 +1793,6 @@ export default function Page() {
           <button type="button" className="logo-button" onClick={() => goto("home")} aria-label="GUGUMO ホームへ戻る">
             <Image className="sidebar-logo" src="/gugumo-sidebar-logo.png" alt="GUGUMO" width={815} height={234} />
           </button>
-          <div className="logo-sub">SUUMO最適化</div>
         </div>
         <nav className="nav">
           {NAVIGATION_GROUPS.map((group) => (
@@ -1483,45 +1807,38 @@ export default function Page() {
               ))}
             </Fragment>
           ))}
-        </nav>
-        <div className="mascot">
-          <svg width="28" height="32" viewBox="0 0 28 32" fill="none">
-            <ellipse cx="14" cy="22" rx="8" ry="7" fill="#3a3a4a" />
-            <ellipse cx="14" cy="21" rx="6.5" ry="5.5" fill="#4a4a5e" />
-            <circle cx="11.5" cy="19.5" r="1.2" fill="#fff" />
-            <circle cx="16.5" cy="19.5" r="1.2" fill="#fff" />
-            <circle cx="11.8" cy="19.3" r="0.4" fill="#1e1e2e" />
-            <circle cx="16.8" cy="19.3" r="0.4" fill="#1e1e2e" />
-            <ellipse cx="8.5" cy="13" rx="1.8" ry="2.2" fill="#3a3a4a" />
-            <ellipse cx="19.5" cy="13" rx="1.8" ry="2.2" fill="#3a3a4a" />
-            <path d="M14 23.5 Q13 25 12 26" stroke="#3a3a4a" strokeWidth="1.5" fill="none" strokeLinecap="round" />
-            <circle cx="20" cy="22" r="2" fill="#3a3a4a" />
-            <circle cx="8" cy="23" r="1.5" fill="#3a3a4a" />
-          </svg>
-          <div className="mascot-msg">今日も<br />最適化しよう</div>
-        </div>
-        <div className="sidebar-footer">
-          <div className="sidebar-account">
-            <div className="sidebar-account-label">アカウント</div>
-            <div className="sidebar-account-company">{sidebarCompanyName}</div>
-            {sidebarWorkspaceName ? <div className="sidebar-account-workspace">{sidebarWorkspaceName}</div> : null}
-            {tenantHeader.roleLabel ? <div className="sidebar-account-role">{tenantHeader.roleLabel}</div> : null}
+          <div className={navClass(activePage, SETTINGS_NAV_ITEM.id, "settings-nav-item")} onClick={() => goto(SETTINGS_NAV_ITEM.id)}>
+            <i className={`ti ${SETTINGS_NAV_ITEM.icon}`} />
+            <span>{SETTINGS_NAV_ITEM.label}</span>
           </div>
-          <button type="button" className="sidebar-logout" onClick={handleLogout}>
-            <i className="ti ti-logout" />
-            <span>ログアウト</span>
-          </button>
-          <div className="settings-link" onClick={() => goto(SETTINGS_NAV_ITEM.id)}><i className={`ti ${SETTINGS_NAV_ITEM.icon}`} style={{ fontSize: 14 }} /><span>{SETTINGS_NAV_ITEM.label}</span></div>
-          <div style={{ marginTop: 12, paddingTop: 12, borderTop: "0.5px solid rgba(255, 255, 255, 0.08)" }}>
-            <div style={{ fontSize: 10.5, color: "rgba(255, 255, 255, 0.46)", lineHeight: 1.5 }}>
-              {PRODUCT_META.productName}
-            </div>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: "4px 8px", marginTop: 8 }}>
+        </nav>
+        {activePage === "home" ? (
+          <div className="mascot">
+            <svg width="28" height="32" viewBox="0 0 28 32" fill="none">
+              <ellipse cx="14" cy="22" rx="8" ry="7" fill="#3a3a4a" />
+              <ellipse cx="14" cy="21" rx="6.5" ry="5.5" fill="#4a4a5e" />
+              <circle cx="11.5" cy="19.5" r="1.2" fill="#fff" />
+              <circle cx="16.5" cy="19.5" r="1.2" fill="#fff" />
+              <circle cx="11.8" cy="19.3" r="0.4" fill="#1e1e2e" />
+              <circle cx="16.8" cy="19.3" r="0.4" fill="#1e1e2e" />
+              <ellipse cx="8.5" cy="13" rx="1.8" ry="2.2" fill="#3a3a4a" />
+              <ellipse cx="19.5" cy="13" rx="1.8" ry="2.2" fill="#3a3a4a" />
+              <path d="M14 23.5 Q13 25 12 26" stroke="#3a3a4a" strokeWidth="1.5" fill="none" strokeLinecap="round" />
+              <circle cx="20" cy="22" r="2" fill="#3a3a4a" />
+              <circle cx="8" cy="23" r="1.5" fill="#3a3a4a" />
+            </svg>
+            <div className="mascot-msg">今日も<br />最適化しよう</div>
+          </div>
+        ) : null}
+        <div className="sidebar-footer">
+          <div className="sidebar-legal">
+            <div className="sidebar-product-name">{PRODUCT_META.productName}</div>
+            <div className="sidebar-legal-links">
               {LEGAL_LINKS.map((link) => (
                 <a
                   key={link.href}
                   href={link.href}
-                  style={{ fontSize: 10, color: "rgba(255, 255, 255, 0.45)", textDecoration: "none" }}
+                  className="sidebar-legal-link"
                 >
                   {link.label}
                 </a>
@@ -1533,9 +1850,24 @@ export default function Page() {
 
       <div className="main">
         <div className="topbar">
-          <span className="page-title">{PAGE_TITLES[activePage]}</span>
-          <span className={`status-pill${latestSnapshot ? " loaded" : ""}`}>{topbarStatus}</span>
-          <button type="button" className="topbar-btn primary" onClick={() => goto("upload")}><i className="ti ti-upload" style={{ fontSize: 13 }} />CSVを読み込む</button>
+          <div className="topbar-copy">
+            <div className="topbar-title-row">
+              <span className="page-title">{PAGE_TITLES[activePage]}</span>
+              <span className={`status-pill${latestSnapshot ? " loaded" : ""}`}>{topbarStatus}</span>
+            </div>
+            <div className="page-description">{pageDescription}</div>
+          </div>
+          <div className="topbar-account">
+            <div className="topbar-account-text">
+              <div className="topbar-account-company">{sidebarCompanyName}</div>
+              {sidebarWorkspaceName ? <div className="topbar-account-workspace">{sidebarWorkspaceName}</div> : null}
+            </div>
+            {tenantHeader.roleLabel ? <span className="topbar-account-role">{tenantHeader.roleLabel}</span> : null}
+            <button type="button" className="topbar-logout" onClick={handleLogout}>
+              <i className="ti ti-logout" />
+              <span>ログアウト</span>
+            </button>
+          </div>
         </div>
 
         <div className={`content${isRestoringCsv ? " restoring" : ""}`}>
@@ -1579,20 +1911,20 @@ export default function Page() {
                   <QuickLink icon="ti-chart-bar" label="週次レポート" description="短期の反響変化を確認" onClick={() => goto("weekly")} />
                   <QuickLink icon="ti-calendar-stats" label="月次レポート" description="経営向けの月次推移" onClick={() => goto("monthly")} />
                   <QuickLink icon="ti-alert-triangle" label="入替対象" description="優先対応物件を確認" onClick={() => goto("lowpv")} />
-                  <QuickLink icon="ti-scale" label="オプション分析" description="無駄コストを確認" onClick={() => goto("optbal")} />
+                  <QuickLink icon="ti-scale" label="オプション分析" description="見直し余地を確認" onClick={() => goto("optbal")} />
                   <QuickLink icon="ti-upload" label="CSVアップロード" description="新しい分析を開始" onClick={() => goto("upload")} />
                 </div>
-                {dashboard.savings.totalSaving > 0 && (
+                {dashboard.savings.optimization.totalImprovementAmount > 0 && (
                   <div className="savings-banner">
                     <div className="savings-main">
-                      <div className="savings-label"><i className="ti ti-sparkles" /> GUGUMOで削減できた無駄オプション費用（月額）</div>
-                      <div className="savings-amount">{formatMoney(dashboard.savings.totalSaving)}<small>/月</small></div>
-                      <div className="savings-sub">無駄オプション {dashboard.savings.totalWaste}件を特定（年間 {formatMoney(dashboard.savings.annualSaving)} の削減効果）</div>
+                      <div className="savings-label"><i className="ti ti-sparkles" /> 月額の総合改善効果</div>
+                      <div className="savings-amount">{formatMoney(dashboard.savings.optimization.totalImprovementAmount)}<small>/月</small></div>
+                      <div className="savings-sub">枠削減と入れ替え最適化を合わせた改善余地です。</div>
                     </div>
                     <div className="savings-detail">
-                      <div className="savings-stat"><div className="savings-stat-val">{dashboard.savings.wasteSmapic}</div><div className="savings-stat-lbl">スマピク無駄</div></div>
-                      <div className="savings-stat"><div className="savings-stat-val">{dashboard.savings.wastePanorama}</div><div className="savings-stat-lbl">パノラマ無駄</div></div>
-                      <div className="savings-stat"><div className="savings-stat-val">{dashboard.savings.wasteMisepic}</div><div className="savings-stat-lbl">店ピク無駄</div></div>
+                      <div className="savings-stat"><div className="savings-stat-val">{formatMoney(dashboard.savings.optimization.capacitySavingsAmount)}</div><div className="savings-stat-lbl">枠削減による削減余地 /月</div></div>
+                      <div className="savings-stat"><div className="savings-stat-val">{formatMoney(dashboard.savings.optimization.replacementOptimizationAmount)}</div><div className="savings-stat-lbl">入れ替えによる最適化額 /月</div></div>
+                      <div className="savings-stat"><div className="savings-stat-val">{formatMoney(dashboard.savings.optimization.totalImprovementAmount)}</div><div className="savings-stat-lbl">月額総合改善効果</div></div>
                     </div>
                   </div>
                 )}
@@ -1683,7 +2015,7 @@ export default function Page() {
                     <div className="card-head"><div className="card-title"><i className="ti ti-list-check" />改善ポイント・優先確認項目</div></div>
                   <div style={{ display: "grid", gap: 10 }}>
                     <StatusNotice tone="critical" icon="ti-alert-triangle" title={`入替対象 ${analysis.lowPvRows.length}件`}>反響が弱い物件から優先確認します。</StatusNotice>
-                    <StatusNotice tone="warning" icon="ti-adjustments" title={`オプション見直し ${analysis.optionBalance.totalWaste}件`}>無駄なオプション費用を抑えられる可能性があります。</StatusNotice>
+                    <StatusNotice tone="warning" icon="ti-adjustments" title={`オプション見直し ${analysis.optionBalance.totalWaste}件`}>オプション費用を抑えられる可能性があります。</StatusNotice>
                   </div>
                   </div>
                 </div>
@@ -1735,7 +2067,7 @@ export default function Page() {
                     <div className="card-head"><div className="card-title"><i className="ti ti-flag" />優先課題</div></div>
                   <div style={{ display: "grid", gap: 10 }}>
                     <StatusNotice tone="critical" icon="ti-alert-triangle" title={`入替対象 ${analysis.lowPvRows.length}件`}>低反響物件を入替候補として確認します。</StatusNotice>
-                    <StatusNotice tone="success" icon="ti-coin" title={`月額削減見込み ${formatMoney(analysis.optionBalance.totalSaving)}`}>オプション運用の見直し余地を確認できます。</StatusNotice>
+                    <StatusNotice tone="success" icon="ti-coin" title={analysis.optionBalance.totalWaste > 0 ? `月額削減余地 ${formatMoney(analysis.optionBalance.totalSaving)}` : "オプション見直し候補なし"}>オプション運用の見直し余地を確認できます。</StatusNotice>
                   </div>
                   </div>
                 </div>
@@ -1877,21 +2209,26 @@ export default function Page() {
           <div className={pageClass(activePage, "optbal")}>
             <PageIntro
               title="オプション収支分析"
-              description="現在の付与数・無駄候補・削減見込みをまとめ、費用対効果を説明しやすくします。"
+              description="現在のオプション利用状況を分析し、削減できる費用と、より効果的なオプション配置を確認できます。"
             >
               <button type="button" className="topbar-btn" onClick={() => goto("opt")}>運用候補を見る</button>
             </PageIntro>
             {!latestSnapshot ? (
               <EmptyActionPanel
                 icon="ti-coin"
-                title="CSV読み込み後に削減見込みを表示します"
-                message="実データがない状態では、削減見込みやオプション別の収支表は表示しません。"
+                title="CSV読み込み後に削減余地を表示します"
+                message="実データがない状態では、削減余地やオプション別の収支表は表示しません。"
                 onAction={() => goto("upload")}
               />
             ) : (
               <>
-                <div className="savings-banner" style={{ marginBottom: 14 }}><div className="savings-main"><div className="savings-label"><i className="ti ti-coin" /> 月額オプション節約効果</div><div className="savings-amount">{formatMoney(analysis.optionBalance.totalSaving)}<small>/月</small></div><div className="savings-sub">最適化による無駄オプションの削減額</div></div><div className="savings-detail"><div className="savings-stat"><div className="savings-stat-val">{formatOptionBalanceDisplayCount(analysis.optionBalance.totalWaste)}</div><div className="savings-stat-lbl">無駄オプション計</div></div><div className="savings-stat"><div className="savings-stat-val">{formatMoney(analysis.optionBalance.totalSaving * 12)}</div><div className="savings-stat-lbl">年間削減</div></div></div></div>
-                <div className="card"><div className="card-head"><div className="card-title"><i className="ti ti-scale" />オプション収支分析（現在と見直し後）</div></div><div className="optbal-grid">{analysis.optionBalance.cards.map((card) => <div className="optbal-card" key={card.key}><div className="optbal-name"><i className={`ti ${card.icon}`} style={{ color: "var(--green)" }} />{card.name}</div><div className="optbal-row"><span>現在の付与</span><b>{formatOptionBalanceDisplayCount(card.current)}件</b></div><div className="optbal-row"><span>見直し候補</span><b style={{ color: "var(--red)" }}>{formatOptionBalanceDisplayCount(card.waste)}件</b></div><div className="optbal-row"><span>見直し後</span><b>{formatOptionBalanceDisplayCount(Math.max(0, card.current - card.waste))}件</b></div><div className="optbal-row"><span>単価</span><b>{formatMoney(card.price)}</b></div><div className={`optbal-verdict ${card.waste > 0 ? "verdict-cut" : "verdict-ok"}`}>{card.waste > 0 ? <>▼ {formatOptionBalanceDisplayCount(card.waste)}件 削減推奨<br /><span style={{ fontSize: 10, fontWeight: 400, color: "var(--ink3)" }}>月 {formatMoney(card.saving)} 節約</span></> : "適正"}</div></div>)}</div><div style={{ fontSize: 11, color: "var(--ink3)", marginTop: 6 }}>※現在の掲載・競合状況から、必要なオプション件数を確認したものです。単価は設定画面で変更できます。</div></div>
+                {analysis.optionBalance.optimization.totalImprovementAmount > 0 ? (
+                  <div className="savings-banner" style={{ marginBottom: 14 }}><div className="savings-main"><div className="savings-label"><i className="ti ti-coin" /> 月額総合改善効果</div><div className="savings-amount">{formatMoney(analysis.optionBalance.optimization.totalImprovementAmount)}<small>/月</small></div><div className="savings-sub">枠削減と入れ替え最適化を分けて確認できます。</div></div><div className="savings-detail"><div className="savings-stat"><div className="savings-stat-val">{formatMoney(analysis.optionBalance.optimization.capacitySavingsAmount)}</div><div className="savings-stat-lbl">枠削減による削減余地</div></div><div className="savings-stat"><div className="savings-stat-val">{formatMoney(analysis.optionBalance.optimization.replacementOptimizationAmount)}</div><div className="savings-stat-lbl">入れ替え最適化額</div></div><div className="savings-stat"><div className="savings-stat-val">{formatMoney(analysis.optionBalance.optimization.totalImprovementAmount)}</div><div className="savings-stat-lbl">月額総合改善効果</div></div></div></div>
+                ) : (
+                  <StatusNotice tone="success" icon="ti-circle-check" title="オプション費用の見直し候補はありません">掲載枠数に基づく基準件数の範囲内です。</StatusNotice>
+                )}
+                <div className="card"><div className="card-head"><div className="card-title"><i className="ti ti-scale" />枠削減による削減余地</div></div><div className="optbal-grid">{analysis.optionBalance.cards.map((card) => <div className="optbal-card" key={card.key}><div className="optbal-name"><i className={`ti ${card.icon}`} style={{ color: "var(--green)" }} />{card.name}</div><div className="optbal-row"><span>現在の付与</span><b>{formatOptionBalanceDisplayCount(card.current)}件</b></div><div className="optbal-row"><span>推奨付与件数</span><b>{formatOptionBalanceDisplayCount(card.recommended)}件</b></div><div className="optbal-row"><span>削減対象件数</span><b style={{ color: "var(--red)" }}>{formatOptionBalanceDisplayCount(card.waste)}件</b></div><div className="optbal-row"><span>単価</span><b>{formatMoney(card.price)}</b></div><div className={`optbal-verdict ${card.waste > 0 ? "verdict-cut" : "verdict-ok"}`}>{card.waste > 0 ? <>▼ {formatOptionBalanceDisplayCount(card.waste)}件 削減余地<br /><span style={{ fontSize: 10, fontWeight: 400, color: "var(--ink3)" }}>{formatMoney(card.saving)} /月</span></> : "基準内"}</div></div>)}</div><div style={{ fontSize: 11, color: "var(--ink3)", marginTop: 6 }}>※掲載枠数の35%を50件単位で切り上げた基準件数をもとに、スマピクは独立、その他は優先順位順に最大2カテゴリだけを維持対象として表示しています。単価は設定画面で変更できます。</div></div>
+                <div className="card"><div className="card-head"><div className="card-title"><i className="ti ti-repeat" />入れ替え最適化額</div></div><div className="savings-detail" style={{ justifyContent: "flex-start", color: "var(--ink)" }}><div className="savings-stat" style={{ textAlign: "left" }}><div className="savings-stat-val">{analysis.optionBalance.optimization.removalOptimizationCount}件 / {formatMoney(analysis.optionBalance.optimization.removalOptimizationAmount)}</div><div className="savings-stat-lbl">外す最適化</div></div><div className="savings-stat" style={{ textAlign: "left" }}><div className="savings-stat-val">{analysis.optionBalance.optimization.additionOptimizationCount}件 / {formatMoney(analysis.optionBalance.optimization.additionOptimizationAmount)}</div><div className="savings-stat-lbl">付ける最適化</div></div><div className="savings-stat" style={{ textAlign: "left" }}><div className="savings-stat-val">{analysis.optionBalance.optimization.replacementOptimizationCount}件 / {formatMoney(analysis.optionBalance.optimization.replacementOptimizationAmount)}</div><div className="savings-stat-lbl">入れ替え最適化額</div></div></div><div style={{ fontSize: 11, color: "var(--ink3)", marginTop: 8 }}>※入れ替え最適化額は、外すオプション金額と新たに付けるオプション金額を合算した改善対象額です。純節約額ではありません。</div></div>
               </>
             )}
           </div>
@@ -1997,7 +2334,7 @@ export default function Page() {
                   <>
                     <i className="ti ti-files" style={{ fontSize: 28, color: "var(--ink2)", display: "block", marginBottom: 9 }} />
                     <div style={{ fontSize: 13.5, color: "var(--ink2)" }}>複数ファイルをまとめてドロップ、またはクリックして選択</div>
-                    <div style={{ fontSize: 11, color: "var(--ink3)", marginTop: 5 }}>SUUMO掲載CSV / Shift-JIS・UTF-8 対応</div>
+                    <div style={{ fontSize: 11, color: "var(--ink3)", marginTop: 5 }}>SUUMO掲載CSV / Shift-JIS・UTF-8 対応 / 1ファイル6MB・合計8MBまで</div>
                   </>
                 )}
               </div>
@@ -2026,27 +2363,68 @@ export default function Page() {
                         {visibleUploadHistory.map((entry) => {
                           const statusLabel = entry.status === "excluded" ? "除外" : entry.isAnalysisTarget ? "有効（分析対象）" : "有効";
                           const statusClass = entry.status === "excluded" ? "muted" : "success";
+                          const hasDatabaseId = Boolean(entry.databaseId);
+                          const showExclude = canShowCsvUploadExcludeAction({
+                            role: currentRole,
+                            status: entry.status,
+                            hasDatabaseId,
+                          });
+                          const showActivate = canShowCsvUploadActivateAction({
+                            role: currentRole,
+                            status: entry.status,
+                            hasDatabaseId,
+                          });
+                          const showPermanentDelete = canShowCsvUploadPermanentDeleteAction({
+                            role: currentRole,
+                            status: entry.status,
+                            hasDatabaseId,
+                          });
+                          const isDeletingThisUpload = entry.databaseId === deletingUploadId;
+                          const duplicateKind = getCsvUploadDuplicateDisplayKind(entry.duplicateMetadata);
+                          const duplicateLabel = duplicateBadgeLabel(entry.duplicateMetadata);
 
                           return (
                             <tr key={entry.id} className={entry.status === "excluded" ? "muted-row" : ""}>
                               <td>{formatUploadDate(entry.uploadedAt)}</td>
                               <td>{formatDataDate(entry.dateKey)}</td>
                               <td className="nm">
-                                {entry.fileName}
+                                <div className="upload-file-cell">
+                                  <span className="upload-file-name">{entry.fileName}</span>
+                                  {duplicateLabel ? (
+                                    <span
+                                      className={`upload-duplicate-badge ${duplicateKind === "identical" ? "identical" : "same-name"}`}
+                                    >
+                                      {duplicateLabel}
+                                    </span>
+                                  ) : null}
+                                </div>
                               </td>
                               <td className="num">{entry.rowCount.toLocaleString("ja-JP")}件</td>
                               <td><span className={`upload-status ${statusClass}`}>{statusLabel}</span></td>
                               <td className="num">
-                                {canExcludeUploads ? (
-                                  entry.status === "excluded" ? (
-                                    <button type="button" className="mini-action-btn" onClick={() => activateUpload(entry)}>
-                                      有効に戻す
-                                    </button>
-                                  ) : (
-                                    <button type="button" className="mini-action-btn" onClick={() => excludeUpload(entry)}>
-                                      除外
-                                    </button>
-                                  )
+                                {showExclude || showActivate || showPermanentDelete ? (
+                                  <div className="upload-action-group">
+                                    {showActivate ? (
+                                      <button type="button" className="mini-action-btn" onClick={() => activateUpload(entry)} disabled={isDeletingThisUpload}>
+                                        有効に戻す
+                                      </button>
+                                    ) : null}
+                                    {showExclude ? (
+                                      <button type="button" className="mini-action-btn" onClick={() => excludeUpload(entry)}>
+                                        分析から除外
+                                      </button>
+                                    ) : null}
+                                    {showPermanentDelete ? (
+                                      <button
+                                        type="button"
+                                        className="mini-action-btn danger"
+                                        onClick={() => openPermanentDeleteDialog(entry)}
+                                        disabled={isDeletingThisUpload}
+                                      >
+                                        {isDeletingThisUpload ? "削除中" : "完全削除"}
+                                      </button>
+                                    ) : null}
+                                  </div>
                                 ) : (
                                   <span style={{ color: "var(--ink3)", fontSize: 10 }}>—</span>
                                 )}
@@ -2091,6 +2469,48 @@ export default function Page() {
           </div>
         </div>
       </div>
+      {permanentDeleteDialog ? (
+        <div
+          className="delete-dialog-backdrop"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) closePermanentDeleteDialog();
+          }}
+        >
+          <div className="delete-dialog" role="dialog" aria-modal="true" aria-labelledby="delete-dialog-title">
+            <div className="delete-dialog-icon">
+              <i className="ti ti-trash" />
+            </div>
+            <div className="delete-dialog-body">
+              <div id="delete-dialog-title" className="delete-dialog-title">このCSVデータを完全に削除しますか？</div>
+              <div className="delete-dialog-text">
+                「{permanentDeleteDialog.entry.fileName}」をアップロード履歴と保存データから完全に削除します。
+                <br />
+                この操作は取り消せません。
+              </div>
+              {permanentDeleteDuplicateMessage ? (
+                <div className="delete-dialog-note">{permanentDeleteDuplicateMessage}</div>
+              ) : null}
+              {permanentDeleteDialog.errorMessage ? (
+                <div className="delete-dialog-error">{permanentDeleteDialog.errorMessage}</div>
+              ) : null}
+              <div className="delete-dialog-actions">
+                <button type="button" className="mini-action-btn" onClick={closePermanentDeleteDialog} disabled={deletingUploadId !== null}>
+                  キャンセル
+                </button>
+                <button
+                  type="button"
+                  className="mini-action-btn danger solid"
+                  onClick={permanentlyDeleteUpload}
+                  disabled={deletingUploadId !== null}
+                >
+                  {deletingUploadId !== null ? "削除中" : "完全に削除する"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

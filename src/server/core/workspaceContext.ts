@@ -12,8 +12,8 @@ import {
   getCurrentUser,
 } from "./auth";
 import {
-  createAuthenticatedSupabaseClient,
-} from "./supabaseUserClient";
+  createRequestSupabaseClient,
+} from "./supabaseServerClient";
 
 export type WorkspaceRole = "owner" | "admin" | "member" | "viewer";
 
@@ -55,8 +55,8 @@ function toWorkspaceRole(role: string | null): WorkspaceRole | null {
   return role as WorkspaceRole;
 }
 
-export async function getCurrentWorkspaceContext(accessToken?: string): Promise<WorkspaceContextResult> {
-  const userResult = await getCurrentUser(accessToken);
+export async function getCurrentWorkspaceContext(): Promise<WorkspaceContextResult> {
+  const userResult = await getCurrentUser();
 
   if (!userResult.ok) {
     return err({
@@ -69,14 +69,7 @@ export async function getCurrentWorkspaceContext(accessToken?: string): Promise<
     return ok(null) satisfies WorkspaceContextResult;
   }
 
-  if (!accessToken) {
-    return err({
-      code: "AUTH_ERROR",
-      message: "ログイン状態を確認できませんでした。",
-    }) satisfies WorkspaceContextResult;
-  }
-
-  const supabase = createAuthenticatedSupabaseClient(accessToken);
+  const supabase = await createRequestSupabaseClient();
   const profileResult = await getProfileByUserId(userResult.data.id, supabase);
 
   if (!profileResult.ok) {

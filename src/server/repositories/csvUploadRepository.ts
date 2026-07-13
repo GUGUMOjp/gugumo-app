@@ -39,6 +39,11 @@ export type StoredCsvUploadRecord = CsvUploadRecord & {
 
 export type CsvUploadMetadataRecord = Omit<StoredCsvUploadRecord, "file_data">;
 
+export type CsvUploadDuplicateSourceRecord = Pick<
+  StoredCsvUploadRecord,
+  "id" | "file_name" | "workspace_id" | "checksum" | "status"
+>;
+
 type CsvUploadUpdateRecord = {
   status: CsvUploadStatus;
   excluded_at: string | null;
@@ -54,14 +59,21 @@ type CsvUploadReadError = {
   cause: unknown;
 };
 
+type CsvUploadDeleteError = {
+  cause: unknown;
+};
+
 type CsvUploadSaveResult = ServerResult<void, CsvUploadSaveError>;
 type CsvUploadReadResult = ServerResult<StoredCsvUploadRecord[], CsvUploadReadError>;
 type CsvUploadSingleReadResult = ServerResult<StoredCsvUploadRecord | null, CsvUploadReadError>;
 type CsvUploadMetadataReadResult = ServerResult<CsvUploadMetadataRecord | null, CsvUploadReadError>;
+type CsvUploadDuplicateSourceReadResult = ServerResult<CsvUploadDuplicateSourceRecord[], CsvUploadReadError>;
 type CsvUploadUpdateResult = ServerResult<StoredCsvUploadRecord | null, CsvUploadReadError>;
+type CsvUploadDeleteResult = ServerResult<{ id: number } | null, CsvUploadDeleteError>;
 
 const CSV_UPLOAD_SELECT = "id, file_name, file_data, created_at, uploaded_at, company_id, workspace_id, uploaded_by, snapshot_date, checksum, status, excluded_at, excluded_by";
 const CSV_UPLOAD_METADATA_SELECT = "id, file_name, created_at, uploaded_at, company_id, workspace_id, uploaded_by, snapshot_date, checksum, status, excluded_at, excluded_by";
+const CSV_UPLOAD_DUPLICATE_SOURCE_SELECT = "id, file_name, workspace_id, checksum, status";
 
 export async function getRecentCsvUploadRecords({
   limit = 100,
@@ -230,6 +242,29 @@ export async function getCsvUploadRecordsByChecksum({
   return ok(data) satisfies CsvUploadReadResult;
 }
 
+export async function getCsvUploadDuplicateSourceRecords({
+  workspaceId,
+  client = supabase,
+}: {
+  workspaceId: string;
+  client?: SupabaseUserClient;
+}) {
+  const { data, error } = await client
+    .from("csv_uploads")
+    .select(CSV_UPLOAD_DUPLICATE_SOURCE_SELECT)
+    .eq("workspace_id", workspaceId)
+    .order("created_at", { ascending: false })
+    .returns<CsvUploadDuplicateSourceRecord[]>();
+
+  if (error) {
+    return err({
+      cause: error,
+    }) satisfies CsvUploadDuplicateSourceReadResult;
+  }
+
+  return ok(data) satisfies CsvUploadDuplicateSourceReadResult;
+}
+
 export async function saveCsvUploadRecord(record: CsvUploadRecord, client: SupabaseUserClient = supabase) {
   const { error } = await client.from("csv_uploads").insert(record);
 
@@ -281,4 +316,34 @@ export async function updateCsvUploadRecordStatus({
   }
 
   return ok(data) satisfies CsvUploadUpdateResult;
+}
+
+export async function deleteExcludedCsvUploadRecord({
+  uploadId,
+  companyId,
+  workspaceId,
+  client = supabase,
+}: {
+  uploadId: number;
+  companyId: string;
+  workspaceId: string;
+  client?: SupabaseUserClient;
+}) {
+  const { data, error } = await client
+    .from("csv_uploads")
+    .delete()
+    .eq("id", uploadId)
+    .eq("company_id", companyId)
+    .eq("workspace_id", workspaceId)
+    .eq("status", "excluded")
+    .select("id")
+    .maybeSingle<{ id: number }>();
+
+  if (error) {
+    return err({
+      cause: error,
+    }) satisfies CsvUploadDeleteResult;
+  }
+
+  return ok(data) satisfies CsvUploadDeleteResult;
 }
