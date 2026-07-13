@@ -4,7 +4,7 @@ Target Supabase project: GUGUMOjp's Project / `annvqxnupddnozyghqdw`.
 
 Production URL: `https://app.gugumo.jp`.
 
-Production Auth Gate status: Password Reset Production E2E and Invite onboarding rehearsal passed on 2026-07-13.
+Production Auth Gate status: Password Reset Production E2E, Invite onboarding rehearsal, Japanese HTML Invite delivery/rendering, and Japanese HTML Password Reset delivery/rendering passed on 2026-07-13.
 
 ## Dashboard Path
 
@@ -73,7 +73,7 @@ Remaining manual checks:
 - Expired or reused reset link shows a safe failure and allows returning to login.
 - Wrong email does not reveal whether an account exists.
 - Logout before opening reset callback does not expose tenant data.
-- Japanese Invite email post-localization delivery/link/spam check before the first real customer invite.
+- Latest Japanese HTML Invite CTA click-through E2E was not re-executed in this closeout; observe it during early beta/customer invite flow.
 - Continue monitoring invite/reset delivery during early beta operation.
 
 Production Invite user rehearsal passed on 2026-07-13:
@@ -84,6 +84,18 @@ Production Invite user rehearsal passed on 2026-07-13:
 4. Missing profile state stopped safely without tenant fallback. Current customer-facing copy for this pending state is `GUGUMOアカウントを準備しています`.
 5. After profile creation, login and tenant bootstrap succeeded.
 6. CSV upload lifecycle smoke passed in the rehearsal tenant.
+
+Japanese HTML Invite email human verification also passed on 2026-07-13:
+
+1. Actual delivery passed.
+2. Gmail inbox receipt passed.
+3. Subject passed: `【GUGUMO】アカウント登録のご案内`.
+4. Japanese body passed.
+5. HTML rendering passed.
+6. GUGUMO logo rendering passed.
+7. CTA rendering passed: `アカウント登録を完了する`.
+
+Historical Invite ConfirmationURL/link flow passed in earlier production E2E. Do not record the latest Japanese HTML Invite CTA click-through as re-executed in this closeout.
 
 For real customer onboarding, create company/workspace before invitation, create the profile as soon as the Auth user UUID is available, verify relationships, then tell the customer GUGUMO is ready to use. The app does not send an automatic ready notification.
 
@@ -111,7 +123,7 @@ For real customer onboarding, create company/workspace before invitation, create
 ## Remaining Dashboard TODO
 
 - Confirm Dashboard Create user behavior only as a fallback path.
-- Run one Japanese Invite email delivery/link/spam check after template localization and before the first real customer invite.
+- Observe the latest Japanese HTML Invite CTA click-through during early beta/customer invite flow. The post-localization delivery/rendering check is already closed by the 2026-07-13 Production human verification.
 
 ## CAPTCHA Decision
 
@@ -127,7 +139,7 @@ For real customer onboarding, create company/workspace before invitation, create
 
 Subject:
 
-GUGUMOのパスワード再設定
+【GUGUMO】パスワード再設定のご案内
 
 Body:
 
@@ -144,3 +156,7 @@ Keep the Supabase reset-link variable unchanged in the template. Do not replace 
 Security note:
 
 このメールに心当たりがない場合は、操作せずにこのメールを破棄してください。GUGUMOがお客様のパスワードをお聞きすることはありません。
+
+Human verification:
+
+- Japanese HTML Password Reset email actual delivery, email receipt, Japanese copy, HTML rendering, and GUGUMO logo rendering passed on 2026-07-13.

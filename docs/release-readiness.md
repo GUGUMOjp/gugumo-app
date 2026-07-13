@@ -33,10 +33,10 @@ Status: CURRENT checklist. See `docs/technical-beta-readiness.md` for the 2026-0
 
 ## β版 Go/No-Go
 
-- [x] 招待、ログイン、Session復元、Password Reset、ログアウトが通る。Password ResetとInvite onboardingはProduction E2E PASS。
+- [x] 招待、ログイン、Session復元、Password Reset、ログアウトが通る。Password ResetとInvite onboardingはProduction E2E PASS。日本語HTML Invite / Password Resetメールの実配送・Gmail表示・ロゴ・CTA表示も2026-07-13に人間確認済み。
 - [x] β用workspaceでtenant分離が確認できている。
 - [x] 実SUUMO CSVで、アップロード、復元、重複警告、除外、有効化、現在分析対象選定が通る。
 - [ ] 主要画面に顧客向けではない内部用語が残っていない。
 - [ ] UX改善や自然な日本語化を理由に、業務仕様ラベルを無断変更していない。
 - [x] Release Candidateで `npm run lint` と `npm run build` が成功する。
-- [x] 既知の制限事項が文書化され、β顧客に提示して問題ない状態になっている。Legal / Support final acceptanceはlimited Technical Beta向けに完了。CAPTCHAはTechnical Beta前導入なし・監視条件付き後続対応と判定済み。日本語Inviteメール実送信確認はP1、backup/monitoringと正式商用法務はP2-P3で継続。
+- [x] 既知の制限事項が文書化され、β顧客に提示して問題ない状態になっている。Technical Beta前P0/P1は0。Legal / Support final acceptanceはlimited Technical Beta向けに完了。CAPTCHAはTechnical Beta前導入なし・監視条件付き後続対応と判定済み。backup/monitoringと正式商用法務はP2-P3で継続。

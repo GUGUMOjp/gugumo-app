@@ -37,6 +37,7 @@ Target Supabase project: GUGUMOjp's Project / `annvqxnupddnozyghqdw`.
 - Role/tenant E2E before external beta using one dedicated test Auth user and profile role switching.
 - Role/Tenant Manual E2E passed on 2026-07-12. Re-run it before beta only if RLS policies, grants, tenant bootstrap, upload actions, or role handling change.
 - Password Reset Production E2E passed on 2026-07-13 for `https://app.gugumo.jp` after Vercel Production was confirmed to use the formal Supabase project.
+- Japanese HTML Invite and Password Reset email delivery/rendering passed on 2026-07-13. The latest Japanese HTML Invite CTA click-through E2E was not re-executed in that closeout; use early beta/customer invite flow as a smoke observation.
 - Before customer onboarding, confirm Vercel Production `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` are copied from the same formal Supabase project. Do not store env values in docs.
 - Customer Onboarding Rehearsal passed on 2026-07-13 using [Customer Onboarding Rehearsal](./onboarding-rehearsal.md).
 - Technical beta readiness still depends on careful first-customer operation. Legal / Support final acceptance is complete for limited Technical Beta, while paid/broad beta still requires formal legal review. Server Action arguments must remain free of raw bearer tokens.
@@ -57,10 +58,13 @@ Target Supabase project: GUGUMOjp's Project / `annvqxnupddnozyghqdw`.
 
 - Production Invite user flow passed with Signup OFF.
 - Invite user template localization and Supabase Dashboard save are complete.
-- Post-localization Japanese Invite delivery, subject/body receipt, HTML rendering, link transition, inbox/spam placement, and deliverability are not yet verified.
+- 2026-07-13 Production human verification passed for Japanese Invite subject, Japanese body, actual delivery, Gmail inbox receipt, HTML rendering, GUGUMO logo rendering, and CTA rendering.
+- Subject: `【GUGUMO】アカウント登録のご案内`.
+- CTA: `アカウント登録を完了する`.
 - Previous English-template Invite delivery/link E2E passed during the 2026-07-13 rehearsal.
+- Historical Invite ConfirmationURL/link flow, invite link transition, and registration flow passed in earlier production E2E.
+- Latest Japanese HTML Invite CTA click-through E2E was not re-executed in this closeout.
 - During that rehearsal, one first Gmail delivery landed in spam; after marking it not spam, the rehearsal continued.
-- Run one Japanese Invite delivery/link/spam check before the first real customer invite.
 - Monitor invite/reset delivery during early beta operation.
 
 ## Do Not Promise Yet

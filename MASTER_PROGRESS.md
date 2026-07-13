@@ -10,11 +10,11 @@ Beta Release Gate: CSV guardrails, sidebar UX, onboarding and authorization veri
 
 ## Latest Completed Commit
 
-72e3300 Finalize legal and support readiness for technical beta
+a50a82c Finalize CAPTCHA decision for technical beta
 
 ## Current Uncommitted Changes
 
-Sprint開始時点はclean。Technical Beta P1 `CAPTCHA final decision` として、Production Auth attack surface、Signup OFF、Password Reset公開導線、Invite運用、手動監視Gateを監査・docs反映中。
+Sprint開始時点はclean。Technical Beta Readiness Final Closeoutとして、2026-07-13 Production実メール確認結果をCurrent docsへ反映中。
 
 ## Build Status
 
@@ -41,7 +41,8 @@ Sprint開始時点はclean。Technical Beta P1 `CAPTCHA final decision` とし�
 - CSV upload history now distinguishes exact duplicate content from same-name files before permanent-delete review: exact duplicate uses workspace + non-empty checksum, same-name uses file_name with different/unknown content, checksum NULL is not treated as exact content match, and no DB schema/RLS change is introduced.
 - Customer Onboarding Rehearsal passed on 2026-07-13 in Production. Signup OFF plus Send invitation worked; missing profile state stopped safely; linked owner profile bootstrapped the rehearsal tenant; existing Demo CSV history was not visible; SUUMO CSV upload/save/Home reflection/exclude/restore/duplicate warning/cancel passed; rehearsal tenant rows and Auth user were manually cleaned up by human Dashboard operation.
 - Customer-facing pending provisioning UX now uses `GUGUMOアカウントを準備しています` for profile-not-yet-created state. Unexpected profile/company/workspace configuration errors remain a separate safe error path.
-- Invite user template localization and Supabase Dashboard save are complete. Post-localization Japanese Invite delivery/link/spam check is not yet verified; the previous English-template Invite delivery/link E2E passed, with one first Gmail spam placement observed as a historical fact. Reset Password email through Custom SMTP passed.
+- Invite user template localization and Supabase Dashboard save are complete. 2026-07-13 Production human verification passed for Japanese HTML Invite actual delivery, Gmail inbox receipt, Japanese subject/body, HTML rendering, GUGUMO logo rendering, and CTA rendering. Historical English-template Invite ConfirmationURL/link flow E2E passed; the latest Japanese HTML Invite CTA click-through E2E was not re-executed in this closeout.
+- Password Reset Japanese HTML email passed 2026-07-13 Production human verification: actual delivery, email receipt, Japanese copy, HTML rendering, and GUGUMO logo rendering. Existing Password Reset Production E2E remains the flow evidence.
 - Legal / Support final acceptance for limited Technical Beta completed at repository level: customer-facing pages no longer show visible RC/provisional labels, support points to the individually provided onboarding/contact channel, and paid/broad beta formal legal review remains a later gate.
 
 ## Migration Status
@@ -63,14 +64,15 @@ Sprint開始時点はclean。Technical Beta P1 `CAPTCHA final decision` とし�
 
 ## Current Blocker
 
-- Technical Beta GO for limited, manually supported customer onboarding after final review of this closeout diff.
-- No open P0 blocker is identified for limited Technical Beta.
-- CAPTCHA final decision completed: `CAPTCHA_DEFER_WITH_GATES`. Public signup and anonymous sign-in remain OFF, Technical Beta is limited/manual, and no CAPTCHA provider or env change is required before the first customer. Remaining P1 before first real customer invite: run one Japanese Invite email delivery/link/spam check after localization. Paid/broad beta remains blocked until formal legal review, monitoring/backup posture, and formal customer terms are resolved.
+- Technical Beta GO for limited, manually supported first customer.
+- Technical Beta前P0: 0.
+- Technical Beta前P1: 0.
+- CAPTCHA final decision completed: `CAPTCHA_DEFER_WITH_GATES`. Public signup and anonymous sign-in remain OFF, Technical Beta is limited/manual, and no CAPTCHA provider or env change is required before the first customer. Invite email post-localization delivery check is CLOSED by 2026-07-13 Production human verification. Paid/broad beta remains blocked until formal legal review, monitoring/backup posture, and formal customer terms are resolved.
 
 ## Current Next Action
 
-- Review and commit Legal / Support final acceptance changes if approved.
-- Before first real customer invite: run one Japanese Invite email delivery/link/spam check, create company/workspace first, send Invite, create profile as soon as the Auth UID is available, verify tenant relationships, then contact the customer that GUGUMO is ready to use. Keep one-owner manual onboarding flow and monitor invite/reset delivery.
+- Review and commit Technical Beta Readiness Final Closeout docs if approved.
+- Before first real customer invite: create company/workspace first, send Invite, create profile as soon as the Auth UID is available, verify tenant relationships, then contact the customer that GUGUMO is ready to use. Keep one-owner manual onboarding flow and monitor invite/reset delivery. If desired, use the first customer invite as a smoke check for latest Japanese HTML CTA click-through; do not treat it as a pre-beta P1 blocker.
 
 ## Latest Implementation Note
 

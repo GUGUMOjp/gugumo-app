@@ -40,10 +40,13 @@ Production onboarding rehearsal passed on 2026-07-13:
 Invite email status:
 
 - Invite user template localization and Supabase Dashboard save are complete.
-- Post-localization Japanese Invite delivery, subject/body receipt, HTML rendering, link transition, inbox/spam placement, and deliverability are not yet verified.
+- 2026-07-13 Production human verification passed for Japanese Invite subject, Japanese body, actual delivery, Gmail inbox receipt, HTML rendering, GUGUMO logo rendering, and CTA rendering.
+- Subject: `【GUGUMO】アカウント登録のご案内`.
+- CTA: `アカウント登録を完了する`.
 - Previous English-template Invite delivery/link E2E passed during the 2026-07-13 rehearsal.
+- Historical Invite ConfirmationURL/link flow, invite link transition, and registration flow passed in earlier production E2E.
+- Latest Japanese HTML Invite CTA click-through E2E was not re-executed in this closeout. Treat it as an early-beta smoke/monitoring item, not a Technical Beta P1 blocker.
 - During that rehearsal, one first Gmail delivery landed in spam; do not treat this as a proven permanent SMTP failure.
-- Run one Japanese Invite delivery/link/spam check before the first real customer invite.
 - Monitor invite/reset delivery during early beta operation.
 
 ## Stop Conditions
@@ -142,6 +145,9 @@ For future reruns of the permanent-delete gate, use `supabase/sql_editor/2026071
 - Dashboard Site URL and Redirect URLs are configured for Production and localhost callbacks.
 - Custom SMTP uses Resend with the verified `gugumo.jp` domain.
 - Password Reset Production E2E passed on 2026-07-13: reset request, received email, production callback, password update, Home bootstrap, company/workspace/role display, and existing analysis display.
+- Japanese HTML Password Reset email human verification passed on 2026-07-13: actual delivery, email receipt, Japanese copy, HTML rendering, and GUGUMO logo rendering.
+- Subject: `【GUGUMO】パスワード再設定のご案内`.
+- CTA: `パスワードを再設定する`.
 - If password reset fails after a Vercel env change, confirm that `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` are copied from the same formal Supabase project and redeploy Production.
 - If email does not arrive, check Supabase Auth email settings manually.
 

@@ -2,7 +2,7 @@
 
 Status date: 2026-07-13
 
-Current status: Conditional GO for a limited Technical Beta.
+Current status: GO for a limited Technical Beta.
 
 This is the current readiness source of truth. Historical audit notes remain in `docs/release-readiness-audit.md` and `docs/release-readiness-audit-validation.md`.
 
@@ -14,10 +14,10 @@ Technical Beta means a limited customer onboarding with manual operator support,
 
 | Gate | Status | Evidence |
 | --- | --- | --- |
-| Repository | PASS | `main` at `72e3300`, clean and synced before this CAPTCHA review; no package/lockfile drift. |
+| Repository | PASS | `main` at `a50a82c`, clean and synced before this final closeout; no package/lockfile drift. |
 | Production deploy | PASS | `https://app.gugumo.jp` deployed and connected to the formal Supabase project. |
-| Production Auth | PASS | Password Reset Production E2E passed; Signup OFF; anonymous sign-in OFF; password minimum 8; email/password only; Resend Custom SMTP active. |
-| Invite onboarding | PASS with P1 post-localization delivery check | Production Invite user flow passed with Signup OFF. Invite user template localization and Dashboard save are done; post-localization Japanese delivery/link/spam check is not yet verified. |
+| Production Auth | PASS | Password Reset Production E2E passed; Japanese HTML Password Reset delivery/rendering passed; Signup OFF; anonymous sign-in OFF; password minimum 8; email/password only; Resend Custom SMTP active. |
+| Invite onboarding | PASS | Production Invite user flow passed with Signup OFF. Japanese HTML Invite delivery/rendering passed. Historical Invite ConfirmationURL/link flow E2E passed; latest Japanese HTML CTA click-through E2E was not re-executed in this closeout. |
 | Tenant isolation | PASS | Missing profile stopped safely; current customer-facing copy treats it as pending provisioning. Linked owner saw only the rehearsal tenant; existing Demo tenant CSV history was not visible. |
 | CSV lifecycle | PASS | Upload, save, Home analysis reflection, exclude, restore, duplicate warning, and cancel duplicate save passed in Production rehearsal. |
 | Cleanup | PASS by human Dashboard operation | Rehearsal `csv_uploads`, `profiles`, `workspaces`, `companies`, and Auth user were manually removed on 2026-07-13. Repository did not query the DB. |
@@ -71,17 +71,32 @@ This cleanup record is based on human Dashboard operation on 2026-07-13. The rep
 
 Observed:
 
-- Invite email worked functionally.
+- 2026-07-13 Production human verification: Japanese HTML Invite actual delivery PASS.
+- 2026-07-13 Production human verification: Gmail inbox receipt PASS.
+- 2026-07-13 Production human verification: Japanese subject PASS: `【GUGUMO】アカウント登録のご案内`.
+- 2026-07-13 Production human verification: Japanese body PASS.
+- 2026-07-13 Production human verification: HTML rendering PASS.
+- 2026-07-13 Production human verification: GUGUMO logo rendering PASS.
+- 2026-07-13 Production human verification: CTA rendering PASS: `アカウント登録を完了する`.
+- 2026-07-13 Production human verification: shared email brand style PASS: black GUGUMO logo, footer GUGUMO logo, white card, light gray background, green accent, green CTA button, table-based layout, inline CSS, Gmail rendering.
+- Formal logo URL used by the email template: `https://app.gugumo.jp/gugumo-logo.png`.
+- Email catchphrase: `──ぐぐっと、もっと。`.
+- Invite email post-localization delivery check is CLOSED.
+
+Historical evidence:
+
 - During the 2026-07-13 rehearsal, the invite template was still the Supabase default English template.
 - During that rehearsal, the first Gmail delivery landed in spam once; after marking it not spam, the rehearsal continued.
-- Password Reset email through the same Custom SMTP path was received successfully.
-- Current operational status: Invite user template localization and Supabase Dashboard save are complete.
-- Post-localization Japanese Invite delivery, subject/body receipt, HTML rendering, ConfirmationURL transition, inbox/spam placement, and deliverability are not yet verified.
+- Historical Invite ConfirmationURL/link flow, invite link transition, and registration flow passed in earlier production E2E.
+
+Not re-executed in this closeout:
+
+- Latest Japanese HTML Invite CTA click-through end-to-end flow was not re-executed in this closeout. The template preserves the ConfirmationURL design, but this specific latest-HTML click-through is treated as an early-beta smoke/monitoring item, not a Technical Beta P1 blocker.
 
 Interpretation:
 
-- Do not classify this as a proven permanent deliverability failure.
-- Treat the post-localization delivery check as an operational P1 gate before the first real customer invite.
+- Do not rewrite historical English-template E2E evidence as latest Japanese HTML click-through evidence.
+- Do not classify the earlier one-time Gmail spam placement as a proven permanent deliverability failure.
 - Keep monitoring invite delivery during early beta operation.
 - Keep Invite email copy consistent with the pending provisioning UX: the operator should create and verify the profile, then tell the customer when GUGUMO is ready to use.
 - SPF/DKIM/DMARC and mailbox reputation cannot be verified from the repository; external DNS/email settings must be checked outside Codex.
@@ -89,24 +104,32 @@ Interpretation:
 Beta blocker:
 
 - Not a P0 blocker for a very limited, manually supported Technical Beta.
-- P1 before the first real customer invite: send one Japanese Invite test and verify subject/body, link transition, and inbox/spam placement.
+- Invite email post-localization delivery check is CLOSED.
+
+## Password Reset Email Record
+
+Observed:
+
+- 2026-07-13 Production human verification: Japanese Password Reset email actual delivery PASS.
+- 2026-07-13 Production human verification: email receipt PASS.
+- 2026-07-13 Production human verification: Japanese copy PASS.
+- 2026-07-13 Production human verification: HTML rendering PASS.
+- 2026-07-13 Production human verification: GUGUMO logo rendering PASS.
+- Subject: `【GUGUMO】パスワード再設定のご案内`.
+- CTA: `パスワードを再設定する`.
+
+Relationship to existing E2E:
+
+- Existing Password Reset Production E2E remains the flow evidence: reset request, received email, production callback, password update, Home bootstrap, company/workspace/role display, and existing analysis display passed.
+- The latest human verification adds the Japanese HTML email rendering and brand evidence.
 
 ## P0: Must Finish Before Technical Beta
 
 No open P0 items are currently identified from repository state and known Production E2E evidence.
 
-## P1: Strongly Recommended Before First Customer Invite
+## P1: Must Finish Before Technical Beta
 
-### Invite email post-localization delivery check
-
-- Current state: Invite template localization and Dashboard save are done; post-localization Japanese delivery/link/spam check is not yet verified.
-- Why remaining: The previous live Invite E2E passed while the template was still English. The Japanese subject/body and link behavior have not been re-sent after localization.
-- Risk: Customer confusion, missed invite, or broken localized email rendering.
-- Response: Send one Japanese Invite test before the first real customer invite and verify subject/body, HTML display, ConfirmationURL transition, and inbox/spam placement.
-- Code change: No.
-- Dashboard/DNS/ops change: Supabase Dashboard Send invitation; DNS/email-provider review only if delivery issues recur.
-- Estimate: S.
-- Blocks beta: No for internal/manual readiness; required as an operational gate before the first real customer invite.
+No open P1 items remain for the limited, manually supported Technical Beta scope.
 
 ## Closed / Deferred Security Decisions
 
@@ -158,9 +181,9 @@ No open P0 items are currently identified from repository state and known Produc
 
 ### Email deliverability monitoring
 
-- Current state: One invite spam incident was observed during the English-template rehearsal; reset email passed. The Japanese post-localization Invite delivery check remains P1 before the first real customer invite.
+- Current state: One invite spam incident was observed during the English-template rehearsal; reset email passed; Japanese HTML Invite delivery/rendering passed; Japanese HTML Password Reset delivery/rendering passed.
 - Risk: Future invites may be missed.
-- Response: Monitor invite/reset delivery and check SPF/DKIM/DMARC/reputation externally.
+- Response: Monitor invite/reset delivery, observe latest Japanese HTML Invite CTA click-through during early beta/customer invite flow, and check SPF/DKIM/DMARC/reputation externally if issues recur.
 - Code change: No.
 - Dashboard/DNS/ops change: DNS/email provider review.
 - Estimate: S-M.
@@ -218,7 +241,7 @@ Conditions:
 - Keep one initial owner per customer.
 - Confirm project and env before any customer operation.
 - Create company/workspace before invitation, create the profile as soon as the Auth user UUID is available, and contact the customer after integrity verification.
-- Before the first real customer invite, run one Japanese Invite delivery/link/spam check after localization.
+- Treat latest Japanese HTML Invite CTA click-through as an early-beta smoke/monitoring item, not a pre-beta P1 blocker.
 - Keep CAPTCHA deferred with gates: public signup and anonymous sign-in OFF, and manually watch login/reset abuse signals during early beta.
 - Keep invite/reset delivery under observation during early beta.
 - Keep legal/support/customer expectations explicit in onboarding and individual agreement terms.
