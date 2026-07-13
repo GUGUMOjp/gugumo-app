@@ -37,11 +37,14 @@ Production onboarding rehearsal passed on 2026-07-13:
 - SUUMO CSV upload, save, Home analysis reflection, exclude, restore, duplicate warning, and duplicate cancel passed.
 - Rehearsal tenant rows and Auth user were manually cleaned up by human Dashboard operation.
 
-Invite email follow-up:
+Invite email status:
 
-- Invite template is still default English.
-- One first Gmail delivery landed in spam; do not treat this as a proven permanent SMTP failure.
-- Localize the Invite template and check delivery before first real customer invite when practical.
+- Invite user template localization and Supabase Dashboard save are complete.
+- Post-localization Japanese Invite delivery, subject/body receipt, HTML rendering, link transition, inbox/spam placement, and deliverability are not yet verified.
+- Previous English-template Invite delivery/link E2E passed during the 2026-07-13 rehearsal.
+- During that rehearsal, one first Gmail delivery landed in spam; do not treat this as a proven permanent SMTP failure.
+- Run one Japanese Invite delivery/link/spam check before the first real customer invite.
+- Monitor invite/reset delivery during early beta operation.
 
 ## Stop Conditions
 

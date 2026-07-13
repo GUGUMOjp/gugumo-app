@@ -23,7 +23,7 @@ const operatorName = "GUGUMO 代表 田中 純一";
 export const legalPages = {
   terms: {
     title: "利用規約",
-    description: "GUGUMOを安心してご利用いただくための、サービス利用条件に関するRC用の暫定文面です。",
+    description: "GUGUMOを安心してご利用いただくための、サービス利用条件に関する案内です。",
     sections: [
       {
         title: "サービス利用",
@@ -47,7 +47,7 @@ export const legalPages = {
   },
   privacy: {
     title: "プライバシーポリシー",
-    description: "GUGUMOで扱う個人情報・法人情報の取扱い方針に関するRC用の暫定文面です。",
+    description: "GUGUMOで扱う個人情報・法人情報の取扱い方針に関する案内です。",
     sections: [
       {
         title: "取得する情報",
@@ -74,7 +74,7 @@ export const legalPages = {
   },
   dataPolicy: {
     title: "データ取扱方針",
-    description: "お客様が読み込むCSVデータと分析結果の取扱いに関するRC用の暫定文面です。",
+    description: "お客様が読み込むCSVデータと分析結果の取扱いに関する案内です。",
     sections: [
       {
         title: "対象データ",
@@ -94,19 +94,21 @@ export const legalPages = {
         title: "保管と削除",
         body: [
           "データの保管期間、削除方法、バックアップの扱いは、契約時または運用開始時に個別に案内します。",
-          "検証環境で取り扱うデータは、営業デモや初期確認に必要な範囲に限定します。",
+          "アップロード履歴の除外、復元、完全削除は、権限のある利用者またはGUGUMO担当者の支援により行います。",
+          "営業デモや初期確認で取り扱うデータは、必要な範囲に限定します。",
         ],
       },
     ],
   },
   support: {
     title: "サポート・お問い合わせ",
-    description: "GUGUMOの導入相談、操作相談、契約に関するお問い合わせ窓口のRC用案内です。",
+    description: "GUGUMOの導入相談、操作相談、契約に関するお問い合わせ窓口の案内です。",
     sections: [
       {
         title: "お問い合わせ",
         body: [
           "導入前のご相談、初期設定、操作方法、契約内容、請求に関するお問い合わせを受け付けます。",
+          "初期導入期間は、導入時または契約時に個別に案内した担当者連絡先をご利用ください。",
           "お問い合わせ時は、会社名、担当者名、確認したい内容をお知らせください。",
         ],
       },
@@ -139,7 +141,7 @@ export const legalPages = {
   },
   legal: {
     title: "特定商取引法に基づく表記",
-    description: "GUGUMOの提供者情報と取引条件に関するRC用の暫定表記です。",
+    description: "GUGUMOの提供者情報と取引条件に関する案内です。",
     sections: [
       {
         title: "販売事業者",
@@ -166,13 +168,13 @@ export const legalPages = {
   },
   cookie: {
     title: "Cookie / 外部送信ポリシー",
-    description: "Cookie、外部送信、計測ツール導入時の確認事項を整理するための仮文面です。",
+    description: "Cookie、外部送信、計測ツール導入時の確認事項に関する案内です。",
     sections: [
       {
         title: "Cookieの利用",
         body: [
           "認証、セッション管理、セキュリティ維持、利用状況把握のためにCookie等を利用する場合があります。",
-          "現時点では、このページは将来の外部送信管理のための骨組みです。",
+          "外部送信を伴う機能を導入する場合は、送信先、送信内容、利用目的を整理して案内します。",
         ],
       },
       {
@@ -185,19 +187,19 @@ export const legalPages = {
       {
         title: "利用者の選択",
         body: [
-          "Cookieの設定や拒否方法は、正式公開前に利用ブラウザの仕様と実装内容に合わせて記載します。",
+          "Cookieの設定や拒否方法は、利用ブラウザの仕様と実装内容に合わせて案内します。",
         ],
       },
     ],
   },
   security: {
     title: "セキュリティ・禁止事項",
-    description: "GUGUMOの安全利用、データ分離、禁止行為を整理するための仮文面です。",
+    description: "GUGUMOの安全利用、データ分離、禁止行為に関する案内です。",
     sections: [
       {
         title: "セキュリティ方針",
         body: [
-          "法人ごとのデータ分離、認証、権限管理、監査可能性を重視して設計します。",
+          "法人ごとのデータ分離、認証、権限管理、必要に応じた確認を重視して設計します。",
           "他社データへの不正アクセスを防ぐため、データ分離と権限管理を段階的に整備します。",
         ],
       },
@@ -208,7 +210,7 @@ export const legalPages = {
       {
         title: "インシデント対応",
         body: [
-          "情報漏えい、不正アクセス、誤設定などが疑われる場合の連絡・調査・是正フローは、正式運用前に定義します。",
+          "情報漏えい、不正アクセス、誤設定などが疑われる場合は、導入時に案内した担当者連絡先を通じて確認し、必要な調査と是正を行います。",
         ],
       },
     ],
@@ -223,7 +225,7 @@ export function LegalPage({ content }: { content: LegalPageContent }) {
         <h1 className="mt-3 text-3xl font-bold">{content.title}</h1>
         <p className="mt-4 text-base leading-7 text-slate-700">{content.description}</p>
         <p className="mt-4 rounded border border-amber-300 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-900">
-          このページはRC期間中の暫定案内です。正式な契約条件は、個別契約または申込時に提示する内容を優先します。
+          正式な契約条件、料金、提供範囲、解約条件は、個別契約または申込時に提示する内容を優先します。
         </p>
 
         <div className="mt-10 space-y-8">

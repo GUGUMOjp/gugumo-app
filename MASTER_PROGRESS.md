@@ -10,11 +10,11 @@ Beta Release Gate: CSV guardrails, sidebar UX, onboarding and authorization veri
 
 ## Latest Completed Commit
 
-b1cc75a Document customer onboarding rehearsal procedure
+0ed1253 Close onboarding rehearsal and refine pending account UX
 
 ## Current Uncommitted Changes
 
-Sprint開始時点はclean。Customer Onboarding Rehearsal Closeoutとして、2026-07-13 Production onboarding rehearsal結果とTechnical Beta final readinessをdocsへ反映中。
+Sprint開始時点はclean。Legal / Support final acceptanceとして、Production-facing法務・サポート表示とTechnical Beta readiness docsを監査・最小修正中。
 
 ## Build Status
 
@@ -41,7 +41,8 @@ Sprint開始時点はclean。Customer Onboarding Rehearsal Closeoutとして、2
 - CSV upload history now distinguishes exact duplicate content from same-name files before permanent-delete review: exact duplicate uses workspace + non-empty checksum, same-name uses file_name with different/unknown content, checksum NULL is not treated as exact content match, and no DB schema/RLS change is introduced.
 - Customer Onboarding Rehearsal passed on 2026-07-13 in Production. Signup OFF plus Send invitation worked; missing profile state stopped safely; linked owner profile bootstrapped the rehearsal tenant; existing Demo CSV history was not visible; SUUMO CSV upload/save/Home reflection/exclude/restore/duplicate warning/cancel passed; rehearsal tenant rows and Auth user were manually cleaned up by human Dashboard operation.
 - Customer-facing pending provisioning UX now uses `GUGUMOアカウントを準備しています` for profile-not-yet-created state. Unexpected profile/company/workspace configuration errors remain a separate safe error path.
-- Invite email follow-up remains: template is default English and one first Gmail delivery landed in spam once. Reset Password email through Custom SMTP passed; deliverability requires external DNS/email-provider review, not repository inference.
+- Invite user template localization and Supabase Dashboard save are complete. Post-localization Japanese Invite delivery/link/spam check is not yet verified; the previous English-template Invite delivery/link E2E passed, with one first Gmail spam placement observed as a historical fact. Reset Password email through Custom SMTP passed.
+- Legal / Support final acceptance for limited Technical Beta completed at repository level: customer-facing pages no longer show visible RC/provisional labels, support points to the individually provided onboarding/contact channel, and paid/broad beta formal legal review remains a later gate.
 
 ## Migration Status
 
@@ -64,12 +65,12 @@ Sprint開始時点はclean。Customer Onboarding Rehearsal Closeoutとして、2
 
 - Technical Beta GO for limited, manually supported customer onboarding after final review of this closeout diff.
 - No open P0 blocker is identified for limited Technical Beta.
-- Paid/broad beta remains blocked until legal/support acceptance, Invite email localization/deliverability follow-up, monitoring/backup posture, and formal customer terms are resolved.
+- Remaining P1 before first real customer invite: run one Japanese Invite email delivery/link/spam check after localization and make the final CAPTCHA decision. Paid/broad beta remains blocked until formal legal review, monitoring/backup posture, and formal customer terms are resolved.
 
 ## Current Next Action
 
-- Review and commit Customer Onboarding Rehearsal Closeout docs.
-- Before first real customer invite: create company/workspace first, send Invite, create profile as soon as the Auth UID is available, verify tenant relationships, then contact the customer that GUGUMO is ready to use. Localize/check Invite email when practical, confirm legal/support acceptance, and keep one-owner manual onboarding flow.
+- Review and commit Legal / Support final acceptance changes if approved.
+- Before first real customer invite: run one Japanese Invite email delivery/link/spam check, create company/workspace first, send Invite, create profile as soon as the Auth UID is available, verify tenant relationships, then contact the customer that GUGUMO is ready to use. Keep one-owner manual onboarding flow and monitor invite/reset delivery.
 
 ## Latest Implementation Note
 

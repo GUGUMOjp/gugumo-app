@@ -14,15 +14,15 @@ Technical Beta means a limited customer onboarding with manual operator support,
 
 | Gate | Status | Evidence |
 | --- | --- | --- |
-| Repository | PASS | `main` at `b1cc75a`, clean and synced before this closeout; no package/lockfile drift. |
+| Repository | PASS | `main` at `0ed1253`, clean and synced before this legal/support review; no package/lockfile drift. |
 | Production deploy | PASS | `https://app.gugumo.jp` deployed and connected to the formal Supabase project. |
 | Production Auth | PASS | Password Reset Production E2E passed; Signup OFF; anonymous sign-in OFF; password minimum 8; email/password only; Resend Custom SMTP active. |
-| Invite onboarding | PASS with P1 email-quality follow-up | Production Invite user flow passed with Signup OFF. Invite template remains default English and one Gmail delivery landed in spam once. |
+| Invite onboarding | PASS with P1 post-localization delivery check | Production Invite user flow passed with Signup OFF. Invite user template localization and Dashboard save are done; post-localization Japanese delivery/link/spam check is not yet verified. |
 | Tenant isolation | PASS | Missing profile stopped safely; current customer-facing copy treats it as pending provisioning. Linked owner saw only the rehearsal tenant; existing Demo tenant CSV history was not visible. |
 | CSV lifecycle | PASS | Upload, save, Home analysis reflection, exclude, restore, duplicate warning, and cancel duplicate save passed in Production rehearsal. |
 | Cleanup | PASS by human Dashboard operation | Rehearsal `csv_uploads`, `profiles`, `workspaces`, `companies`, and Auth user were manually removed on 2026-07-13. Repository did not query the DB. |
 | Security | PASS for Technical Beta | RLS/JWT transport, anonymous REST denial, role/tenant E2E, DELETE Gate, and token transport audits passed. |
-| Legal/customer-facing | Conditional | Current legal pages are beta-level/provisional; acceptable only if contract/onboarding terms cover the beta customer. |
+| Legal/customer-facing | PASS for limited Technical Beta | Customer-facing legal/support pages avoid visible provisional labels and defer formal contract, pricing, contact, retention, and cancellation details to individual agreement/onboarding terms. |
 
 ## Production Onboarding Rehearsal Record
 
@@ -66,26 +66,29 @@ Cleanup record:
 
 This cleanup record is based on human Dashboard operation on 2026-07-13. The repository did not run SQL or query the DB to re-verify cleanup.
 
-## Invite Email Follow-Up
+## Invite Email Record
 
 Observed:
 
 - Invite email worked functionally.
-- Invite email template was still the Supabase default English template.
-- The first Gmail delivery landed in spam once; after marking it not spam, the rehearsal continued.
+- During the 2026-07-13 rehearsal, the invite template was still the Supabase default English template.
+- During that rehearsal, the first Gmail delivery landed in spam once; after marking it not spam, the rehearsal continued.
 - Password Reset email through the same Custom SMTP path was received successfully.
+- Current operational status: Invite user template localization and Supabase Dashboard save are complete.
+- Post-localization Japanese Invite delivery, subject/body receipt, HTML rendering, ConfirmationURL transition, inbox/spam placement, and deliverability are not yet verified.
 
 Interpretation:
 
 - Do not classify this as a proven permanent deliverability failure.
-- Treat Invite email copy as a customer-facing quality issue.
+- Treat the post-localization delivery check as an operational P1 gate before the first real customer invite.
+- Keep monitoring invite delivery during early beta operation.
 - Keep Invite email copy consistent with the pending provisioning UX: the operator should create and verify the profile, then tell the customer when GUGUMO is ready to use.
 - SPF/DKIM/DMARC and mailbox reputation cannot be verified from the repository; external DNS/email settings must be checked outside Codex.
 
 Beta blocker:
 
 - Not a P0 blocker for a very limited, manually supported Technical Beta.
-- P1 before inviting a real customer: localize Invite email template and perform one live invite delivery check to the customer domain or test mailbox.
+- P1 before the first real customer invite: send one Japanese Invite test and verify subject/body, link transition, and inbox/spam placement.
 
 ## P0: Must Finish Before Technical Beta
 
@@ -93,27 +96,16 @@ No open P0 items are currently identified from repository state and known Produc
 
 ## P1: Strongly Recommended Before First Customer Invite
 
-### Invite email template and deliverability check
+### Invite email post-localization delivery check
 
-- Current state: Invite flow works, but template is default English and one Gmail delivery went to spam once.
-- Why remaining: Password Reset template was localized; Invite template still needs customer-facing polish.
-- Risk: Customer confusion or missed invite.
-- Response: Localize the Supabase Invite email template, preserve link variables, and run one delivery check.
+- Current state: Invite template localization and Dashboard save are done; post-localization Japanese delivery/link/spam check is not yet verified.
+- Why remaining: The previous live Invite E2E passed while the template was still English. The Japanese subject/body and link behavior have not been re-sent after localization.
+- Risk: Customer confusion, missed invite, or broken localized email rendering.
+- Response: Send one Japanese Invite test before the first real customer invite and verify subject/body, HTML display, ConfirmationURL transition, and inbox/spam placement.
 - Code change: No.
-- Dashboard/DNS/ops change: Dashboard email template change; DNS/mailbox deliverability check may be needed.
+- Dashboard/DNS/ops change: Supabase Dashboard Send invitation; DNS/email-provider review only if delivery issues recur.
 - Estimate: S.
-- Blocks beta: No for internal/manual rehearsal; recommended before first external invite.
-
-### Legal/support final acceptance
-
-- Current state: Legal pages and support policy exist but remain beta/provisional in repository inventory.
-- Why remaining: Contract and legal wording require business/legal decision.
-- Risk: Customer expectation mismatch for paid use, cancellation, data retention, and support.
-- Response: Confirm beta contract/onboarding terms cover current provisional pages.
-- Code change: Possibly copy only.
-- Dashboard/DNS/ops change: No.
-- Estimate: M.
-- Blocks beta: Blocks paid/broad beta; limited technical beta can proceed with explicit terms.
+- Blocks beta: No for internal/manual readiness; required as an operational gate before the first real customer invite.
 
 ### CAPTCHA final decision
 
@@ -127,6 +119,17 @@ No open P0 items are currently identified from repository state and known Produc
 - Blocks beta: No for limited manual beta.
 
 ## P2: Address During Technical Beta
+
+### Legal/support formalization for paid or broader beta
+
+- Current state: Production-facing pages are accepted for limited, manually supported Technical Beta when paired with individual agreement/onboarding terms.
+- Why remaining: Formal paid/broad beta still needs final legal review for operator identity, contact disclosure, cancellation, retention/deletion, and support commitments.
+- Risk: Customer expectation mismatch as customer count or paid scope grows.
+- Response: Finalize terms, privacy, data handling, support policy, and 特商法 applicability before paid/broad beta.
+- Code change: Possibly copy only.
+- Dashboard/DNS/ops change: No.
+- Estimate: M-L.
+- Blocks beta: No for limited manual beta; yes before paid/broad beta.
 
 ### Read-only onboarding verification SQL
 
@@ -150,7 +153,7 @@ No open P0 items are currently identified from repository state and known Produc
 
 ### Email deliverability monitoring
 
-- Current state: One invite spam incident observed; reset email passed.
+- Current state: One invite spam incident was observed during the English-template rehearsal; reset email passed. The Japanese post-localization Invite delivery check remains P1 before the first real customer invite.
 - Risk: Future invites may be missed.
 - Response: Monitor invite/reset delivery and check SPF/DKIM/DMARC/reputation externally.
 - Code change: No.
@@ -200,6 +203,7 @@ Conditions:
 - Keep one initial owner per customer.
 - Confirm project and env before any customer operation.
 - Create company/workspace before invitation, create the profile as soon as the Auth user UUID is available, and contact the customer after integrity verification.
-- Localize/check Invite email before the first real customer invite when practical.
-- Keep legal/support/customer expectations explicit in onboarding.
+- Before the first real customer invite, run one Japanese Invite delivery/link/spam check after localization.
+- Keep invite/reset delivery under observation during early beta.
+- Keep legal/support/customer expectations explicit in onboarding and individual agreement terms.
 - Do not delete the named leftover test Auth account or Demo tenant until DB relationships are verified.

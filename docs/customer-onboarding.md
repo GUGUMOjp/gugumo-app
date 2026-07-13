@@ -39,7 +39,7 @@ Target Supabase project: GUGUMOjp's Project / `annvqxnupddnozyghqdw`.
 - Password Reset Production E2E passed on 2026-07-13 for `https://app.gugumo.jp` after Vercel Production was confirmed to use the formal Supabase project.
 - Before customer onboarding, confirm Vercel Production `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` are copied from the same formal Supabase project. Do not store env values in docs.
 - Customer Onboarding Rehearsal passed on 2026-07-13 using [Customer Onboarding Rehearsal](./onboarding-rehearsal.md).
-- Technical beta readiness still depends on legal/support acceptance and careful first-customer operation. Server Action arguments must remain free of raw bearer tokens.
+- Technical beta readiness still depends on careful first-customer operation. Legal / Support final acceptance is complete for limited Technical Beta, while paid/broad beta still requires formal legal review. Server Action arguments must remain free of raw bearer tokens.
 - Invite user is the primary beta flow. `Create user` remains an unrehearsed fallback.
 - If a customer opens the invite before profile linking is complete, the app shows `GUGUMOアカウントを準備しています` and does not show another tenant.
 
@@ -53,12 +53,15 @@ Target Supabase project: GUGUMOjp's Project / `annvqxnupddnozyghqdw`.
 - Choose whether to cancel or continue when the app reports an exact duplicate CSV checksum.
 - Reload the screen if CSV save succeeded but upload history refresh failed.
 
-## Known Invite Email Follow-Up
+## Invite Email Status
 
 - Production Invite user flow passed with Signup OFF.
-- The current Invite email template is still the Supabase default English template.
-- One first Gmail delivery landed in spam during rehearsal; after marking it not spam, the rehearsal continued.
-- Localize the Invite email template and check delivery before the first real customer invite when practical.
+- Invite user template localization and Supabase Dashboard save are complete.
+- Post-localization Japanese Invite delivery, subject/body receipt, HTML rendering, link transition, inbox/spam placement, and deliverability are not yet verified.
+- Previous English-template Invite delivery/link E2E passed during the 2026-07-13 rehearsal.
+- During that rehearsal, one first Gmail delivery landed in spam; after marking it not spam, the rehearsal continued.
+- Run one Japanese Invite delivery/link/spam check before the first real customer invite.
+- Monitor invite/reset delivery during early beta operation.
 
 ## Do Not Promise Yet
 
@@ -66,7 +69,7 @@ Target Supabase project: GUGUMOjp's Project / `annvqxnupddnozyghqdw`.
 - Customer-side user management.
 - Automatic SUUMO CSV acquisition.
 - CSV conversion/generation.
-- Legal text finalization before the external paid beta approval is complete.
+- Paid/broad beta legal finalization before expanding beyond the limited manually supported Technical Beta.
 - Support for quoted newline fields inside CSV cells without prior parser review.
 
 ## Stop Conditions

@@ -39,4 +39,4 @@ Status: CURRENT checklist. See `docs/technical-beta-readiness.md` for the 2026-0
 - [ ] 主要画面に顧客向けではない内部用語が残っていない。
 - [ ] UX改善や自然な日本語化を理由に、業務仕様ラベルを無断変更していない。
 - [x] Release Candidateで `npm run lint` と `npm run build` が成功する。
-- [x] 既知の制限事項が文書化され、β顧客に提示して問題ない状態になっている。Invite email英語/迷惑メール1回、法務文面、backup/monitoringはP1-P3で継続。
+- [x] 既知の制限事項が文書化され、β顧客に提示して問題ない状態になっている。Legal / Support final acceptanceはlimited Technical Beta向けに完了。日本語Inviteメール実送信確認とCAPTCHA final decisionはP1、backup/monitoringと正式商用法務はP2-P3で継続。

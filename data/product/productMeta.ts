@@ -25,4 +25,8 @@ export const LEGAL_LINKS = [
     label: "特商法表記",
     href: "/legal",
   },
+  {
+    label: "セキュリティ",
+    href: "/security",
+  },
 ] as const;

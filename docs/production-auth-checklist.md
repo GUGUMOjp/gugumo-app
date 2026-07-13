@@ -73,8 +73,8 @@ Remaining manual checks:
 - Expired or reused reset link shows a safe failure and allows returning to login.
 - Wrong email does not reveal whether an account exists.
 - Logout before opening reset callback does not expose tenant data.
-- Invite email template localization.
-- Invite deliverability check after template change.
+- Japanese Invite email post-localization delivery/link/spam check before the first real customer invite.
+- Continue monitoring invite/reset delivery during early beta operation.
 
 Production Invite user rehearsal passed on 2026-07-13:
 
@@ -111,9 +111,7 @@ For real customer onboarding, create company/workspace before invitation, create
 ## Remaining Dashboard TODO
 
 - Confirm Dashboard Create user behavior only as a fallback path.
-- Localize Invite email template.
-- Check Invite email deliverability after localization.
-- Align Invite email wording with the pending provisioning screen and manual ready-to-use contact.
+- Run one Japanese Invite email delivery/link/spam check after template localization and before the first real customer invite.
 - Make final CAPTCHA decision.
 
 ## Password Reset Email Template Draft
