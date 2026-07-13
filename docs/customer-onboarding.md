@@ -10,18 +10,19 @@ Target Supabase project: GUGUMOjp's Project / `annvqxnupddnozyghqdw`.
 4. GUGUMO creates company.
 5. GUGUMO creates workspace under that company.
 6. GUGUMO invites the owner user from Supabase Dashboard. Use `Create user` only as a reviewed fallback.
-7. GUGUMO confirms email confirmation or invite status.
-8. GUGUMO creates profile linking `profiles.id` to the Auth user UUID.
+7. GUGUMO confirms the Auth user UUID after the invitation is created.
+8. GUGUMO creates profile linking `profiles.id` to the Auth user UUID before the customer starts using the app whenever possible.
 9. GUGUMO sets `company_id`, `workspace_id`, and `role`.
 10. GUGUMO verifies company/workspace/profile consistency.
-11. Customer sets password from invite email or reviewed Password Reset fallback.
-12. Customer logs in.
-13. GUGUMO confirms Home bootstrap shows the expected company/workspace/role.
-14. Customer uploads SUUMO CSV.
-15. Customer reviews first dashboard.
-16. Customer logs out and logs in again.
-17. GUGUMO runs anonymous REST regression.
-18. Customer starts recurring upload operation.
+11. GUGUMO tells the customer that GUGUMO is ready to use.
+12. Customer sets password from invite email or reviewed Password Reset fallback.
+13. Customer logs in.
+14. GUGUMO confirms Home bootstrap shows the expected company/workspace/role.
+15. Customer uploads SUUMO CSV.
+16. Customer reviews first dashboard.
+17. Customer logs out and logs in again.
+18. GUGUMO runs anonymous REST regression.
+19. Customer starts recurring upload operation.
 
 ## Manual Beta Operations
 
@@ -37,18 +38,27 @@ Target Supabase project: GUGUMOjp's Project / `annvqxnupddnozyghqdw`.
 - Role/Tenant Manual E2E passed on 2026-07-12. Re-run it before beta only if RLS policies, grants, tenant bootstrap, upload actions, or role handling change.
 - Password Reset Production E2E passed on 2026-07-13 for `https://app.gugumo.jp` after Vercel Production was confirmed to use the formal Supabase project.
 - Before customer onboarding, confirm Vercel Production `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` are copied from the same formal Supabase project. Do not store env values in docs.
-- Use [Customer Onboarding Rehearsal](./onboarding-rehearsal.md) before creating the first real customer tenant.
-- Technical beta readiness still depends on legal/support and onboarding rehearsal. Server Action arguments must remain free of raw bearer tokens.
+- Customer Onboarding Rehearsal passed on 2026-07-13 using [Customer Onboarding Rehearsal](./onboarding-rehearsal.md).
+- Technical beta readiness still depends on legal/support acceptance and careful first-customer operation. Server Action arguments must remain free of raw bearer tokens.
+- Invite user is the primary beta flow. `Create user` remains an unrehearsed fallback.
+- If a customer opens the invite before profile linking is complete, the app shows `GUGUMOアカウントを準備しています` and does not show another tenant.
 
 ## Customer Tasks
 
 - Accept invite.
 - Set password.
 - Upload SUUMO CSV.
-- Contact support if account setup incomplete appears.
+- Wait for GUGUMO's ready-to-use contact if the app says `GUGUMOアカウントを準備しています`.
 - Retry only failed CSV files when multi-file upload partially succeeds.
 - Choose whether to cancel or continue when the app reports an exact duplicate CSV checksum.
 - Reload the screen if CSV save succeeded but upload history refresh failed.
+
+## Known Invite Email Follow-Up
+
+- Production Invite user flow passed with Signup OFF.
+- The current Invite email template is still the Supabase default English template.
+- One first Gmail delivery landed in spam during rehearsal; after marking it not spam, the rehearsal continued.
+- Localize the Invite email template and check delivery before the first real customer invite when practical.
 
 ## Do Not Promise Yet
 

@@ -166,13 +166,11 @@ const PAGE_DESCRIPTIONS = {
   settings: "契約枠・所属区・オプション単価を調整します。",
 } satisfies Record<PageId, string>;
 
-const ACCOUNT_SETUP_ERROR_CODES = new Set<WorkspaceContextErrorCode>([
+const ACCOUNT_SETUP_PENDING_CODES = new Set<WorkspaceContextErrorCode>([
   "PROFILE_NOT_FOUND",
-  "COMPANY_NOT_FOUND",
-  "WORKSPACE_NOT_FOUND",
 ]);
 
-const ACCOUNT_SETUP_INCOMPLETE_MESSAGE = "会社・店舗情報の紐付けが完了していません。";
+const ACCOUNT_SETUP_PENDING_MESSAGE = "ご登録を受け付けました。現在、GUGUMOの利用環境を設定しています。設定が完了しましたら、担当者よりご連絡します。恐れ入りますが、しばらくお待ちください。";
 const ACCOUNT_CONTEXT_UNAVAILABLE_MESSAGE = "アカウント情報を取得できませんでした。再読み込みしても解消しない場合はサポートへお問い合わせください。";
 const MAX_SINGLE_CSV_FILE_BYTES = 6 * 1024 * 1024;
 const MAX_TOTAL_CSV_FILE_BYTES = 8 * 1024 * 1024;
@@ -771,23 +769,38 @@ function AccountSetupIncompleteScreen({
   message: string;
   onLogout: () => Promise<void> | void;
 }) {
-  const isAccountSetupIncomplete = message === ACCOUNT_SETUP_INCOMPLETE_MESSAGE;
+  const isAccountSetupPending = message === ACCOUNT_SETUP_PENDING_MESSAGE;
 
   return (
     <main className="login-page">
       <section className="login-form-card account-setup-card">
         <div>
           <Image className="login-brand-logo compact" src="/gugumo-logo.png" alt="GUGUMO" width={360} height={90} priority />
-          <div className="login-form-title">{isAccountSetupIncomplete ? "アカウント設定未完了" : "アカウント情報を取得できません"}</div>
-          <div className="login-form-sub">{message}</div>
+          <div className="login-form-title">{isAccountSetupPending ? "GUGUMOアカウントを準備しています" : "アカウント情報を取得できません"}</div>
+          <div className="login-form-sub">
+            {isAccountSetupPending ? (
+              <>
+                ご登録を受け付けました。
+                <br />
+                現在、GUGUMOの利用環境を設定しています。
+                <br />
+                <br />
+                設定が完了しましたら、担当者よりご連絡します。
+                <br />
+                恐れ入りますが、しばらくお待ちください。
+              </>
+            ) : (
+              message
+            )}
+          </div>
         </div>
-        <div className="login-support-message">
-          {isAccountSetupIncomplete
-            ? "ご利用開始には会社・店舗情報の紐付けが必要です。お手数ですが、サポートへお問い合わせください。"
-            : "再読み込みしても解消しない場合は、サポートへお問い合わせください。"}
-        </div>
+        {!isAccountSetupPending ? (
+          <div className="login-support-message">
+            再読み込みしても解消しない場合は、サポートへお問い合わせください。
+          </div>
+        ) : null}
         <div className="account-setup-actions">
-          <a className="topbar-btn" href="/support">サポートを見る</a>
+          {!isAccountSetupPending ? <a className="topbar-btn" href="/support">サポートを見る</a> : null}
           <button type="button" className="topbar-btn primary" onClick={onLogout}>ログアウト</button>
         </div>
       </section>
@@ -1109,8 +1122,8 @@ export default function Page() {
           setCurrentRole(null);
           setCurrentWorkspaceContext(null);
           setAccountSetupMessage(
-            !result.ok && ACCOUNT_SETUP_ERROR_CODES.has(result.error.code)
-              ? ACCOUNT_SETUP_INCOMPLETE_MESSAGE
+            !result.ok && ACCOUNT_SETUP_PENDING_CODES.has(result.error.code)
+              ? ACCOUNT_SETUP_PENDING_MESSAGE
               : ACCOUNT_CONTEXT_UNAVAILABLE_MESSAGE,
           );
         }

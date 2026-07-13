@@ -1,5 +1,7 @@
 # GUGUMO β版 Release Readiness チェックリスト
 
+Status: CURRENT checklist. See `docs/technical-beta-readiness.md` for the 2026-07-13 final Technical Beta readiness decision.
+
 初期顧客β版を開始する前に、最低限確認する運用品質チェックリスト。
 
 ## UI・復旧状態
@@ -12,29 +14,29 @@
 - [ ] 除外/有効化失敗時の表示: DB lifecycle更新失敗時に顧客向け文言を表示する。
 - [ ] 重複CSV検知時の表示: `workspace_id + checksum` 一致で警告し、checksum NULL行とは比較しない。
 - [ ] 週次・月次の途中期間表示: 実績累計と平均予測を分けて表示し、途中期間は「予測前週比 / 予測前月比」、完了期間は「前週比 / 前月比」と表示する。
-- [ ] 暦日ベース予測の既知制約: 週次・月次の途中予測は `実績累計 ÷ 経過暦日数 × 期間日数` で算出するが、現在のデータ構造ではCSV未取得日と実績が本当に0だった日を完全には区別できない可能性がある。CSV未取得日を経過暦日数へ含めるケースでは、1日平均および週次・月次予測が実態より低く算出される可能性があるため、日付欠損がある期間、CSV未取得日の扱い、実績0日との区別、欠損時の予測表示、顧客向け補足表示の必要性をリリース前総合QAで確認する。
+- [x] 暦日ベース予測の既知制約: 制約は既知事項として記録済み。Technical Betaでは運用説明で扱い、正式版までに補足表示要否を検討する。
 - [ ] 業務仕様ラベル: 分析カテゴリ名、基準名、判定名、推奨アクション名、SUUMO由来項目名が承認済み表現から変わっていない。
 - [ ] オプション管理4分類: 「全オプションを外す（スマピク以外）」「第2基準まで落とす」「第2基準に上げる」「第3基準に上げる」が正しい内部配列に対応している。
 
 ## 認証・Tenant
 
 - [x] Password Reset正式実装: Supabase Authのメール再設定フローへ接続し、2026-07-13にProduction E2E PASS。
-- [ ] RLS最終確認: `csv_uploads`、tenant tables、将来のsnapshot tablesが現在workspaceのみ参照できることを確認する。
-- [ ] 初期顧客招待フロー: company/workspace/profile作成者と招待メール送信者を明確にする。
-- [ ] 初回オンボーディング手順: 初回ログインから初回CSVアップロードまでの案内を準備する。
+- [x] RLS最終確認: companies/workspaces/profiles/csv_uploads RLS、Role/Tenant E2E、DELETE Gate、Onboarding rehearsalでown-tenant behaviorを確認済み。future snapshot tablesは正式版課題。
+- [x] 初期顧客招待フロー: Invite user primary / Create user fallbackとして整理し、Company/Workspace作成、Invite、Auth UID確認、Profile作成、整合確認、利用開始連絡の順序へ整理済み。Production rehearsal PASS。
+- [x] 初回オンボーディング手順: 初回ログインから初回CSVアップロード、exclude/restore、duplicate warningまでProduction rehearsal PASS。
 
 ## 運用
 
-- [ ] 障害時Runbook: アップロード失敗、復元失敗、認証失敗、Supabase障害時の一次対応を定義する。
-- [ ] バックアップ/復元方針: バックアップ頻度、復元担当、復元リハーサル時期を定義する。
-- [ ] 監査ログ方針: 永続監査ログに残すUpload lifecycleイベントを決める。
+- [x] 障害時Runbook: beta-runbook / incident-response / production-auth-checklistに一次対応を記録済み。
+- [ ] バックアップ/復元方針: バックアップ頻度、復元担当、復元リハーサル時期を正式版までに確定する。
+- [ ] 監査ログ方針: 永続監査ログに残すUpload lifecycleイベントを正式版までに決める。
 
 ## β版 Go/No-Go
 
-- [ ] 招待、ログイン、Session復元、Password Reset、ログアウトが通る。Password Reset Production E2Eは2026-07-13 PASS。招待/onboarding rehearsalは継続確認。
-- [ ] β用workspaceでtenant分離が確認できている。
-- [ ] 実SUUMO CSVで、アップロード、復元、重複警告、除外、有効化、現在分析対象選定が通る。
+- [x] 招待、ログイン、Session復元、Password Reset、ログアウトが通る。Password ResetとInvite onboardingはProduction E2E PASS。
+- [x] β用workspaceでtenant分離が確認できている。
+- [x] 実SUUMO CSVで、アップロード、復元、重複警告、除外、有効化、現在分析対象選定が通る。
 - [ ] 主要画面に顧客向けではない内部用語が残っていない。
 - [ ] UX改善や自然な日本語化を理由に、業務仕様ラベルを無断変更していない。
-- [ ] Release Candidateで `npm run lint` と `npm run build` が成功する。
-- [ ] 既知の制限事項が文書化され、β顧客に提示して問題ない状態になっている。
+- [x] Release Candidateで `npm run lint` と `npm run build` が成功する。
+- [x] 既知の制限事項が文書化され、β顧客に提示して問題ない状態になっている。Invite email英語/迷惑メール1回、法務文面、backup/monitoringはP1-P3で継続。

@@ -1,5 +1,7 @@
 # Release Readiness Audit Validation
 
+Status: HISTORICAL validation record. Current gate state is maintained in `docs/technical-beta-readiness.md`.
+
 Date: 2026-07-11
 
 Target project: GUGUMOjp's Project / `annvqxnupddnozyghqdw`
@@ -124,4 +126,3 @@ This document reclassifies the current release-readiness findings by observed fa
 Created under `supabase/sql_editor/20260711_002_release_readiness_integrity/`.
 
 No SQL was executed by Codex.
-

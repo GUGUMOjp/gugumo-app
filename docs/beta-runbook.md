@@ -17,12 +17,31 @@ Never run beta operations against `ivtaxvuysqqnzpnwndqt`.
 
 1. Create or verify `companies` row in the formal project.
 2. Create or verify `workspaces` row under that company.
-3. Create or invite Auth user from Supabase Dashboard.
-4. Confirm email confirmation or invite completion state.
-5. Create exactly one `profiles` row whose `id` equals the Auth user UUID.
+3. Send invitation from Supabase Dashboard. Use Create user only as a reviewed fallback.
+4. Confirm the Auth user UUID after the invitation is created.
+5. Create exactly one `profiles` row whose `id` equals the Auth user UUID as soon as possible.
 6. Set `company_id`, `workspace_id`, and `role`.
 7. Verify company/workspace/profile consistency with read-only SQL.
-8. Ask the customer to set a password from the invite email.
+8. Tell the customer that GUGUMO is ready to use, then ask them to set a password from the invite email.
+
+If the customer opens the invite before profile creation is complete, the app must show `GUGUMOアカウントを準備しています` and must not show another tenant. Treat this as a normal pending provisioning state, not as a customer-facing error.
+
+Production onboarding rehearsal passed on 2026-07-13:
+
+- Signup OFF plus Send invitation worked.
+- Invite email was received and opened the Production app.
+- Missing profile state stopped safely without tenant fallback.
+- Current customer-facing pending copy is `GUGUMOアカウントを準備しています`.
+- Linked owner profile bootstrapped the rehearsal tenant.
+- Existing Demo tenant CSV history was not visible.
+- SUUMO CSV upload, save, Home analysis reflection, exclude, restore, duplicate warning, and duplicate cancel passed.
+- Rehearsal tenant rows and Auth user were manually cleaned up by human Dashboard operation.
+
+Invite email follow-up:
+
+- Invite template is still default English.
+- One first Gmail delivery landed in spam; do not treat this as a proven permanent SMTP failure.
+- Localize the Invite template and check delivery before first real customer invite when practical.
 
 ## Stop Conditions
 
@@ -119,14 +138,14 @@ For future reruns of the permanent-delete gate, use `supabase/sql_editor/2026071
 - Custom SMTP uses Resend with the verified `gugumo.jp` domain.
 - Password Reset Production E2E passed on 2026-07-13: reset request, received email, production callback, password update, Home bootstrap, company/workspace/role display, and existing analysis display.
 - If password reset fails after a Vercel env change, confirm that `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` are copied from the same formal Supabase project and redeploy Production.
-- Password reset email template still needs customer-facing Japanese finalization before broad external beta.
 - If email does not arrive, check Supabase Auth email settings manually.
 
 ### Tenant Not Linked
 
-- Customer sees account setup incomplete screen.
+- Customer sees `GUGUMOアカウントを準備しています`.
 - Verify `profiles.id`, `company_id`, `workspace_id`, and `role`.
-- Do not treat permission errors or query failures as tenant-not-linked.
+- If the profile is missing, treat it as pending provisioning and finish profile setup before telling the customer that GUGUMO is ready to use.
+- Do not treat permission errors, query failures, invalid role, or company/workspace mismatch as normal pending provisioning.
 
 ### CSV Parse Failure
 

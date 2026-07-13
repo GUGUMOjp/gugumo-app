@@ -32,10 +32,12 @@ export type CurrentWorkspaceContext = {
 export type WorkspaceContextErrorCode =
   | "AUTH_ERROR"
   | "PROFILE_NOT_FOUND"
+  | "PROFILE_CONFIGURATION_ERROR"
   | "PROFILE_QUERY_ERROR"
   | "COMPANY_NOT_FOUND"
   | "COMPANY_QUERY_ERROR"
   | "WORKSPACE_NOT_FOUND"
+  | "WORKSPACE_CONFIGURATION_ERROR"
   | "WORKSPACE_QUERY_ERROR";
 
 type WorkspaceContextError = {
@@ -90,7 +92,7 @@ export async function getCurrentWorkspaceContext(): Promise<WorkspaceContextResu
 
   if (!profile?.company_id || !profile.workspace_id) {
     return err({
-      code: "PROFILE_NOT_FOUND",
+      code: "PROFILE_CONFIGURATION_ERROR",
       message: "ProfileにCompanyまたはWorkspaceが紐付いていません。",
     }) satisfies WorkspaceContextResult;
   }
@@ -99,7 +101,7 @@ export async function getCurrentWorkspaceContext(): Promise<WorkspaceContextResu
 
   if (!role) {
     return err({
-      code: "PROFILE_NOT_FOUND",
+      code: "PROFILE_CONFIGURATION_ERROR",
       message: "ProfileのRoleが不正です。",
     }) satisfies WorkspaceContextResult;
   }
@@ -138,7 +140,7 @@ export async function getCurrentWorkspaceContext(): Promise<WorkspaceContextResu
 
   if (workspaceResult.data.company_id !== companyResult.data.id) {
     return err({
-      code: "WORKSPACE_NOT_FOUND",
+      code: "WORKSPACE_CONFIGURATION_ERROR",
       message: "WorkspaceとCompanyの紐付けが一致しません。",
     }) satisfies WorkspaceContextResult;
   }

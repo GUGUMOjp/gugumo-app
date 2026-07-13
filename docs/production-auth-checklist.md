@@ -4,7 +4,7 @@ Target Supabase project: GUGUMOjp's Project / `annvqxnupddnozyghqdw`.
 
 Production URL: `https://app.gugumo.jp`.
 
-Production Auth Gate status: Password Reset Production E2E passed on 2026-07-13.
+Production Auth Gate status: Password Reset Production E2E and Invite onboarding rehearsal passed on 2026-07-13.
 
 ## Dashboard Path
 
@@ -73,8 +73,19 @@ Remaining manual checks:
 - Expired or reused reset link shows a safe failure and allows returning to login.
 - Wrong email does not reveal whether an account exists.
 - Logout before opening reset callback does not expose tenant data.
-- Invite link opens the expected production URL.
-- Invited user can set password, log in, and bootstrap tenant context.
+- Invite email template localization.
+- Invite deliverability check after template change.
+
+Production Invite user rehearsal passed on 2026-07-13:
+
+1. Signup OFF plus Dashboard Send invitation succeeded.
+2. Invite email was received.
+3. Invite link opened the Production app.
+4. Missing profile state stopped safely without tenant fallback. Current customer-facing copy for this pending state is `GUGUMOアカウントを準備しています`.
+5. After profile creation, login and tenant bootstrap succeeded.
+6. CSV upload lifecycle smoke passed in the rehearsal tenant.
+
+For real customer onboarding, create company/workspace before invitation, create the profile as soon as the Auth user UUID is available, verify relationships, then tell the customer GUGUMO is ready to use. The app does not send an automatic ready notification.
 
 ## Token Handling Gate
 
@@ -99,8 +110,10 @@ Remaining manual checks:
 
 ## Remaining Dashboard TODO
 
-- Rehearse Invite user customer onboarding flow on Production.
 - Confirm Dashboard Create user behavior only as a fallback path.
+- Localize Invite email template.
+- Check Invite email deliverability after localization.
+- Align Invite email wording with the pending provisioning screen and manual ready-to-use contact.
 - Make final CAPTCHA decision.
 
 ## Password Reset Email Template Draft

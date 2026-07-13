@@ -1,5 +1,7 @@
 # GUGUMO Release Readiness Audit
 
+Status: HISTORICAL audit record. Do not use the original findings below as current gate state without checking `docs/technical-beta-readiness.md`.
+
 作成日: 2026-07-11
 
 対象環境: `/Users/tanakajunichi/Desktop/gugumo-app`
@@ -17,7 +19,7 @@ This document preserves the 2026-07-11 audit findings below as historical contex
 - DELETE Gate dedicated Tenant B/C cleanup completed, with no marker residue reported and the test Auth user manually deleted.
 - Service Role was not used for the app or E2E gates.
 
-Remaining non-technical-beta release work should be read from current runbooks and checklists, especially production Auth settings, legal/support finalization, and customer onboarding rehearsal.
+Current Technical Beta state should be read from `docs/technical-beta-readiness.md`. The original findings below are preserved for traceability.
 
 ## 1. Executive Summary
 

@@ -1,5 +1,7 @@
 # Customer Onboarding Rehearsal
 
+Status: CURRENT runbook and 2026-07-13 Production rehearsal record.
+
 Purpose: rehearse one new customer onboarding on Production before creating a real customer tenant.
 
 Target Production URL: `https://app.gugumo.jp`
@@ -22,6 +24,45 @@ Do not store real customer emails, passwords, Auth user UUIDs, JWTs, API keys, S
 - Google OAuth is not used.
 - Email/password auth is the only beta auth method.
 
+## 2026-07-13 Production Rehearsal Result
+
+Result: PASS.
+
+Executed against GUGUMOjp's Project / `annvqxnupddnozyghqdw` and `https://app.gugumo.jp`.
+
+Logical test data used:
+
+- Company: `Onboarding Rehearsal Company`
+- Workspace: `Onboarding Rehearsal Workspace`
+- Role: `owner`
+
+Do not record the filled email address, Auth user UUID, row UUIDs, password, invite token, JWT, or other secrets in this repository.
+
+Observed:
+
+- Signup OFF plus Supabase Dashboard `Send invitation` worked.
+- Invite email was sent and received.
+- Invite link opened the Production app.
+- Before profile creation, the app showed account setup incomplete and did not show another tenant.
+- After profile creation, login succeeded and Home showed the rehearsal company, rehearsal workspace, and owner role.
+- Existing Demo tenant CSV history was not visible to the rehearsal tenant.
+- SUUMO CSV upload, save, Home analysis reflection, exclude, restore, duplicate warning, and duplicate cancel all passed.
+- Tenant UI isolation was re-confirmed.
+
+Cleanup:
+
+- Rehearsal `csv_uploads`, `profiles`, `workspaces`, `companies`, and Auth user were manually removed in that order.
+- Existing Demo Company, Demo Workspace, existing owner profile, and existing formal CSV data were not changed.
+- This is a human Dashboard cleanup record; the repository did not query the DB to re-confirm it.
+
+Invite email follow-up:
+
+- Functional result: PASS.
+- Template quality: default English template remains.
+- Deliverability: one first Gmail delivery landed in spam. Do not treat this single event as proof of permanent SMTP failure.
+- Reset Password email via the same Custom SMTP path was received successfully.
+- SPF/DKIM/DMARC and mailbox reputation require external DNS/email-provider confirmation; the repository cannot verify them.
+
 ## Adopted Method
 
 Use Supabase Dashboard `Invite user` as the primary beta onboarding method.
@@ -31,12 +72,14 @@ Reason:
 - Signup OFF blocks public self-registration, but admin-issued invitations remain the intended manual operation.
 - The customer sets their own password through the invite/reset email flow, so GUGUMO does not handle temporary passwords.
 - The Auth user row is created by Supabase Auth, then `profiles.id` can be linked to that Auth user UUID.
-- If the customer opens the app before the profile is linked, the app shows the account setup incomplete screen instead of another tenant's data.
+- After the Auth user UUID is visible, the operator should create the profile and verify the tenant relationship before telling the customer that GUGUMO is ready to use.
+- If the customer opens the app before the profile is linked, the app shows a customer-facing pending provisioning screen: `GUGUMOアカウントを準備しています`. It must not show another tenant's data.
 
 Fallback:
 
 - Use Dashboard `Create user` only if `Invite user` is unavailable or fails during rehearsal.
 - If using `Create user`, do not send or store a password in docs. Prefer forcing the customer through Password Reset after the Auth user and profile are linked.
+- `Create user` fallback was not rehearsed in Production and is not the primary beta flow.
 
 ## Required Tenant Shape
 
@@ -176,6 +219,12 @@ Use `Invite user`:
 
 After the user appears in Auth users, copy the Auth user UUID into the private operator note.
 
+Operational target:
+
+- Create the profile and complete the integrity verification as soon as the Auth user UUID is available.
+- Aim to finish profile setup before the customer opens the invite link.
+- Because the invite email is sent immediately, a race condition remains. If the customer opens the app before profile creation, the app should show `GUGUMOアカウントを準備しています` and no tenant data.
+
 PASS:
 
 - Exactly one Auth user exists for the intended email.
@@ -230,7 +279,7 @@ Rollback:
 
 ### 6. Integrity Verification
 
-Before asking the customer to log in, verify from Dashboard table views:
+Before telling the customer that GUGUMO is ready to use, verify from Dashboard table views:
 
 - Company row exists and status is valid.
 - Workspace row exists and belongs to the company.
@@ -246,6 +295,11 @@ STOP:
 
 - Any missing row, duplicate row, mismatch, invalid role, or wrong project.
 
+After PASS:
+
+- Contact the customer outside the app and tell them that GUGUMO is ready to use.
+- Do not promise an automatic ready notification from the app. There is no operator UI, background job, provisioning status table, or automatic email in this beta flow.
+
 ### 7. Customer First Login
 
 Ask the customer to open the invite email and set a password, or use Password Reset if the invite flow was not used.
@@ -256,11 +310,11 @@ PASS:
 
 - Login succeeds.
 - Home displays the intended company, workspace, and owner role.
-- Account setup incomplete screen is not shown.
+- The pending provisioning screen is not shown.
 
 STOP:
 
-- Account setup incomplete screen appears.
+- The pending provisioning screen appears after the operator believed setup was complete.
 - Company/workspace/role is wrong.
 - Login succeeds but no tenant data appears.
 - Any other tenant's data appears.
@@ -355,7 +409,7 @@ Do not delete rows by id alone unless the name, marker, tenant relationship, and
 
 ## Missing Implementation Classification
 
-Technical Beta before onboarding rehearsal:
+Technical Beta after onboarding rehearsal:
 
 - No app code is required if the Dashboard manual flow is followed and one-owner onboarding is used.
 - A reviewed manual integrity checklist is required.

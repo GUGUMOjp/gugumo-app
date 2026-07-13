@@ -10,11 +10,11 @@ Beta Release Gate: CSV guardrails, sidebar UX, onboarding and authorization veri
 
 ## Latest Completed Commit
 
-31f69e0 Technical Beta: secure auth, CSV lifecycle, option optimization, and delete gate
+b1cc75a Document customer onboarding rehearsal procedure
 
 ## Current Uncommitted Changes
 
-Sprint開始時点はclean。Production Auth Gate Closeoutとして、Password Reset Production E2E記録、顧客向けログイン文言、環境混同防止docsを更新中。
+Sprint開始時点はclean。Customer Onboarding Rehearsal Closeoutとして、2026-07-13 Production onboarding rehearsal結果とTechnical Beta final readinessをdocsへ反映中。
 
 ## Build Status
 
@@ -39,6 +39,9 @@ Sprint開始時点はclean。Production Auth Gate Closeoutとして、Password R
 - Permanent delete authorization is applied in formal DB and post-apply verification passed. Owner/admin excluded own-tenant DELETE passed; active row, member, viewer, cross-tenant, and anonymous DELETE were denied with row persistence confirmed. Browser permanent-delete flows passed: active rows hide `完全削除`, excluded rows show `有効に戻す` / `完全削除`, confirmation/cancel works, deleted rows do not return after reload, excluded rows remain in history but stay out of analysis, duplicate metadata recalculates, and analysis screens have no stale deleted data.
 - DELETE Gate dedicated Tenant B/C cleanup completed with no marker/test data residue, and the dedicated DELETE Gate test Auth user was manually deleted from Supabase Dashboard. Existing formal accounts, existing tenant data, and Service Role were not used or changed.
 - CSV upload history now distinguishes exact duplicate content from same-name files before permanent-delete review: exact duplicate uses workspace + non-empty checksum, same-name uses file_name with different/unknown content, checksum NULL is not treated as exact content match, and no DB schema/RLS change is introduced.
+- Customer Onboarding Rehearsal passed on 2026-07-13 in Production. Signup OFF plus Send invitation worked; missing profile state stopped safely; linked owner profile bootstrapped the rehearsal tenant; existing Demo CSV history was not visible; SUUMO CSV upload/save/Home reflection/exclude/restore/duplicate warning/cancel passed; rehearsal tenant rows and Auth user were manually cleaned up by human Dashboard operation.
+- Customer-facing pending provisioning UX now uses `GUGUMOアカウントを準備しています` for profile-not-yet-created state. Unexpected profile/company/workspace configuration errors remain a separate safe error path.
+- Invite email follow-up remains: template is default English and one first Gmail delivery landed in spam once. Reset Password email through Custom SMTP passed; deliverability requires external DNS/email-provider review, not repository inference.
 
 ## Migration Status
 
@@ -59,14 +62,14 @@ Sprint開始時点はclean。Production Auth Gate Closeoutとして、Password R
 
 ## Current Blocker
 
-- External beta remains blocked until legal finalization, customer onboarding rehearsal, and final diff review are complete.
-- Technical beta READY: yes for the current uncommitted implementation after final diff review. Role/Tenant Security Gate, JWT auth transport regression, CSV lifecycle, option analysis, permanent DELETE Gate, test cleanup, lint, and build have passed.
-- Paid beta READY: no.
+- Technical Beta GO for limited, manually supported customer onboarding after final review of this closeout diff.
+- No open P0 blocker is identified for limited Technical Beta.
+- Paid/broad beta remains blocked until legal/support acceptance, Invite email localization/deliverability follow-up, monitoring/backup posture, and formal customer terms are resolved.
 
 ## Current Next Action
 
-- Close out Production Auth docs and customer-facing login copy, then review/commit the closeout diff.
-- User still needs to decide CAPTCHA, complete legal/support final confirmation, and rehearse customer onboarding before broad external beta.
+- Review and commit Customer Onboarding Rehearsal Closeout docs.
+- Before first real customer invite: create company/workspace first, send Invite, create profile as soon as the Auth UID is available, verify tenant relationships, then contact the customer that GUGUMO is ready to use. Localize/check Invite email when practical, confirm legal/support acceptance, and keep one-owner manual onboarding flow.
 
 ## Latest Implementation Note
 

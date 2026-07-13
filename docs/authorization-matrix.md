@@ -13,13 +13,15 @@ This document describes the intended beta authorization behavior. It is operatio
 
 ## Tenant-Unlinked Users
 
-If a logged-in user has no usable `company_id`, `workspace_id`, or `role`:
+If a logged-in user exists but no profile has been created yet:
 
 - Do not fall back to Demo Company.
 - Do not show another tenant's data.
 - Do not allow CSV upload, exclusion, activation, or analysis operations.
 - Keep the session valid so the user can log out.
-- Show an account setup incomplete screen with a support link.
+- Show the pending provisioning screen: `GUGUMOアカウントを準備しています`.
+
+If a profile exists but has invalid role, missing tenant links, missing company/workspace rows, or a company/workspace mismatch, treat it as an unexpected configuration error. Do not show another tenant and do not classify it as normal pending provisioning.
 
 ## Current Implementation Notes
 
