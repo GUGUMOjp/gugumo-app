@@ -8,6 +8,18 @@ GUGUMO
 
 Beta Release Gate: CSV guardrails, sidebar UX, onboarding and authorization verification
 
+## Legal / Support Public Preview Alignment (2026-07-14)
+
+- Updated the six public legal/support pages: `/terms`, `/privacy`, `/data-policy`, `/support`, `/legal`, and `/security`.
+- Added page-specific metadata, the common last-updated date `2026年7月14日`, and accessible navigation between all six pages, `https://gugumo.jp`, and `https://app.gugumo.jp`.
+- Separated inquiry channels: `info@gugumo.jp` for introduction/general/legal/privacy/pre-contract inquiries and `support@gugumo.jp` for contracted/current-user operation, defect, account, login, CSV, data/history, and security-incident inquiries.
+- Replaced the outdated staged-security wording with repository-backed facts about authentication, company/workspace boundaries, owner/admin/member/viewer roles, viewer write restrictions, owner/admin upload lifecycle controls, tenant access control, and no Service Role in normal application processing.
+- Added neutral public-preview wording for SUUMO non-affiliation, no automatic listing/option changes, CSV-content dependency, and no guarantee of inquiries, contracts, sales, profit, or cost reduction. Option cost-effectiveness amounts are described as decision-support information.
+- Kept four items deferred: minimum term/renewal, early cancellation/refunds/prorating, data retention/post-contract deletion, and the publication method for address/telephone details.
+- Formal pricing, payment, support hours, response deadlines, backup retention, deletion timing, cross-border handling, and final legal applicability remain unconfirmed and are not asserted in public copy.
+- This is a provisional public-preview alignment before counsel review, not final legal acceptance for paid or broad release.
+- No Supabase, SQL, migration, environment-variable, deployment, DNS, or production-data operation is part of this change.
+
 ## Latest Completed Commit
 
 a50a82c Finalize CAPTCHA decision for technical beta

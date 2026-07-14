@@ -1,3 +1,147 @@
 @import url("https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.0.0/dist/tabler-icons.min.css");
 @import "tailwindcss";
 @import "./gugumo.css";
+
+.legal-page {
+  overflow-wrap: anywhere;
+}
+
+.legal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.legal-brand-link {
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  color: #0f172a;
+  font-size: 1.25rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-decoration: none;
+}
+
+.legal-app-link,
+.legal-nav-link {
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  border-radius: 0.5rem;
+  color: #334155;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.4;
+  text-decoration: none;
+}
+
+.legal-app-link {
+  border: 1px solid #cbd5e1;
+  padding: 0.5rem 0.875rem;
+  background: #fff;
+}
+
+.legal-navigation {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 2rem;
+  padding: 0.75rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.75rem;
+  background: #fff;
+}
+
+.legal-nav-link {
+  padding: 0.5rem 0.75rem;
+}
+
+.legal-nav-link:hover,
+.legal-app-link:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+.legal-nav-link[aria-current="page"] {
+  background: #0f172a;
+  color: #fff;
+}
+
+.legal-inline-link {
+  color: #075985;
+  font-weight: 600;
+  text-decoration: underline;
+  text-decoration-thickness: 0.08em;
+  text-underline-offset: 0.18em;
+}
+
+.legal-inline-link:hover {
+  color: #0c4a6e;
+}
+
+.legal-brand-link:focus-visible,
+.legal-app-link:focus-visible,
+.legal-nav-link:focus-visible,
+.legal-inline-link:focus-visible {
+  outline: 3px solid #0284c7;
+  outline-offset: 3px;
+}
+
+.legal-footer {
+  display: grid;
+  gap: 0.5rem;
+  margin-top: 2.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #cbd5e1;
+  color: #475569;
+  font-size: 0.75rem;
+  line-height: 1.75;
+}
+
+@media (max-width: 640px) {
+  .legal-page {
+    padding: 1.5rem 1rem 2.5rem;
+  }
+
+  .legal-header {
+    align-items: flex-start;
+  }
+
+  .legal-navigation {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    padding: 0.5rem;
+  }
+
+  .legal-nav-link {
+    justify-content: center;
+    padding-inline: 0.5rem;
+    text-align: center;
+  }
+}
+
+@media print {
+  .legal-page {
+    min-height: auto;
+    padding: 0;
+    background: #fff;
+    color: #000;
+  }
+
+  .legal-header,
+  .legal-navigation {
+    display: none;
+  }
+
+  .legal-footer {
+    break-inside: avoid;
+    color: #000;
+  }
+
+  .legal-inline-link {
+    color: #000;
+  }
+}

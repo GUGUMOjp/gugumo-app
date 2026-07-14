@@ -3,6 +3,8 @@ type LegalSection = {
   body: string[];
 };
 
+export type LegalPageKey = "terms" | "privacy" | "dataPolicy" | "support" | "legal" | "security";
+
 export type LegalPageContent = {
   title: string;
   description: string;
@@ -19,6 +21,33 @@ const prohibitedItems = [
 ];
 
 const operatorName = "GUGUMO 代表 田中 純一";
+const lastUpdated = "2026年7月14日";
+const publicEmailAddresses = ["info@gugumo.jp", "support@gugumo.jp"] as const;
+
+const legalNavigation = [
+  { key: "terms", label: "利用規約", href: "/terms" },
+  { key: "privacy", label: "プライバシーポリシー", href: "/privacy" },
+  { key: "dataPolicy", label: "データ取扱方針", href: "/data-policy" },
+  { key: "support", label: "サポート", href: "/support" },
+  { key: "legal", label: "特定商取引法に基づく表記", href: "/legal" },
+  { key: "security", label: "セキュリティ", href: "/security" },
+] satisfies Array<{ key: LegalPageKey; label: string; href: string }>;
+
+function renderLegalText(text: string) {
+  const email = publicEmailAddresses.find((candidate) => text.includes(candidate));
+
+  if (!email) return text;
+
+  const [before, after] = text.split(email);
+
+  return (
+    <>
+      {before}
+      <a className="legal-inline-link" href={`mailto:${email}`}>{email}</a>
+      {after}
+    </>
+  );
+}
 
 export const legalPages = {
   terms: {
@@ -26,10 +55,19 @@ export const legalPages = {
     description: "GUGUMOを安心してご利用いただくための、サービス利用条件に関する案内です。",
     sections: [
       {
-        title: "サービス利用",
+        title: "サービスの内容と利用",
         body: [
-          "GUGUMOは、不動産会社のSUUMO運用を支援するための業務支援サービスです。",
-          "利用者は、所属法人の業務目的の範囲で本サービスを利用するものとします。",
+          "GUGUMOは、不動産会社のSUUMO運用を支援するSUUMO掲載最適化ツールです。利用者が正当な権限に基づいて取得したSUUMO由来CSVをアップロードすると、掲載状況、週次・月次の推移、掲載品質、入替候補およびオプション利用状況を分析・可視化し、掲載運用の判断を支援します。",
+          "GUGUMOはCSVを生成するサービスではなく、アップロードされたCSVの内容をもとに分析します。GUGUMOがSUUMOの掲載内容またはオプションを自動的に変更することはありません。",
+          "GUGUMOは、株式会社リクルートが提供するSUUMOの公式サービスまたは提携サービスではありません。",
+          "利用者は、所属法人の業務目的の範囲で、アップロードする権限を有するデータのみを本サービスで利用するものとします。",
+        ],
+      },
+      {
+        title: "CSVと外部サービスの影響",
+        body: [
+          "分析結果は、利用者がアップロードしたCSVの内容に依存します。CSVの正確性、完全性および最新性は、利用者の管理範囲となります。",
+          "SUUMO側の仕様変更、CSV形式の変更、提供停止その他の外部事情により、本サービスの全部または一部へ影響が生じる場合があります。",
         ],
       },
       {
@@ -37,10 +75,16 @@ export const legalPages = {
         body: prohibitedItems,
       },
       {
-        title: "免責",
+        title: "分析結果と効果に関する免責",
         body: [
-          "本サービスの分析結果は、掲載運用の判断材料を整理するものであり、反響や成約を保証するものではありません。",
-          "正式な契約条件は、個別契約または申込時に提示する条件を優先します。",
+          "分析結果およびオプションの付け外し・入替による費用対効果額は、掲載運用上の判断材料です。GUGUMOは、反響、成約、売上、利益または費用削減を保証しません。",
+          "掲載内容やオプションの変更を含む最終的な判断と実施は、利用者の判断と責任で行うものとします。",
+        ],
+      },
+      {
+        title: "個別契約条件",
+        body: [
+          "利用料金、契約期間、更新、解約、返金その他の条件は、個別契約条件に定めます。個別契約条件と本規約が異なる場合は、個別契約条件を優先します。",
         ],
       },
     ],
@@ -59,7 +103,7 @@ export const legalPages = {
       {
         title: "利用目的",
         body: [
-          "サービス提供、本人確認、法人ごとのデータ分離、分析結果の生成、品質改善、問い合わせ対応のために利用します。",
+          "サービス提供、本人確認、会社・ワークスペースごとのデータ管理、分析結果の生成、サービスの安定運用および問い合わせ対応のために利用します。",
           "法令で認められる場合を除き、利用目的を超えて取り扱いません。",
         ],
       },
@@ -68,6 +112,25 @@ export const legalPages = {
         body: [
           "利用者の同意または法令上の根拠がある場合を除き、取得情報を第三者へ提供しません。",
           "解析結果、CSVデータ、他社データの第三者提供は禁止事項として扱います。",
+        ],
+      },
+      {
+        title: "業務の委託",
+        body: [
+          "サービス提供に必要な範囲で、クラウド、認証、メール配信その他の業務を外部事業者へ委託する場合があります。委託先は必要かつ適切な範囲で選定・管理します。",
+        ],
+      },
+      {
+        title: "開示等のご相談",
+        body: [
+          "保有個人データに関する開示、訂正、利用停止、削除その他のご相談は、info@gugumo.jpまでご連絡ください。",
+          "ご相談への対応にあたり本人確認をお願いする場合があります。また、法令上対応できない場合があります。",
+        ],
+      },
+      {
+        title: "お問い合わせ窓口",
+        body: [
+          "本方針および個人情報の取扱いに関するお問い合わせは、info@gugumo.jpまでご連絡ください。",
         ],
       },
     ],
@@ -79,23 +142,30 @@ export const legalPages = {
       {
         title: "対象データ",
         body: [
-          "GUGUMOは、利用者が正当な権限に基づいて取得したSUUMO掲載管理用CSVを分析対象とします。",
-          "GUGUMOはCSVを生成せず、利用者が読み込んだCSVの内容をもとに掲載運用の確認ポイントを整理します。",
+          "GUGUMOは、利用者が正当な権限に基づいて取得し、自らアップロードしたSUUMO由来CSVを分析対象とします。利用者は、アップロードする権限を有するデータのみを使用してください。",
+          "GUGUMOはCSVを生成せず、利用者がアップロードしたCSVの内容をもとに掲載運用の確認ポイントを整理します。",
         ],
       },
       {
-        title: "利用範囲",
+        title: "利用範囲と管理単位",
         body: [
-          "読み込まれたデータは、サービス提供、分析結果の表示、問い合わせ対応、品質改善のために必要な範囲で取り扱います。",
+          "アップロードされたデータは、サービス提供、分析結果の表示、安定運用および問い合わせ対応に必要な範囲で取り扱います。利用者データをこれらの目的と無関係に利用するものではありません。",
           "お客様の掲載データや分析結果を、法令上必要な場合を除き、第三者へ無断で提供しません。",
+          "データは会社・ワークスペース単位で管理し、owner、admin、member、viewerのロールに応じて操作を制限します。viewerはCSVを書き込めません。",
         ],
       },
       {
-        title: "保管と削除",
+        title: "履歴の管理と削除",
         body: [
-          "データの保管期間、削除方法、バックアップの扱いは、契約時または運用開始時に個別に案内します。",
-          "アップロード履歴の除外、復元、完全削除は、権限のある利用者またはGUGUMO担当者の支援により行います。",
-          "営業デモや初期確認で取り扱うデータは、必要な範囲に限定します。",
+          "アップロード履歴の除外、再有効化および除外済みデータの完全削除は、ownerまたはadminが行えます。memberおよびviewerはこれらの操作を行えません。",
+          "データの保存期間、契約終了後の取扱い、削除依頼および削除完了時期は、契約条件および運用方針に従います。",
+        ],
+      },
+      {
+        title: "データに関するお問い合わせ",
+        body: [
+          "一般的なデータ取扱いに関するお問い合わせは、info@gugumo.jpまでご連絡ください。",
+          "ご利用中のデータ操作、アップロード履歴または削除に関するご相談は、support@gugumo.jpまでご連絡ください。",
         ],
       },
     ],
@@ -105,32 +175,22 @@ export const legalPages = {
     description: "GUGUMOの導入相談、操作相談、契約に関するお問い合わせ窓口の案内です。",
     sections: [
       {
-        title: "お問い合わせ",
+        title: "導入相談・一般お問い合わせ",
         body: [
-          "導入前のご相談、初期設定、操作方法、契約内容、請求に関するお問い合わせを受け付けます。",
-          "初期導入期間は、導入時または契約時に個別に案内した担当者連絡先をご利用ください。",
-          "お問い合わせ時は、会社名、担当者名、確認したい内容をお知らせください。",
+          "サービス内容、導入条件、契約前のご相談、料金または見積もりに関するお問い合わせは、info@gugumo.jpまでご連絡ください。",
         ],
       },
       {
-        title: "サポート内容",
+        title: "ご利用中のお客様",
         body: [
-          "SUUMO CSVの読み込み手順、各分析画面の見方、営業デモ時の説明ポイントを案内します。",
-          "お客様の運用状況に応じて、初回利用時の確認や画面説明を個別に行います。",
+          "操作方法、不具合、アカウント、CSVアップロード、データ・履歴、ログインまたはパスワードに関するご相談は、support@gugumo.jpまでご連絡ください。",
+          "お問い合わせ時は、会社名、担当者名および確認したい内容をお知らせください。パスワードや認証コードなどの秘密情報は送信しないでください。",
         ],
       },
       {
-        title: "営業時間",
+        title: "回答時期",
         body: [
-          "通常の対応時間は、契約時または導入時に個別に案内します。",
-          "営業時間外のお問い合わせは、翌営業日以降に順次確認します。",
-        ],
-      },
-      {
-        title: "問い合わせ先",
-        body: [
-          "正式な問い合わせ先メールアドレス、電話番号、受付時間は契約時またはお問い合わせ時に個別に案内します。",
-          "初期顧客向けの導入支援は、契約内容に応じてオンラインまたは個別連絡で対応します。",
+          "回答時期は、お問い合わせ内容および契約上のサポート条件により異なります。",
         ],
       },
       {
@@ -147,21 +207,27 @@ export const legalPages = {
         title: "販売事業者",
         body: [
           operatorName,
-          "所在地、電話番号、メールアドレスは、契約時またはお問い合わせ時に個別に案内します。",
+          "メールアドレス：info@gugumo.jp",
+          "所在地および電話番号は、契約時またはお問い合わせ時に個別に案内します。",
         ],
       },
       {
-        title: "販売価格・支払条件",
+        title: "販売価格等",
         body: [
-          "利用料金、支払時期、支払方法は、申込書、見積書、契約書、または個別案内に記載します。",
-          "追加費用が発生する場合は、事前に内容と条件を案内します。",
+          "販売価格、消費税、初期費用その他の料金は、申込書、見積書、契約書その他の個別書面に表示します。",
+          "支払時期および支払方法は、個別契約条件に定めます。",
         ],
       },
       {
-        title: "提供時期・解約",
+        title: "提供時期",
         body: [
-          "サービス提供開始時期、契約期間、解約条件は、契約時に提示する条件に従います。",
-          "デジタルサービスの性質上、提供開始後の返金可否は個別契約条件に基づきます。",
+          "契約成立後、個別契約条件に定める時期から提供を開始します。",
+        ],
+      },
+      {
+        title: "契約期間・解約・返金",
+        body: [
+          "契約期間、更新、解約申出、中途解約、日割りおよび返金に関する条件は、個別契約条件に定めます。",
         ],
       },
     ],
@@ -181,7 +247,7 @@ export const legalPages = {
         title: "外部送信",
         body: [
           "外部サービスへ情報を送信する機能を導入する場合は、送信先、送信内容、利用目的を事前に整理します。",
-          "Google Analytics等の計測ツール導入は、本Sprintでは行いません。",
+          "計測ツールを導入する場合は、実際の送信先、送信内容および利用目的に合わせて本方針を更新します。",
         ],
       },
       {
@@ -199,8 +265,10 @@ export const legalPages = {
       {
         title: "セキュリティ方針",
         body: [
-          "法人ごとのデータ分離、認証、権限管理、必要に応じた確認を重視して設計します。",
-          "他社データへの不正アクセスを防ぐため、データ分離と権限管理を段階的に整備します。",
+          "GUGUMOは、アカウント認証と、会社・ワークスペース単位のデータ管理を実装しています。",
+          "owner、admin、member、viewerのロール別に権限を管理し、viewerのCSV書き込みを制限しています。アップロード履歴の除外、再有効化および除外済みデータの完全削除はownerまたはadminに限定しています。",
+          "自テナント以外のデータへアクセスできないよう制御し、通常のアプリ処理ではService Roleを使用しない設計としています。",
+          "これらの対策は、あらゆる事故や不正アクセスを完全に防止することを保証するものではありません。",
         ],
       },
       {
@@ -210,22 +278,54 @@ export const legalPages = {
       {
         title: "インシデント対応",
         body: [
-          "情報漏えい、不正アクセス、誤設定などが疑われる場合は、導入時に案内した担当者連絡先を通じて確認し、必要な調査と是正を行います。",
+          "情報漏えい、不正アクセス、誤設定などが疑われる場合は、support@gugumo.jpまでご連絡ください。状況を確認し、必要な調査と是正を行います。",
+          "一般的な法務または個人情報の取扱いに関するお問い合わせは、info@gugumo.jpまでご連絡ください。",
         ],
       },
     ],
   },
 } satisfies Record<string, LegalPageContent>;
 
-export function LegalPage({ content }: { content: LegalPageContent }) {
+export function LegalPage({
+  content,
+  currentPage,
+}: {
+  content: LegalPageContent;
+  currentPage?: LegalPageKey;
+}) {
   return (
-    <main className="min-h-screen bg-slate-50 px-6 py-12 text-slate-900">
-      <article className="mx-auto max-w-3xl">
+    <main className="legal-page min-h-screen bg-slate-50 px-6 py-10 text-slate-900">
+      <article className="mx-auto max-w-4xl">
+        <header className="legal-header">
+          <div>
+            <a className="legal-brand-link" href="https://gugumo.jp" aria-label="GUGUMO公式HPへ移動">
+              GUGUMO
+            </a>
+            <p className="mt-1 text-sm font-semibold text-slate-500">法務・サポート案内</p>
+          </div>
+          <a className="legal-app-link" href="https://app.gugumo.jp">アプリに戻る</a>
+        </header>
+
+        <nav className="legal-navigation" aria-label="法務・サポートページ">
+          <a className="legal-nav-link external" href="https://gugumo.jp">GUGUMO公式HP</a>
+          {legalNavigation.map((item) => (
+            <a
+              className="legal-nav-link"
+              href={item.href}
+              key={item.key}
+              aria-current={currentPage === item.key ? "page" : undefined}
+            >
+              {item.label}
+            </a>
+          ))}
+        </nav>
+
         <p className="text-sm font-semibold text-slate-500">GUGUMO 法務案内</p>
         <h1 className="mt-3 text-3xl font-bold">{content.title}</h1>
         <p className="mt-4 text-base leading-7 text-slate-700">{content.description}</p>
+        <p className="mt-3 text-sm text-slate-500">最終更新日：{lastUpdated}</p>
         <p className="mt-4 rounded border border-amber-300 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-900">
-          正式な契約条件、料金、提供範囲、解約条件は、個別契約または申込時に提示する内容を優先します。
+          利用料金、契約期間、更新、解約、返金その他の条件は、申込書、見積書、契約書その他の個別契約条件に定めます。
         </p>
 
         <div className="mt-10 space-y-8">
@@ -234,15 +334,20 @@ export function LegalPage({ content }: { content: LegalPageContent }) {
               <h2 className="text-xl font-semibold">{section.title}</h2>
               <ul className="mt-3 space-y-2 text-sm leading-6 text-slate-700">
                 {section.body.map((item) => (
-                  <li key={item}>・{item}</li>
+                  <li key={item}>・{renderLegalText(item)}</li>
                 ))}
               </ul>
             </section>
           ))}
         </div>
-        <p className="mt-8 text-xs leading-6 text-slate-500">
-          運営者: {operatorName}
-        </p>
+        <footer className="legal-footer">
+          <p>運営者：{operatorName}</p>
+          <p>
+            一般・法務・個人情報：<a className="legal-inline-link" href="mailto:info@gugumo.jp">info@gugumo.jp</a>
+            <span aria-hidden="true"> ／ </span>
+            利用中のサポート：<a className="legal-inline-link" href="mailto:support@gugumo.jp">support@gugumo.jp</a>
+          </p>
+        </footer>
       </article>
     </main>
   );
