@@ -580,6 +580,7 @@ body {
   white-space: nowrap;
 }
 
+.topbar-help,
 .topbar-logout {
   display: inline-flex;
   flex-shrink: 0;
@@ -598,10 +599,22 @@ body {
   white-space: nowrap;
 }
 
+.topbar-help {
+  text-decoration: none;
+}
+
+.topbar-help:hover,
 .topbar-logout:hover {
   background: var(--bg);
 }
 
+.topbar-help:focus-visible,
+.topbar-logout:focus-visible {
+  outline: 2px solid var(--green);
+  outline-offset: 2px;
+}
+
+.topbar-help i,
 .topbar-logout i {
   font-size: 12px;
 }

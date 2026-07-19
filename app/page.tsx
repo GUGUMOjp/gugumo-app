@@ -2006,8 +2006,12 @@ export default function Page() {
               {sidebarWorkspaceName ? <div className="topbar-account-workspace">{sidebarWorkspaceName}</div> : null}
             </div>
             {tenantHeader.roleLabel ? <span className="topbar-account-role">{tenantHeader.roleLabel}</span> : null}
+            <a className="topbar-help" href="/help" aria-label="ご利用ガイドを開く">
+              <i className="ti ti-help-circle" aria-hidden="true" />
+              <span>ご利用ガイド</span>
+            </a>
             <button type="button" className="topbar-logout" onClick={handleLogout}>
-              <i className="ti ti-logout" />
+              <i className="ti ti-logout" aria-hidden="true" />
               <span>ログアウト</span>
             </button>
           </div>

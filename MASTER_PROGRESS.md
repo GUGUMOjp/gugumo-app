@@ -94,6 +94,8 @@ Sprint開始時点はclean。Technical Beta Readiness Final Closeoutとして、
 
 ## Latest Implementation Note
 
+- Authenticated help centerを追加し、認証後ヘッダーから「ご利用ガイド」へ到達できる導線を用意。role別権限（owner/admin/member/viewer）、月次予測の当月日数方式、CSVの利用者向け6MB/8MB制限、Option ROI（枠削減額・入替最適化額・合計月額）の説明を追加した。
+- Help content回帰テストを追加し、section/FAQ ID重複、FAQ件数、`37点` / `CSV` / `viewer` 検索対象、月次当月日数方式、問い合わせ先、必須CSV header、6MB/8MB表記を保護する。`/` から `/help` への導線と `/help` からアプリへ戻る導線を4 viewportで確認済み。表示・案内の追加であり、DB、SQL、Auth、RLS、CSV解析、Rule Engine、Recommendation Engine、Option計算ロジックは変更しない。
 - アプリ画面の価値訴求改善として、Homeに分析フローと優先アクション、Upload画面に取込後の処理フロー、空状態と候補0の区別、Option ROIの表示ラベル統一を追加する。表示専用改善であり、分析ロジック、DB、Auth、CSV解析、Rule Engine、Recommendation Engineは変更しない。
 - 認証後の実ブラウザ確認は未実施。未追跡ファイルがworking treeに残っている状態で、`git diff --check`、`npm run lint`、`npx tsc --noEmit`、`npm test`、`node --test scripts/run-option-balance-tests.cjs`、`npm run build` はPASS。
 
