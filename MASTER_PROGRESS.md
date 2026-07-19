@@ -88,6 +88,9 @@ Sprint開始時点はclean。Technical Beta Readiness Final Closeoutとして、
 
 ## Latest Implementation Note
 
+- アプリ画面の価値訴求改善として、Homeに分析フローと優先アクション、Upload画面に取込後の処理フロー、空状態と候補0の区別、Option ROIの表示ラベル統一を追加する。表示専用改善であり、分析ロジック、DB、Auth、CSV解析、Rule Engine、Recommendation Engineは変更しない。
+- 認証後の実ブラウザ確認は未実施。未追跡ファイルがworking treeに残っている状態で、`git diff --check`、`npm run lint`、`npx tsc --noEmit`、`npm test`、`node --test scripts/run-option-balance-tests.cjs`、`npm run build` はPASS。
+
 - Beta Upload UX Integrityとして、DB Schema変更なしでUpload履歴表示、ブラウザ上の一時除外、CSV内容hashによる重複警告を追加。
 - Upload履歴状態は「有効 / 除外」のみ。重複はCSV状態ではなくUpload時の警告イベントとして扱う。
 - 今回の除外はブラウザstate上の一時除外であり、永続化されない。リロード後は保存済みCSV復元により元へ戻る。

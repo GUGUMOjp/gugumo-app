@@ -912,6 +912,76 @@ function QuickLink({
   );
 }
 
+function ValueFlow() {
+  const steps = [
+    { icon: "ti-upload", label: "SUUMO CSV取込" },
+    { icon: "ti-chart-bar", label: "掲載状況を可視化" },
+    { icon: "ti-alert-triangle", label: "改善対象を抽出" },
+    { icon: "ti-list-check", label: "優先順位を整理" },
+    { icon: "ti-repeat", label: "入替・オプション最適化" },
+  ];
+
+  return (
+    <div className="value-flow" aria-label="GUGUMOの分析フロー">
+      {steps.map((step, index) => (
+        <Fragment key={step.label}>
+          <div className="value-flow-step">
+            <i className={`ti ${step.icon}`} />
+            <span>{step.label}</span>
+          </div>
+          {index < steps.length - 1 ? <i className="ti ti-chevron-right value-flow-arrow" aria-hidden="true" /> : null}
+        </Fragment>
+      ))}
+    </div>
+  );
+}
+
+function WorkflowStepList({
+  steps,
+}: {
+  steps: Array<{ icon: string; title: string; description: string; done?: boolean }>;
+}) {
+  return (
+    <div className="workflow-steps">
+      {steps.map((step) => (
+        <div key={step.title} className={`workflow-step${step.done ? " done" : ""}`}>
+          <i className={`ti ${step.done ? "ti-circle-check" : step.icon}`} />
+          <div>
+            <b>{step.title}</b>
+            <span>{step.description}</span>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function NextActionList({
+  actions,
+}: {
+  actions: Array<{ icon: string; title: string; description: string; onClick: () => void; primary?: boolean }>;
+}) {
+  return (
+    <div className="next-action-list">
+      {actions.map((action) => (
+        <button
+          key={action.title}
+          type="button"
+          className={`next-action-item${action.primary ? " primary" : ""}`}
+          onClick={action.onClick}
+        >
+          <i className={`ti ${action.icon}`} />
+          <span>
+            <b>{action.title}</b>
+            <small>{action.description}</small>
+          </span>
+          <i className="ti ti-arrow-right" aria-hidden="true" />
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function ProgressActions({ tableId, total, checkedState, onClear }: { tableId: string; total: number; checkedState: CheckState; onClear: (tableId: string) => void }) {
   const done = checkedState[tableId]?.length ?? 0;
   return (
@@ -1639,6 +1709,66 @@ export default function Page() {
   const permanentDeleteDuplicateMessage = permanentDeleteDialog
     ? duplicateDialogText(permanentDeleteDialog.entry.duplicateMetadata)
     : null;
+  const nextActions = (() => {
+    if (!latestSnapshot) {
+      return [{
+        icon: "ti-upload",
+        title: "最新CSVをアップロードする",
+        description: "SUUMOから取得したCSVで分析を開始します。",
+        onClick: () => goto("upload"),
+        primary: true,
+      }];
+    }
+
+    const actions: Array<{ icon: string; title: string; description: string; onClick: () => void; primary?: boolean }> = [];
+
+    if (analysis.lowPvRows.length > 0) {
+      actions.push({
+        icon: "ti-alert-triangle",
+        title: "入替候補を確認する",
+        description: `${analysis.lowPvRows.length}件の優先確認リストがあります。`,
+        onClick: () => goto("lowpv"),
+        primary: true,
+      });
+    }
+
+    if (analysis.optionBalance.optimization.totalImprovementAmount > 0) {
+      actions.push({
+        icon: "ti-coin",
+        title: "オプション最適化を確認する",
+        description: `合計（月額）${formatMoney(analysis.optionBalance.optimization.totalImprovementAmount)}の改善余地があります。`,
+        onClick: () => goto("optbal"),
+        primary: actions.length === 0,
+      });
+    }
+
+    if (weekly.length > 0) {
+      actions.push({
+        icon: "ti-chart-bar",
+        title: "週次推移を確認する",
+        description: "短期のPV・問い合わせ変化を確認します。",
+        onClick: () => goto("weekly"),
+      });
+    }
+
+    if (monthly.length > 0) {
+      actions.push({
+        icon: "ti-calendar-stats",
+        title: "月次推移を確認する",
+        description: "月間の傾向と中長期の変化を確認します。",
+        onClick: () => goto("monthly"),
+      });
+    }
+
+    actions.push({
+      icon: "ti-upload",
+      title: "最新CSVを追加する",
+      description: `現在の分析対象は${latestSnapshot.dateLabel}のCSVです。`,
+      onClick: () => goto("upload"),
+    });
+
+    return actions.slice(0, 4);
+  })();
 
   const handleLogin = async ({ email, password }: { email: string; password: string }) => {
     setLoginError("");
@@ -1897,7 +2027,7 @@ export default function Page() {
           <div className={pageClass(activePage, "home")}>
             <PageIntro
               title="ダッシュボード"
-              description="最新の分析結果から、経営サマリー・改善候補・次に見るべき画面をまとめて確認できます。"
+              description="SUUMO CSVから、掲載状況・改善候補・次に見るべき画面をまとめて確認できます。"
             >
               {latestSnapshot ? (
                 <>
@@ -1906,20 +2036,27 @@ export default function Page() {
                 </>
               ) : null}
             </PageIntro>
+            <ValueFlow />
             {!latestSnapshot ? (
               <EmptyActionPanel
                 icon="ti-file-upload"
                 title="まずCSVを読み込む"
-                message="SUUMOから出力したCSVを読み込むと、営業説明に使う確認ポイントを自動で整理します。"
+                message="SUUMOから出力した最新CSVを読み込むと、掲載状況・週次推移・月次推移・入替候補・オプション最適化をまとめて更新します。"
                 onAction={() => goto("upload")}
                 points={[
-                  "反響の変化を週次・月次で確認",
-                  "優先して見る物件を整理",
-                  "オプション見直しの余地を確認",
+                  "保存後に分析結果を確認",
+                  "重複CSVは保存前に確認",
+                  "次に見る画面を案内",
                 ]}
               />
             ) : (
               <>
+                <div className="card">
+                  <div className="card-head">
+                    <div className="card-title"><i className="ti ti-route" />今日の優先アクション</div>
+                  </div>
+                  <NextActionList actions={nextActions} />
+                </div>
                 <div className="quick-grid">
                   <QuickLink icon="ti-chart-bar" label="週次レポート" description="短期の反響変化を確認" onClick={() => goto("weekly")} />
                   <QuickLink icon="ti-calendar-stats" label="月次レポート" description="経営向けの月次推移" onClick={() => goto("monthly")} />
@@ -1927,19 +2064,23 @@ export default function Page() {
                   <QuickLink icon="ti-scale" label="オプション分析" description="見直し余地を確認" onClick={() => goto("optbal")} />
                   <QuickLink icon="ti-upload" label="CSVアップロード" description="新しい分析を開始" onClick={() => goto("upload")} />
                 </div>
-                {dashboard.savings.optimization.totalImprovementAmount > 0 && (
+                {dashboard.savings.optimization.totalImprovementAmount > 0 ? (
                   <div className="savings-banner">
                     <div className="savings-main">
-                      <div className="savings-label"><i className="ti ti-sparkles" /> 月額の総合改善効果</div>
+                      <div className="savings-label"><i className="ti ti-sparkles" /> 合計（月額）</div>
                       <div className="savings-amount">{formatMoney(dashboard.savings.optimization.totalImprovementAmount)}<small>/月</small></div>
                       <div className="savings-sub">枠削減と入れ替え最適化を合わせた改善余地です。</div>
                     </div>
                     <div className="savings-detail">
-                      <div className="savings-stat"><div className="savings-stat-val">{formatMoney(dashboard.savings.optimization.capacitySavingsAmount)}</div><div className="savings-stat-lbl">枠削減による削減余地 /月</div></div>
-                      <div className="savings-stat"><div className="savings-stat-val">{formatMoney(dashboard.savings.optimization.replacementOptimizationAmount)}</div><div className="savings-stat-lbl">入れ替えによる最適化額 /月</div></div>
-                      <div className="savings-stat"><div className="savings-stat-val">{formatMoney(dashboard.savings.optimization.totalImprovementAmount)}</div><div className="savings-stat-lbl">月額総合改善効果</div></div>
+                      <div className="savings-stat"><div className="savings-stat-val">{formatMoney(dashboard.savings.optimization.capacitySavingsAmount)}</div><div className="savings-stat-lbl">枠削減額</div></div>
+                      <div className="savings-stat"><div className="savings-stat-val">{formatMoney(dashboard.savings.optimization.replacementOptimizationAmount)}</div><div className="savings-stat-lbl">入替最適化額</div></div>
+                      <div className="savings-stat"><div className="savings-stat-val">{formatMoney(dashboard.savings.optimization.totalImprovementAmount)}</div><div className="savings-stat-lbl">合計（月額）</div></div>
                     </div>
                   </div>
+                ) : (
+                  <StatusNotice tone="success" icon="ti-circle-check" title="月額改善候補は現在0円です">
+                    最新CSVでは、枠削減額・入替最適化額ともに追加対応が必要な候補はありません。
+                  </StatusNotice>
                 )}
                 <div className="metrics">
                   <KpiCard label="掲載物件数" value={dashboard.metrics.listedRows !== undefined ? formatNumber(dashboard.metrics.listedRows) : "—"} unit="件" />
@@ -2080,7 +2221,7 @@ export default function Page() {
                     <div className="card-head"><div className="card-title"><i className="ti ti-flag" />優先課題</div></div>
                   <div style={{ display: "grid", gap: 10 }}>
                     <StatusNotice tone="critical" icon="ti-alert-triangle" title={`入替対象 ${analysis.lowPvRows.length}件`}>低反響物件を入替候補として確認します。</StatusNotice>
-                    <StatusNotice tone="success" icon="ti-coin" title={analysis.optionBalance.totalWaste > 0 ? `月額削減余地 ${formatMoney(analysis.optionBalance.totalSaving)}` : "オプション見直し候補なし"}>オプション運用の見直し余地を確認できます。</StatusNotice>
+                    <StatusNotice tone="success" icon="ti-coin" title={analysis.optionBalance.optimization.totalImprovementAmount > 0 ? `合計（月額） ${formatMoney(analysis.optionBalance.optimization.totalImprovementAmount)}` : "オプション見直し候補なし"}>枠削減額と入替最適化額を収支分析で確認できます。</StatusNotice>
                   </div>
                   </div>
                 </div>
@@ -2136,12 +2277,12 @@ export default function Page() {
           <div className={pageClass(activePage, "opt")}>
             <PageIntro
               title="オプション運用"
-              description="掲載状況に対して、正式な4分類でオプション運用の対象を確認できます。"
+              description="SUUMO採点37点を維持しながら、外す・付ける候補を4分類で確認できます。"
             >
               <button type="button" className="topbar-btn" onClick={() => goto("optbal")}>収支分析を見る</button>
             </PageIntro>
             <StatusNotice tone="info" icon="ti-info-circle" title="オプション判断の見方">
-              各表は最新の掲載状況をもとに、対応確認用の候補を整理したものです。チェック状態は画面内の作業管理として保存されます。
+              全外し、第2基準まで落とす、第2基準に上げる、第3基準に上げる、の4分類で作業候補を整理します。チェック状態は画面内の作業管理として保存されます。
             </StatusNotice>
             {!latestSnapshot ? (
               <EmptyActionPanel
@@ -2156,13 +2297,13 @@ export default function Page() {
                   <div className="opt-group-label"><i className="ti ti-circle-minus" />オプションを外す系</div>
                   {removeAllPropertyRows.length ? <div className="card"><div className="card-head"><div className="card-title">全オプションを外す（スマピク以外）</div><ProgressActions tableId="t1" total={analysis.removeAllRows.length} checkedState={checkedState} onClear={clearChecks} /></div><div className="tbl-wrap"><table className="tbl"><thead><tr><th className="col-check" /><th>物件名</th><th>部屋番号</th><th>競合数</th></tr></thead><tbody>{removeAllPropertyRows.slice(0, 200).map((row) => <CheckableRow key={row.key} tableId="t1" itemKey={row.key} checked={isChecked("t1", row.key)} onChange={toggleCheck}><td className="nm">{row.name}</td><td>{row.room}</td><td className="num">{row.total}</td></CheckableRow>)}</tbody></table></div></div> : null}
                   {lowerToSecondPropertyRows.length ? <div className="card"><div className="card-head"><div className="card-title">第2基準まで落とす</div><ProgressActions tableId="t2" total={analysis.lowerToSecondRows.length} checkedState={checkedState} onClear={clearChecks} /></div><div className="tbl-wrap"><table className="tbl"><thead><tr><th className="col-check" /><th>物件名</th><th>部屋番号</th><th>競合数</th></tr></thead><tbody>{lowerToSecondPropertyRows.slice(0, 200).map((row) => <CheckableRow key={row.key} tableId="t2" itemKey={row.key} checked={isChecked("t2", row.key)} onChange={toggleCheck}><td className="nm">{row.name}</td><td>{row.room}</td><td className="num">{row.total}</td></CheckableRow>)}</tbody></table></div></div> : null}
-                  {!removeAllPropertyRows.length && !lowerToSecondPropertyRows.length ? <EmptyState title="オプションを外す系はありません" message="現在、オプションを外す系として表示する物件はありません。" /> : null}
+                  {!removeAllPropertyRows.length && !lowerToSecondPropertyRows.length ? <EmptyState title="オプションを外す系はありません" message="現在、外す候補として優先表示する物件はありません。次回CSVを取り込むと最新の掲載状況で再判定されます。" /> : null}
                 </div>
                 <div className="opt-group add">
                   <div className="opt-group-label"><i className="ti ti-circle-plus" />オプションを付ける系</div>
                   {raiseToSecondPropertyRows.length ? <div className="card"><div className="card-head"><div className="card-title">第2基準に上げる</div><ProgressActions tableId="t3" total={analysis.raiseToSecondRows.length} checkedState={checkedState} onClear={clearChecks} /></div><div className="tbl-wrap"><table className="tbl"><thead><tr><th className="col-check" /><th>物件名</th><th>部屋番号</th><th>競合数</th></tr></thead><tbody>{raiseToSecondPropertyRows.slice(0, 200).map((row) => <CheckableRow key={row.key} tableId="t3" itemKey={row.key} checked={isChecked("t3", row.key)} onChange={toggleCheck}><td className="nm">{row.name}</td><td>{row.room}</td><td className="num">{row.total}</td></CheckableRow>)}</tbody></table></div></div> : null}
                   {raiseToThirdPropertyRows.length ? <div className="card"><div className="card-head"><div className="card-title">第3基準に上げる</div><ProgressActions tableId="t4" total={analysis.raiseToThirdRows.length} checkedState={checkedState} onClear={clearChecks} /></div><div className="tbl-wrap"><table className="tbl"><thead><tr><th className="col-check" /><th>物件名</th><th>部屋番号</th><th>競合数</th></tr></thead><tbody>{raiseToThirdPropertyRows.slice(0, 200).map((row) => <CheckableRow key={row.key} tableId="t4" itemKey={row.key} checked={isChecked("t4", row.key)} onChange={toggleCheck}><td className="nm">{row.name}</td><td>{row.room}</td><td className="num">{row.total}</td></CheckableRow>)}</tbody></table></div></div> : null}
-                  {!raiseToSecondPropertyRows.length && !raiseToThirdPropertyRows.length ? <EmptyState title="オプションを付ける系はありません" message="現在、オプションを付ける系として表示する物件はありません。" /> : null}
+                  {!raiseToSecondPropertyRows.length && !raiseToThirdPropertyRows.length ? <EmptyState title="オプションを付ける系はありません" message="現在、付ける候補として優先表示する物件はありません。閲覧実績や掲載状況が変わると再判定されます。" /> : null}
                 </div>
               </>
             )}
@@ -2184,7 +2325,7 @@ export default function Page() {
               <div className="row2">
                 {analysis.smapicAdd.length ? <div className="card"><div className="card-head"><div className="card-title"><i className="ti ti-circle-plus" />付けるべき物件</div><ProgressActions tableId="t5" total={analysis.smapicAdd.length} checkedState={checkedState} onClear={clearChecks} /></div><div className="tbl-wrap"><table className="tbl"><thead><tr><th className="col-check" /><th>物件名</th><th>部屋番号</th><th>現在</th></tr></thead><tbody>{analysis.smapicAdd.slice(0, 200).map((item) => <CheckableRow key={item.id} tableId="t5" itemKey={item.id} checked={isChecked("t5", item.id)} onChange={toggleCheck}><td className="nm">{item.name}</td><td>{item.room}</td><td>未付与</td></CheckableRow>)}</tbody></table></div></div> : null}
                 {analysis.smapicRemove.length ? <div className="card"><div className="card-head"><div className="card-title"><i className="ti ti-circle-minus" />外してよい物件</div><ProgressActions tableId="t5r" total={analysis.smapicRemove.length} checkedState={checkedState} onClear={clearChecks} /></div><div className="tbl-wrap"><table className="tbl"><thead><tr><th className="col-check" /><th>物件名</th><th>部屋番号</th><th>現在</th></tr></thead><tbody>{analysis.smapicRemove.slice(0, 200).map((item) => <CheckableRow key={item.id} tableId="t5r" itemKey={item.id} checked={isChecked("t5r", item.id)} onChange={toggleCheck}><td className="nm">{item.name}</td><td>{item.room}</td><td>付与中</td></CheckableRow>)}</tbody></table></div></div> : null}
-                {!analysis.smapicAdd.length && !analysis.smapicRemove.length ? <EmptyState title="スマピクの見直し候補はありません" message="現在、追加・削除候補として表示する物件はありません。" /> : null}
+                {!analysis.smapicAdd.length && !analysis.smapicRemove.length ? <EmptyState title="スマピクの見直し候補はありません" message="現在、スマピクの追加・削除候補はありません。次回CSVを取り込むと最新の掲載状況で再判定されます。" /> : null}
               </div>
             )}
           </div>
@@ -2216,13 +2357,13 @@ export default function Page() {
               />
             ) : lowPvPropertyRows.length ? (
               <div className="card"><div className="card-head"><div className="card-title" style={{ color: "var(--red)" }}><i className="ti ti-alert-triangle" />入替対象物件</div><ProgressActions tableId="t6" total={analysis.lowPvRows.length} checkedState={checkedState} onClear={clearChecks} /></div><div className="tbl-wrap"><table className="tbl"><thead><tr><th className="col-check" /><th>物件名</th><th>部屋番号</th><th>駅</th><th>間取</th><th>賃料+管理費</th><th>掲載日数</th><th>問合せ</th><th>競合数</th></tr></thead><tbody>{lowPvPropertyRows.slice(0, 300).map((row) => <CheckableRow key={row.key} tableId="t6" itemKey={row.key} checked={isChecked("t6", row.key)} onChange={toggleCheck}><td className="nm">{row.name}</td><td>{row.room}</td><td>{row.station}</td><td>{row.madori}</td><td className="num">{row.rent}万円</td><td className="num">{row.days}日</td><td className="num">{row.inquiry}件</td><td className="num">{row.total}件</td></CheckableRow>)}</tbody></table></div></div>
-            ) : <EmptyState title="入替対象はありません" message="現在、入替対象として表示する物件はありません。" />}
+            ) : <EmptyState title="入替対象はありません" message="現在、優先して入れ替える候補はありません。次回CSVを取り込むと、最新の掲載状況で再判定されます。" />}
           </div>
 
           <div className={pageClass(activePage, "optbal")}>
             <PageIntro
               title="オプション収支分析"
-              description="現在のオプション利用状況を分析し、削減できる費用と、より効果的なオプション配置を確認できます。"
+              description="SUUMO採点37点を維持しながら、枠削減額・入替最適化額・合計（月額）を確認できます。"
             >
               <button type="button" className="topbar-btn" onClick={() => goto("opt")}>運用候補を見る</button>
             </PageIntro>
@@ -2236,12 +2377,12 @@ export default function Page() {
             ) : (
               <>
                 {analysis.optionBalance.optimization.totalImprovementAmount > 0 ? (
-                  <div className="savings-banner" style={{ marginBottom: 14 }}><div className="savings-main"><div className="savings-label"><i className="ti ti-coin" /> 月額総合改善効果</div><div className="savings-amount">{formatMoney(analysis.optionBalance.optimization.totalImprovementAmount)}<small>/月</small></div><div className="savings-sub">枠削減と入れ替え最適化を分けて確認できます。</div></div><div className="savings-detail"><div className="savings-stat"><div className="savings-stat-val">{formatMoney(analysis.optionBalance.optimization.capacitySavingsAmount)}</div><div className="savings-stat-lbl">枠削減による削減余地</div></div><div className="savings-stat"><div className="savings-stat-val">{formatMoney(analysis.optionBalance.optimization.replacementOptimizationAmount)}</div><div className="savings-stat-lbl">入れ替え最適化額</div></div><div className="savings-stat"><div className="savings-stat-val">{formatMoney(analysis.optionBalance.optimization.totalImprovementAmount)}</div><div className="savings-stat-lbl">月額総合改善効果</div></div></div></div>
+                  <div className="savings-banner" style={{ marginBottom: 14 }}><div className="savings-main"><div className="savings-label"><i className="ti ti-coin" /> 合計（月額）</div><div className="savings-amount">{formatMoney(analysis.optionBalance.optimization.totalImprovementAmount)}<small>/月</small></div><div className="savings-sub">枠削減額と入替最適化額を分けて確認できます。</div></div><div className="savings-detail"><div className="savings-stat"><div className="savings-stat-val">{formatMoney(analysis.optionBalance.optimization.capacitySavingsAmount)}</div><div className="savings-stat-lbl">枠削減額</div></div><div className="savings-stat"><div className="savings-stat-val">{formatMoney(analysis.optionBalance.optimization.replacementOptimizationAmount)}</div><div className="savings-stat-lbl">入替最適化額</div></div><div className="savings-stat"><div className="savings-stat-val">{formatMoney(analysis.optionBalance.optimization.totalImprovementAmount)}</div><div className="savings-stat-lbl">合計（月額）</div></div></div></div>
                 ) : (
-                  <StatusNotice tone="success" icon="ti-circle-check" title="オプション費用の見直し候補はありません">掲載枠数に基づく基準件数の範囲内です。</StatusNotice>
+                  <StatusNotice tone="success" icon="ti-circle-check" title="合計（月額）は0円です">最新CSVでは、枠削減額・入替最適化額ともに追加対応が必要な候補はありません。</StatusNotice>
                 )}
-                <div className="card"><div className="card-head"><div className="card-title"><i className="ti ti-scale" />枠削減による削減余地</div></div><div className="optbal-grid">{analysis.optionBalance.cards.map((card) => <div className="optbal-card" key={card.key}><div className="optbal-name"><i className={`ti ${card.icon}`} style={{ color: "var(--green)" }} />{card.name}</div><div className="optbal-row"><span>現在の付与</span><b>{formatOptionBalanceDisplayCount(card.current)}件</b></div><div className="optbal-row"><span>推奨付与件数</span><b>{formatOptionBalanceDisplayCount(card.recommended)}件</b></div><div className="optbal-row"><span>削減対象件数</span><b style={{ color: "var(--red)" }}>{formatOptionBalanceDisplayCount(card.waste)}件</b></div><div className="optbal-row"><span>単価</span><b>{formatMoney(card.price)}</b></div><div className={`optbal-verdict ${card.waste > 0 ? "verdict-cut" : "verdict-ok"}`}>{card.waste > 0 ? <>▼ {formatOptionBalanceDisplayCount(card.waste)}件 削減余地<br /><span style={{ fontSize: 10, fontWeight: 400, color: "var(--ink3)" }}>{formatMoney(card.saving)} /月</span></> : "基準内"}</div></div>)}</div><div style={{ fontSize: 11, color: "var(--ink3)", marginTop: 6 }}>※掲載枠数の35%を50件単位で切り上げた基準件数をもとに、スマピクは独立、その他は優先順位順に最大2カテゴリだけを維持対象として表示しています。単価は設定画面で変更できます。</div></div>
-                <div className="card"><div className="card-head"><div className="card-title"><i className="ti ti-repeat" />入れ替え最適化額</div></div><div className="savings-detail" style={{ justifyContent: "flex-start", color: "var(--ink)" }}><div className="savings-stat" style={{ textAlign: "left" }}><div className="savings-stat-val">{analysis.optionBalance.optimization.removalOptimizationCount}件 / {formatMoney(analysis.optionBalance.optimization.removalOptimizationAmount)}</div><div className="savings-stat-lbl">外す最適化</div></div><div className="savings-stat" style={{ textAlign: "left" }}><div className="savings-stat-val">{analysis.optionBalance.optimization.additionOptimizationCount}件 / {formatMoney(analysis.optionBalance.optimization.additionOptimizationAmount)}</div><div className="savings-stat-lbl">付ける最適化</div></div><div className="savings-stat" style={{ textAlign: "left" }}><div className="savings-stat-val">{analysis.optionBalance.optimization.replacementOptimizationCount}件 / {formatMoney(analysis.optionBalance.optimization.replacementOptimizationAmount)}</div><div className="savings-stat-lbl">入れ替え最適化額</div></div></div><div style={{ fontSize: 11, color: "var(--ink3)", marginTop: 8 }}>※入れ替え最適化額は、外すオプション金額と新たに付けるオプション金額を合算した改善対象額です。純節約額ではありません。</div></div>
+                <div className="card"><div className="card-head"><div className="card-title"><i className="ti ti-scale" />枠削減額</div></div><div className="optbal-grid">{analysis.optionBalance.cards.map((card) => <div className="optbal-card" key={card.key}><div className="optbal-name"><i className={`ti ${card.icon}`} style={{ color: "var(--green)" }} />{card.name}</div><div className="optbal-row"><span>現在の付与</span><b>{formatOptionBalanceDisplayCount(card.current)}件</b></div><div className="optbal-row"><span>推奨付与件数</span><b>{formatOptionBalanceDisplayCount(card.recommended)}件</b></div><div className="optbal-row"><span>削減対象件数</span><b style={{ color: "var(--red)" }}>{formatOptionBalanceDisplayCount(card.waste)}件</b></div><div className="optbal-row"><span>単価</span><b>{formatMoney(card.price)}</b></div><div className={`optbal-verdict ${card.waste > 0 ? "verdict-cut" : "verdict-ok"}`}>{card.waste > 0 ? <>▼ {formatOptionBalanceDisplayCount(card.waste)}件 削減余地<br /><span style={{ fontSize: 10, fontWeight: 400, color: "var(--ink3)" }}>{formatMoney(card.saving)} /月</span></> : "基準内"}</div></div>)}</div><div style={{ fontSize: 11, color: "var(--ink3)", marginTop: 6 }}>※掲載枠数の35%を50件単位で切り上げた基準件数をもとに、スマピクは独立、その他は優先順位順に最大2カテゴリだけを維持対象として表示しています。単価は設定画面で変更できます。</div></div>
+                <div className="card"><div className="card-head"><div className="card-title"><i className="ti ti-repeat" />入替最適化額</div></div><div className="savings-detail" style={{ justifyContent: "flex-start", color: "var(--ink)" }}><div className="savings-stat" style={{ textAlign: "left" }}><div className="savings-stat-val">{analysis.optionBalance.optimization.removalOptimizationCount}件 / {formatMoney(analysis.optionBalance.optimization.removalOptimizationAmount)}</div><div className="savings-stat-lbl">外す最適化</div></div><div className="savings-stat" style={{ textAlign: "left" }}><div className="savings-stat-val">{analysis.optionBalance.optimization.additionOptimizationCount}件 / {formatMoney(analysis.optionBalance.optimization.additionOptimizationAmount)}</div><div className="savings-stat-lbl">付ける最適化</div></div><div className="savings-stat" style={{ textAlign: "left" }}><div className="savings-stat-val">{analysis.optionBalance.optimization.replacementOptimizationCount}件 / {formatMoney(analysis.optionBalance.optimization.replacementOptimizationAmount)}</div><div className="savings-stat-lbl">入替最適化額</div></div></div><div style={{ fontSize: 11, color: "var(--ink3)", marginTop: 8 }}>※入替最適化額は、外すオプション金額と新たに付けるオプション金額を合算した改善対象額です。純節約額ではありません。</div></div>
               </>
             )}
           </div>
@@ -2337,21 +2478,59 @@ export default function Page() {
 
           <div className={pageClass(activePage, "upload")}>
             <PageIntro
-              title="CSVアップロード"
-              description="SUUMOのCSVを読み込み、ダッシュボードや各レポートで確認できる状態にします。"
+              title="SUUMO CSVをアップロード"
+              description="最新CSVを取り込むと、掲載状況・週次推移・月次推移・入替候補・オプション最適化の分析結果が更新されます。"
             />
             <div className="card">
-              <div className="card-head"><div className="card-title"><i className="ti ti-upload" />CSVアップロード</div></div>
+              <div className="card-head"><div className="card-title"><i className="ti ti-upload" />CSVを取り込む</div></div>
               <div className={`upload-zone${isDragOver ? " drag" : ""}`} onClick={openFileDialog} onDragOver={(event) => { event.preventDefault(); setIsDragOver(true); }} onDragLeave={() => setIsDragOver(false)} onDrop={(event) => { event.preventDefault(); setIsDragOver(false); if (event.dataTransfer.files.length) loadFiles(event.dataTransfer.files); }} style={{ cursor: "pointer" }}>
                 {isReadingCsv ? <LoadingState text="CSVを読み込んでいます..." /> : (
                   <>
                     <i className="ti ti-files" style={{ fontSize: 28, color: "var(--ink2)", display: "block", marginBottom: 9 }} />
-                    <div style={{ fontSize: 13.5, color: "var(--ink2)" }}>複数ファイルをまとめてドロップ、またはクリックして選択</div>
-                    <div style={{ fontSize: 11, color: "var(--ink3)", marginTop: 5 }}>SUUMO掲載CSV / Shift-JIS・UTF-8 対応 / 1ファイル6MB・合計8MBまで</div>
+                    <div style={{ fontSize: 13.5, color: "var(--ink2)" }}>SUUMOから取得したCSVをドロップ、またはクリックして選択</div>
+                    <div style={{ fontSize: 11, color: "var(--ink3)", marginTop: 5 }}>保存後に各分析画面へ反映します。同じ内容のCSVは保存前に確認します。</div>
+                    <div style={{ fontSize: 11, color: "var(--ink3)", marginTop: 3 }}>Shift-JIS・UTF-8 対応 / 1ファイル6MB・合計8MBまで</div>
                   </>
                 )}
               </div>
               <input ref={fileInputRef} type="file" accept=".csv" multiple style={{ display: "none" }} onChange={handleFileInput} />
+              <div className="workflow-panel">
+                <div className="workflow-panel-head">
+                  <div>
+                    <div className="upload-history-title">分析更新状況</div>
+                    <div className="upload-history-note">アップロード後は、保存済みデータをもとに各分析画面が更新されます。</div>
+                  </div>
+                  {latestSnapshot ? <span className="status-pill loaded">最終更新 {latestSnapshot.dateLabel}</span> : <span className="status-pill">CSV未登録</span>}
+                </div>
+                <WorkflowStepList
+                  steps={[
+                    {
+                      icon: "ti-file-upload",
+                      title: "CSV受付",
+                      description: isReadingCsv ? "CSVを読み込んでいます。" : latestSnapshot ? "最新CSVを受け付け済みです。" : "SUUMO CSVを選択してください。",
+                      done: Boolean(latestSnapshot),
+                    },
+                    {
+                      icon: "ti-database",
+                      title: "保存",
+                      description: visibleUploadHistory.length ? `${visibleUploadHistory.length}件のアップロード履歴があります。` : "保存後に履歴へ表示します。",
+                      done: visibleUploadHistory.length > 0,
+                    },
+                    {
+                      icon: "ti-chart-bar",
+                      title: "分析更新",
+                      description: latestSnapshot ? "Dashboard、週次、月次、入替、オプションへ反映済みです。" : "保存後に分析結果を更新します。",
+                      done: Boolean(latestSnapshot),
+                    },
+                    {
+                      icon: "ti-route",
+                      title: "次のアクション",
+                      description: latestSnapshot ? "下の導線から確認画面へ進めます。" : "まずCSVをアップロードしてください。",
+                      done: Boolean(latestSnapshot),
+                    },
+                  ]}
+                />
+              </div>
               <div className="upload-history">
                 <div className="upload-history-head">
                   <div>
@@ -2449,11 +2628,11 @@ export default function Page() {
                     </table>
                   </div>
                 ) : (
-                  <EmptyState title="アップロード履歴はまだありません" message="CSVを読み込むと、ファイル名・件数・状態をここで確認できます。" />
+                  <EmptyState title="アップロード履歴はまだありません" message="SUUMO CSVを保存すると、ファイル名・件数・状態・重複確認結果をここで確認できます。" />
                 )}
               </div>
               <StatusNotice tone="info" icon="ti-database" title="アップロード後の反映">
-                読み込んだCSVは、各レポートと分析画面に反映されます。
+                保存したCSVは、Dashboard、週次、月次、入替候補、オプション分析に反映されます。
               </StatusNotice>
               <StatusNotice tone="warning" icon="ti-refresh" title="チェック状態の扱い">
                 新しいCSVを読み込むと、対応済みチェックはリセットされます。
@@ -2461,11 +2640,7 @@ export default function Page() {
             </div>
             <div className="card">
               <div className="card-head"><div className="card-title"><i className="ti ti-route" />アップロード後に見る画面</div></div>
-              <div className="quick-grid compact">
-                <QuickLink icon="ti-dashboard" label="ダッシュボードを見る" description="全体状況を確認" onClick={() => goto("home")} />
-                <QuickLink icon="ti-chart-bar" label="週次レポートを見る" description="直近の反響を確認" onClick={() => goto("weekly")} />
-                <QuickLink icon="ti-alert-triangle" label="入替対象を見る" description="優先対応を確認" onClick={() => goto("lowpv")} />
-              </div>
+              <NextActionList actions={nextActions} />
             </div>
           </div>
 
