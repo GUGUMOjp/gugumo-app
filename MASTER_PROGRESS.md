@@ -20,6 +20,12 @@ Beta Release Gate: CSV guardrails, sidebar UX, onboarding and authorization veri
 - This is a provisional public-preview alignment before counsel review, not final legal acceptance for paid or broad release.
 - No Supabase, SQL, migration, environment-variable, deployment, DNS, or production-data operation is part of this change.
 
+## Monthly Forecast Regression Coverage (2026-07-19)
+
+- Monthly forecasts are the month-end landing projection: cumulative period results divided by elapsed calendar days from month start through the latest data date, multiplied by the target month calendar days.
+- Added regression tests for 28, 29, 30, and 31 day months, month-end completion behavior, zero cumulative values, and the shared weekly seven-day projection design.
+- No analysis logic, DB, SQL, RLS, Auth, CSV storage, or production code changes were made for this coverage update.
+
 ## Latest Completed Commit
 
 a50a82c Finalize CAPTCHA decision for technical beta
